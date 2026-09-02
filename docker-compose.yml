@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: luxury-inventory-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: luxury
+      POSTGRES_PASSWORD: luxury
+      POSTGRES_DB: luxury_inventory
+    ports:
+      - "5432:5432"
+    volumes:
+      - luxury_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U luxury -d luxury_inventory"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  luxury_db_data:

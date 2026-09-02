@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: "Hanken Grotesk", sans-serif;
+  background-color: #0a0a0a;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+  font-size: 20px;
+  line-height: 1;
+  user-select: none;
+}
+
+.glass-panel {
+  background-color: rgba(18, 18, 18, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid #262626;
+}
+
+.gold-border-focus:focus-within {
+  border-bottom-color: #c6a15b !important;
+}
+
+.lux-card-border {
+  border: 1px solid #262626;
+  transition: border-color 0.3s ease;
+}
+
+.lux-card-border:hover {
+  border-color: #c6a15b;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #121212 inset !important;
+  -webkit-text-fill-color: #e5e2e1 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}

@@ -1,0 +1,28 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+*.local
+
+# Backend
+backend/dist/
+backend/node_modules/
+backend/generated/
+
+# Frontend
+frontend/dist/
+frontend/node_modules/
+frontend/vite.config.js
+frontend/vite.config.d.ts
+*.tsbuildinfo
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+*.log
