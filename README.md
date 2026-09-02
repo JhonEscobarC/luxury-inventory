@@ -44,6 +44,30 @@ npm run dev
 - Backend: http://localhost:4000
 - Frontend: http://localhost:5173
 
+## Produccion
+
+| Servicio | Proveedor | URL |
+|---|---|---|
+| Frontend | Vercel | https://frontend-rosy-nine-80.vercel.app |
+| Backend | Railway | https://backend-production-97644.up.railway.app |
+| Base de datos | Railway (Postgres) | privada, solo accesible desde el backend |
+
+**Despliegue continuo:**
+- Frontend (Vercel): conectado a GitHub, cada `git push` a `master` despliega automaticamente.
+- Backend (Railway): desplegado manualmente via `railway up` desde `backend/` (ver mas abajo). El auto-deploy desde GitHub quedo pendiente porque Railway necesita autorizacion explicita para acceder al repo — en el dashboard de Railway, entra al servicio `backend` → Settings → Source → Connect Repo, autoriza la Railway GitHub App para `luxury-inventory`, y desde ahi cada push desplegara solo.
+
+**Para redesplegar el backend manualmente** (mientras no este conectado a GitHub):
+
+```bash
+railway login          # una sola vez
+railway link           # vincula esta carpeta al proyecto luxury-inventory
+railway up backend --path-as-root --service backend --yes --detach
+```
+
+**Variables de entorno en produccion** se administran con `railway variable set KEY=VALUE --service backend` (o desde el dashboard). `DATABASE_URL` ya esta configurada como referencia al servicio de Postgres (`${{Postgres.DATABASE_URL}}`), y `JWT_SECRET` fue generado aleatoriamente durante el despliegue.
+
+**Usuarios de prueba en produccion**: se sembraron los mismos 3 usuarios de la tabla de abajo (`npx tsx prisma/seed.ts` corrido una vez via `railway ssh`). El inventario y los pedidos de produccion empiezan vacios — no se cargo ningun dato de prueba ahi.
+
 ## Usuarios de prueba (creados por el seed)
 
 | Rol    | Email             | Password    |
@@ -75,7 +99,7 @@ El codigo esta listo, solo falta la configuracion en `backend/.env`:
    - `WHATSAPP_BUSINESS_ACCOUNT_ID`
    - `WHATSAPP_VERIFY_TOKEN`: cualquier string que tu elijas (se usa en el paso 4)
    - `WHATSAPP_APP_SECRET`: el "App Secret" de la app de Meta (habilita la validacion de firma de cada evento)
-4. En el panel de WhatsApp de Meta, configura el webhook con la URL publica `https://<tu-dominio>/api/whatsapp/webhook` y el mismo `WHATSAPP_VERIFY_TOKEN` del paso anterior. En desarrollo local necesitas exponer el backend con una herramienta como ngrok.
+4. En el panel de WhatsApp de Meta, configura el webhook con la URL publica `https://backend-production-97644.up.railway.app/api/whatsapp/webhook` y el mismo `WHATSAPP_VERIFY_TOKEN` del paso anterior (en desarrollo local necesitarias exponer el backend con ngrok, pero en produccion ya es publico).
 5. Suscribete al campo `messages`.
 6. Reinicia el backend. La tarjeta de WhatsApp en el Dashboard deja de mostrar el aviso de "no conectado" cuando las credenciales estan completas.
 
