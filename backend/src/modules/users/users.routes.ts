@@ -4,11 +4,12 @@ import { createHandler, listHandler, resetPasswordHandler, setActiveHandler, upd
 
 export const usersRouter = Router();
 
-// Panel exclusivo de administradores.
-usersRouter.use(requireAuth, requireRole("ADMIN"));
+usersRouter.use(requireAuth);
 
-usersRouter.get("/", listHandler);
-usersRouter.post("/", createHandler);
-usersRouter.put("/:id", updateHandler);
-usersRouter.patch("/:id/active", setActiveHandler);
-usersRouter.patch("/:id/password", resetPasswordHandler);
+// CONTABILIDAD tambien puede listar usuarios para asignarlos a obras; el resto de
+// operaciones (crear, editar, activar/desactivar, resetear contrasena) es solo de ADMIN.
+usersRouter.get("/", requireRole("ADMIN", "CONTABILIDAD"), listHandler);
+usersRouter.post("/", requireRole("ADMIN"), createHandler);
+usersRouter.put("/:id", requireRole("ADMIN"), updateHandler);
+usersRouter.patch("/:id/active", requireRole("ADMIN"), setActiveHandler);
+usersRouter.patch("/:id/password", requireRole("ADMIN"), resetPasswordHandler);

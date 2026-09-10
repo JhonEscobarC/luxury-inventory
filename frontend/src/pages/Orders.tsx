@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { createOrder, listOrdersReport, updateOrder, updateOrderStatus } from "../lib/orders";
-import { listAllProductsForReport } from "../lib/products";
-import type { Order, OrderInput, OrderStatus } from "../types/order";
-import type { Product } from "../types/product";
+import { assignOrder, createOrder, listOrders, updateOrder, updateOrderStatus } from "../lib/orders";
+import { listMyObras, listObras } from "../lib/obras";
+import { listProveedores } from "../lib/proveedores";
+import type { AssignOrderInput, Order, OrderInput, OrderStatus } from "../types/order";
+import type { Obra } from "../types/obra";
+import type { Proveedor } from "../types/proveedor";
 import { OrderFormModal } from "../components/orders/OrderFormModal";
+import { AssignOrderModal } from "../components/orders/AssignOrderModal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 
 const currencyFormatter = new Intl.NumberFormat("es-CO", {
@@ -28,13 +31,6 @@ const STATUS_CLASS: Record<OrderStatus, string> = {
   CANCELADO: "border-error text-error",
 };
 
-const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  PENDIENTE: ["CONFIRMADO", "CANCELADO"],
-  CONFIRMADO: ["DESPACHADO", "CANCELADO"],
-  DESPACHADO: [],
-  CANCELADO: [],
-};
-
 const STATUS_FILTERS: { value: OrderStatus | ""; label: string }[] = [
   { value: "", label: "Todos" },
   { value: "PENDIENTE", label: "Pendiente" },
@@ -45,10 +41,12 @@ const STATUS_FILTERS: { value: OrderStatus | ""; label: string }[] = [
 
 export function Orders() {
   const { user } = useAuth();
-  const canCreate = user?.role === "ADMIN" || user?.role === "VENTAS";
+  const isObra = user?.role === "OBRA";
+  const canAssign = user?.role === "ADMIN" || user?.role === "CONTABILIDAD";
 
   const [orders, setOrders] = useState<Order[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [obras, setObras] = useState<Obra[]>([]);
+  const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "">("");
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -56,6 +54,7 @@ export function Orders() {
 
   const [isCreating, setIsCreating] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [assigningOrder, setAssigningOrder] = useState<Order | null>(null);
   const [cancelingOrder, setCancelingOrder] = useState<Order | null>(null);
   const [transitionError, setTransitionError] = useState<string | null>(null);
   const [pendingTransitionId, setPendingTransitionId] = useState<string | null>(null);
@@ -64,12 +63,14 @@ export function Orders() {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const [ordersResult, productsResult] = await Promise.all([
-        listOrdersReport({ status: statusFilter || undefined }),
-        listAllProductsForReport(),
+      const [ordersResult, obrasResult, proveedoresResult] = await Promise.all([
+        listOrders({ status: statusFilter || undefined }),
+        isObra ? listMyObras() : listObras({ isActive: true }),
+        canAssign ? listProveedores({ isActive: true }) : Promise.resolve([]),
       ]);
       setOrders(ordersResult);
-      setProducts(productsResult);
+      setObras(obrasResult);
+      setProveedores(proveedoresResult);
     } catch {
       setErrorMessage("No se pudieron cargar los pedidos.");
     } finally {
@@ -89,7 +90,13 @@ export function Orders() {
 
   async function handleUpdate(input: OrderInput) {
     if (!editingOrder) return;
-    await updateOrder(editingOrder.id, input);
+    await updateOrder(editingOrder.id, { notes: input.notes, items: input.items });
+    await refresh();
+  }
+
+  async function handleAssign(input: AssignOrderInput) {
+    if (!assigningOrder) return;
+    await assignOrder(assigningOrder.id, input);
     await refresh();
   }
 
@@ -121,20 +128,29 @@ export function Orders() {
         <div>
           <h2 className="text-display-lg-mobile md:text-display-lg text-primary uppercase">Pedidos</h2>
           <p className="font-body-md text-on-surface-variant mt-2 max-w-xl">
-            Gestiona pedidos manuales: crea, edita mientras esten pendientes y actualiza su estado.
+            {isObra
+              ? "Crea pedidos de materiales para tus obras asignadas."
+              : "Gestiona los pedidos entrantes: asigna proveedor, precios y actualiza su estado."}
           </p>
         </div>
 
-        {canCreate && (
+        {isObra && (
           <button
             onClick={() => setIsCreating(true)}
-            className="bg-primary hover:bg-primary-fixed transition-colors text-on-primary font-label-sm uppercase tracking-widest px-6 py-3 flex items-center justify-center gap-2 self-start"
+            disabled={obras.length === 0}
+            className="bg-primary hover:bg-primary-fixed transition-colors text-on-primary font-label-sm uppercase tracking-widest px-6 py-3 flex items-center justify-center gap-2 self-start disabled:opacity-50"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
             Nuevo pedido
           </button>
         )}
       </div>
+
+      {isObra && obras.length === 0 && !isLoading && (
+        <p className="font-label-sm text-on-surface-variant uppercase mb-6">
+          Aun no tienes obras asignadas. Pide a un administrador que te asigne una.
+        </p>
+      )}
 
       <div className="flex flex-wrap gap-3 mb-8">
         {STATUS_FILTERS.map((option) => (
@@ -160,11 +176,6 @@ export function Orders() {
       {!isLoading && orders.length === 0 && (
         <div className="border border-outline-variant bg-surface p-8 text-center">
           <p className="text-on-surface-variant font-label-sm uppercase">Sin pedidos para mostrar.</p>
-          {!canCreate && (
-            <p className="text-on-surface-variant/70 font-label-sm uppercase mt-2">
-              Los pedidos tambien apareceran aqui cuando se conecte WhatsApp.
-            </p>
-          )}
         </div>
       )}
 
@@ -172,8 +183,11 @@ export function Orders() {
         {!isLoading &&
           orders.map((order) => {
             const isExpanded = expandedId === order.id;
-            const transitions = ALLOWED_TRANSITIONS[order.status];
-            const canEdit = canCreate && order.status === "PENDIENTE";
+            const isOwner = order.createdById === user?.id;
+            const canEdit = isObra && isOwner && order.status === "PENDIENTE";
+            const canCancel =
+              (isObra && isOwner && order.status === "PENDIENTE") ||
+              (canAssign && (order.status === "PENDIENTE" || order.status === "CONFIRMADO"));
             const isPending = pendingTransitionId === order.id;
 
             return (
@@ -184,25 +198,24 @@ export function Orders() {
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 flex-wrap">
-                      <span className="font-body-md font-semibold text-on-surface">
-                        {order.customerName || "Cliente sin nombre"}
-                      </span>
+                      <span className="font-body-md font-semibold text-on-surface">{order.obraName}</span>
                       <span className={`font-label-sm uppercase px-2 py-1 border ${STATUS_CLASS[order.status]}`}>
                         {STATUS_LABEL[order.status]}
                       </span>
-                      {order.source === "WHATSAPP" && (
-                        <span className="font-label-sm uppercase px-2 py-1 border border-outline-variant text-on-surface-variant flex items-center gap-1">
-                          <span className="material-symbols-outlined text-[14px]">forum</span>
-                          WhatsApp
+                      {order.proveedorName && (
+                        <span className="font-label-sm uppercase px-2 py-1 border border-outline-variant text-on-surface-variant">
+                          {order.proveedorName}
                         </span>
                       )}
                     </div>
                     <p className="font-label-sm text-on-surface-variant/70 uppercase mt-1">
-                      {order.customerPhone || "Sin telefono"} - {new Date(order.createdAt).toLocaleString("es-CO")}
+                      Pedido por {order.createdByName} - {new Date(order.createdAt).toLocaleString("es-CO")}
                     </p>
                   </div>
 
-                  <div className="font-body-md text-on-surface font-semibold">{currencyFormatter.format(order.total)}</div>
+                  <div className="font-body-md text-on-surface font-semibold">
+                    {order.total !== null ? currencyFormatter.format(order.total) : "Sin precio"}
+                  </div>
 
                   <span className="material-symbols-outlined text-on-surface-variant">
                     {isExpanded ? "expand_less" : "expand_more"}
@@ -215,9 +228,9 @@ export function Orders() {
                       {order.items.map((item) => (
                         <div key={item.id} className="flex justify-between text-body-md text-on-surface-variant">
                           <span>
-                            {item.productName} x {item.quantity} {item.unit}
+                            {item.description} - {item.quantity} {item.unit}
                           </span>
-                          <span>{currencyFormatter.format(item.subtotal)}</span>
+                          <span>{item.subtotal !== null ? currencyFormatter.format(item.subtotal) : "Sin precio"}</span>
                         </div>
                       ))}
                     </div>
@@ -235,19 +248,24 @@ export function Orders() {
                           Editar
                         </button>
                       )}
-                      {transitions
-                        .filter((status) => status !== "CANCELADO")
-                        .map((status) => (
-                          <button
-                            key={status}
-                            disabled={isPending}
-                            onClick={() => handleStatusChange(order, status)}
-                            className="border border-primary text-primary font-label-sm uppercase px-4 py-2 hover:bg-primary hover:text-on-primary transition-colors disabled:opacity-50"
-                          >
-                            {isPending ? "Actualizando..." : `Marcar como ${STATUS_LABEL[status]}`}
-                          </button>
-                        ))}
-                      {transitions.includes("CANCELADO") && (
+                      {canAssign && order.status === "PENDIENTE" && (
+                        <button
+                          onClick={() => setAssigningOrder(order)}
+                          className="border border-primary text-primary font-label-sm uppercase px-4 py-2 hover:bg-primary hover:text-on-primary transition-colors"
+                        >
+                          Asignar proveedor
+                        </button>
+                      )}
+                      {canAssign && order.status === "CONFIRMADO" && (
+                        <button
+                          disabled={isPending}
+                          onClick={() => handleStatusChange(order, "DESPACHADO")}
+                          className="border border-primary text-primary font-label-sm uppercase px-4 py-2 hover:bg-primary hover:text-on-primary transition-colors disabled:opacity-50"
+                        >
+                          {isPending ? "Actualizando..." : "Marcar como despachado"}
+                        </button>
+                      )}
+                      {canCancel && (
                         <button
                           disabled={isPending}
                           onClick={() => setCancelingOrder(order)}
@@ -265,22 +283,31 @@ export function Orders() {
       </div>
 
       {isCreating && (
-        <OrderFormModal order={null} products={products} onClose={() => setIsCreating(false)} onSubmit={handleCreate} />
+        <OrderFormModal order={null} obras={obras} onClose={() => setIsCreating(false)} onSubmit={handleCreate} />
       )}
 
       {editingOrder && (
         <OrderFormModal
           order={editingOrder}
-          products={products}
+          obras={obras}
           onClose={() => setEditingOrder(null)}
           onSubmit={handleUpdate}
+        />
+      )}
+
+      {assigningOrder && (
+        <AssignOrderModal
+          order={assigningOrder}
+          proveedores={proveedores}
+          onClose={() => setAssigningOrder(null)}
+          onSubmit={handleAssign}
         />
       )}
 
       {cancelingOrder && (
         <ConfirmDialog
           title="Cancelar pedido"
-          message={`¿Seguro que deseas cancelar el pedido de "${cancelingOrder.customerName || "cliente sin nombre"}"?`}
+          message={`¿Seguro que deseas cancelar el pedido de "${cancelingOrder.obraName}"?`}
           confirmLabel="Cancelar pedido"
           onConfirm={handleCancel}
           onCancel={() => setCancelingOrder(null)}

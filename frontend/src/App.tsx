@@ -7,11 +7,14 @@ import { Login } from "./pages/Login";
 import { Dashboard } from "./pages/Dashboard";
 import { Inventory } from "./pages/Inventory";
 import { Orders } from "./pages/Orders";
-import { WhatsApp } from "./pages/WhatsApp";
+import { Obras } from "./pages/Obras";
+import { Proveedores } from "./pages/Proveedores";
 import { Users } from "./pages/Users";
 
 // Cargado bajo demanda: exceljs y jspdf son pesados y solo se necesitan en /reportes.
 const Reports = lazy(() => import("./pages/Reports").then((module) => ({ default: module.Reports })));
+
+const ADMIN_CONTABILIDAD = ["ADMIN", "CONTABILIDAD"] as const;
 
 function RouteFallback() {
   return (
@@ -45,16 +48,6 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/inventario"
-        element={
-          <ProtectedRoute>
-            <AppLayout>
-              <Inventory />
-            </AppLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
         path="/pedidos"
         element={
           <ProtectedRoute>
@@ -65,11 +58,31 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/whatsapp"
+        path="/obras"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={[...ADMIN_CONTABILIDAD]}>
             <AppLayout>
-              <WhatsApp />
+              <Obras />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/proveedores"
+        element={
+          <ProtectedRoute allowedRoles={[...ADMIN_CONTABILIDAD]}>
+            <AppLayout>
+              <Proveedores />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/inventario"
+        element={
+          <ProtectedRoute allowedRoles={[...ADMIN_CONTABILIDAD]}>
+            <AppLayout>
+              <Inventory />
             </AppLayout>
           </ProtectedRoute>
         }
@@ -87,7 +100,7 @@ function AppRoutes() {
       <Route
         path="/reportes"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={[...ADMIN_CONTABILIDAD]}>
             <AppLayout>
               <Suspense fallback={<RouteFallback />}>
                 <Reports />

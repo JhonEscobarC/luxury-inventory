@@ -15,12 +15,4 @@ export const env = {
   jwtSecret: required("JWT_SECRET"),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? "8h",
   corsOrigin: process.env.CORS_ORIGIN ?? "http://localhost:5173",
-
-  whatsapp: {
-    verifyToken: process.env.WHATSAPP_VERIFY_TOKEN ?? "",
-    accessToken: process.env.WHATSAPP_ACCESS_TOKEN ?? "",
-    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID ?? "",
-    businessAccountId: process.env.WHATSAPP_BUSINESS_ACCOUNT_ID ?? "",
-    appSecret: process.env.WHATSAPP_APP_SECRET ?? "",
-  },
 };

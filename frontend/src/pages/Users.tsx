@@ -8,8 +8,8 @@ import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 
 const ROLE_LABEL: Record<string, string> = {
   ADMIN: "Administrador",
-  BODEGA: "Bodega",
-  VENTAS: "Ventas",
+  CONTABILIDAD: "Contabilidad",
+  OBRA: "Obra",
 };
 
 export function Users() {

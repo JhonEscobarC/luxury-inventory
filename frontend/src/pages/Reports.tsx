@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { listAllProductsForReport, listCategories } from "../lib/products";
-import { listOrdersReport } from "../lib/orders";
+import { listOrders } from "../lib/orders";
 import { exportInventoryExcel, exportInventoryPdf, exportOrdersExcel, exportOrdersPdf } from "../lib/exporters";
 import type { OrderStatus } from "../types/order";
 
@@ -65,7 +65,7 @@ export function Reports() {
     setIsExportingOrders(format);
     setOrdersStatus(null);
     try {
-      const orders = await listOrdersReport({
+      const orders = await listOrders({
         status: orderStatus || undefined,
         from: orderFrom || undefined,
         to: orderTo || undefined,
@@ -158,7 +158,7 @@ export function Reports() {
 
       <section className="bg-surface-container lux-card-border p-6 md:p-8">
         <div className="flex items-center gap-3 mb-6 border-b border-outline-variant pb-4">
-          <span className="material-symbols-outlined text-primary">forum</span>
+          <span className="material-symbols-outlined text-primary">assignment</span>
           <h3 className="text-headline-md-mobile text-on-surface uppercase">Pedidos</h3>
         </div>
 

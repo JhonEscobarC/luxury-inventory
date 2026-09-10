@@ -14,7 +14,7 @@ const currencyFormatter = new Intl.NumberFormat("es-CO", {
 
 export function Inventory() {
   const { user } = useAuth();
-  const canManage = user?.role === "ADMIN" || user?.role === "BODEGA";
+  const canManage = user?.role === "ADMIN" || user?.role === "CONTABILIDAD";
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);

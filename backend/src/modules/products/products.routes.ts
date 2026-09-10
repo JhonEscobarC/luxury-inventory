@@ -13,7 +13,8 @@ import {
 
 export const productsRouter = Router();
 
-productsRouter.use(requireAuth);
+// Inventario es exclusivo de ADMIN y CONTABILIDAD; los usuarios de OBRA no lo necesitan.
+productsRouter.use(requireAuth, requireRole("ADMIN", "CONTABILIDAD"));
 
 productsRouter.get("/", listHandler);
 productsRouter.get("/export", exportHandler);
@@ -21,6 +22,6 @@ productsRouter.get("/categories", categoriesHandler);
 productsRouter.get("/low-stock-count", lowStockCountHandler);
 productsRouter.get("/:id", getHandler);
 
-productsRouter.post("/", requireRole("ADMIN", "BODEGA"), createHandler);
-productsRouter.put("/:id", requireRole("ADMIN", "BODEGA"), updateHandler);
-productsRouter.delete("/:id", requireRole("ADMIN", "BODEGA"), deleteHandler);
+productsRouter.post("/", createHandler);
+productsRouter.put("/:id", updateHandler);
+productsRouter.delete("/:id", deleteHandler);

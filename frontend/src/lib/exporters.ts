@@ -2,7 +2,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import ExcelJS from "exceljs";
 import type { Product } from "../types/product";
-import type { OrderReport } from "../types/order";
+import type { Order } from "../types/order";
 
 const GOLD: [number, number, number] = [198, 161, 91];
 const GOLD_ARGB = "FFC6A15B";
@@ -118,21 +118,20 @@ export async function exportInventoryExcel(products: Product[]) {
   );
 }
 
-export function exportOrdersPdf(orders: OrderReport[]) {
+export function exportOrdersPdf(orders: Order[]) {
   const doc = new jsPDF();
   addReportHeader(doc, "Reporte de Pedidos");
 
   autoTable(doc, {
     startY: 36,
-    head: [["Folio", "Cliente", "Telefono", "Estado", "Origen", "Fecha", "Total (COP)"]],
+    head: [["Folio", "Obra", "Proveedor", "Estado", "Fecha", "Total (COP)"]],
     body: orders.map((order) => [
       order.id.slice(0, 8),
-      order.customerName ?? "-",
-      order.customerPhone ?? "-",
+      order.obraName,
+      order.proveedorName ?? "-",
       STATUS_LABEL[order.status] ?? order.status,
-      order.source === "WHATSAPP" ? "WhatsApp" : "Manual",
       new Date(order.createdAt).toLocaleDateString("es-CO"),
-      order.total.toLocaleString("es-CO"),
+      order.total !== null ? order.total.toLocaleString("es-CO") : "-",
     ]),
     headStyles: { fillColor: GOLD, textColor: [10, 10, 10] },
     styles: { fontSize: 8 },
@@ -141,16 +140,16 @@ export function exportOrdersPdf(orders: OrderReport[]) {
   doc.save(`pedidos_${Date.now()}.pdf`);
 }
 
-export async function exportOrdersExcel(orders: OrderReport[]) {
+export async function exportOrdersExcel(orders: Order[]) {
   const workbook = newStyledWorkbook();
 
   const summary = workbook.addWorksheet("Pedidos");
   summary.columns = [
     { header: "Folio", key: "id", width: 12 },
-    { header: "Cliente", key: "customerName", width: 24 },
-    { header: "Telefono", key: "customerPhone", width: 16 },
+    { header: "Obra", key: "obraName", width: 24 },
+    { header: "Proveedor", key: "proveedorName", width: 22 },
     { header: "Estado", key: "status", width: 14 },
-    { header: "Origen", key: "source", width: 12 },
+    { header: "Pedido por", key: "createdByName", width: 20 },
     { header: "Fecha", key: "createdAt", width: 18 },
     { header: "Total (COP)", key: "total", width: 16 },
   ];
@@ -159,20 +158,21 @@ export async function exportOrdersExcel(orders: OrderReport[]) {
   orders.forEach((order) => {
     summary.addRow({
       id: order.id.slice(0, 8),
-      customerName: order.customerName ?? "-",
-      customerPhone: order.customerPhone ?? "-",
+      obraName: order.obraName,
+      proveedorName: order.proveedorName ?? "-",
       status: STATUS_LABEL[order.status] ?? order.status,
-      source: order.source === "WHATSAPP" ? "WhatsApp" : "Manual",
+      createdByName: order.createdByName,
       createdAt: new Date(order.createdAt).toLocaleString("es-CO"),
-      total: order.total,
+      total: order.total ?? 0,
     });
   });
 
-  const detail = workbook.addWorksheet("Detalle de productos");
+  const detail = workbook.addWorksheet("Detalle de materiales");
   detail.columns = [
     { header: "Folio", key: "orderId", width: 12 },
-    { header: "Producto", key: "productName", width: 30 },
+    { header: "Material", key: "description", width: 30 },
     { header: "Cantidad", key: "quantity", width: 12 },
+    { header: "Unidad", key: "unit", width: 12 },
     { header: "Precio unitario", key: "unitPrice", width: 16 },
     { header: "Subtotal", key: "subtotal", width: 16 },
   ];
@@ -182,10 +182,11 @@ export async function exportOrdersExcel(orders: OrderReport[]) {
     order.items.forEach((item) => {
       detail.addRow({
         orderId: order.id.slice(0, 8),
-        productName: item.productName,
+        description: item.description,
         quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        subtotal: item.subtotal,
+        unit: item.unit,
+        unitPrice: item.unitPrice ?? 0,
+        subtotal: item.subtotal ?? 0,
       });
     });
   });

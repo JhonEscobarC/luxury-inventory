@@ -1,16 +1,20 @@
 import { api } from "./api";
-import type { Order, OrderInput, OrderStatus } from "../types/order";
+import type { AssignOrderInput, Order, OrderInput, OrderStatus } from "../types/order";
 
-export interface OrdersReportFilters {
+export interface OrdersFilters {
   status?: OrderStatus;
+  obraId?: string;
+  proveedorId?: string;
   from?: string;
   to?: string;
 }
 
-export async function listOrdersReport(filters: OrdersReportFilters = {}): Promise<Order[]> {
+export async function listOrders(filters: OrdersFilters = {}): Promise<Order[]> {
   const { data } = await api.get<{ items: Order[] }>("/orders", {
     params: {
       status: filters.status || undefined,
+      obraId: filters.obraId || undefined,
+      proveedorId: filters.proveedorId || undefined,
       from: filters.from || undefined,
       to: filters.to || undefined,
     },
@@ -28,8 +32,13 @@ export async function createOrder(input: OrderInput): Promise<Order> {
   return data.order;
 }
 
-export async function updateOrder(id: string, input: Partial<OrderInput>): Promise<Order> {
+export async function updateOrder(id: string, input: Partial<Pick<OrderInput, "notes" | "items">>): Promise<Order> {
   const { data } = await api.put<{ order: Order }>(`/orders/${id}`, input);
+  return data.order;
+}
+
+export async function assignOrder(id: string, input: AssignOrderInput): Promise<Order> {
+  const { data } = await api.patch<{ order: Order }>(`/orders/${id}/assign`, input);
   return data.order;
 }
 

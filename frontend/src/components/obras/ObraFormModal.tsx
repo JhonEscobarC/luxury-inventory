@@ -1,24 +1,17 @@
 import { type FormEvent, useState } from "react";
-import type { Role } from "../../types/auth";
-import type { CreateUserInput, ManagedUser, UpdateUserInput } from "../../types/user";
+import type { Obra, ObraInput } from "../../types/obra";
 
-interface UserFormModalProps {
-  user: ManagedUser | null;
+interface ObraFormModalProps {
+  obra: Obra | null;
   onClose: () => void;
-  onSubmit: (input: CreateUserInput | UpdateUserInput) => Promise<void>;
+  onSubmit: (input: ObraInput) => Promise<void>;
 }
 
-const ROLE_OPTIONS: { value: Role; label: string }[] = [
-  { value: "ADMIN", label: "Administrador" },
-  { value: "CONTABILIDAD", label: "Contabilidad" },
-  { value: "OBRA", label: "Obra" },
-];
-
-export function UserFormModal({ user, onClose, onSubmit }: UserFormModalProps) {
-  const [name, setName] = useState(user?.name ?? "");
-  const [email, setEmail] = useState(user?.email ?? "");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState<Role>(user?.role ?? "OBRA");
+export function ObraFormModal({ obra, onClose, onSubmit }: ObraFormModalProps) {
+  const [name, setName] = useState(obra?.name ?? "");
+  const [address, setAddress] = useState(obra?.address ?? "");
+  const [client, setClient] = useState(obra?.client ?? "");
+  const [notes, setNotes] = useState(obra?.notes ?? "");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -31,16 +24,12 @@ export function UserFormModal({ user, onClose, onSubmit }: UserFormModalProps) {
     setError(null);
     setIsSubmitting(true);
     try {
-      if (user) {
-        await onSubmit({ name, email, role });
-      } else {
-        await onSubmit({ name, email, password, role });
-      }
+      await onSubmit({ name, address: address || null, client: client || null, notes: notes || null });
       onClose();
     } catch (submitError: unknown) {
       const message =
         (submitError as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        "No se pudo guardar el usuario.";
+        "No se pudo guardar la obra.";
       setError(message);
     } finally {
       setIsSubmitting(false);
@@ -50,15 +39,12 @@ export function UserFormModal({ user, onClose, onSubmit }: UserFormModalProps) {
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-margin-mobile">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-
       <form
         onSubmit={handleSubmit}
         className="relative w-full max-w-lg bg-surface-container border border-outline-variant p-6 md:p-8 max-h-[90vh] overflow-y-auto"
       >
         <div className="flex justify-between items-center mb-8">
-          <h3 className="text-headline-md-mobile text-primary uppercase">
-            {user ? "Editar usuario" : "Nuevo usuario"}
-          </h3>
+          <h3 className="text-headline-md-mobile text-primary uppercase">{obra ? "Editar obra" : "Nueva obra"}</h3>
           <button type="button" onClick={onClose} className="text-on-surface-variant hover:text-primary">
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -69,41 +55,17 @@ export function UserFormModal({ user, onClose, onSubmit }: UserFormModalProps) {
             <label className={labelClass}>Nombre</label>
             <input required className={inputClass} value={name} onChange={(e) => setName(e.target.value)} />
           </div>
-
           <div>
-            <label className={labelClass}>Correo electronico</label>
-            <input
-              required
-              type="email"
-              className={inputClass}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+            <label className={labelClass}>Cliente</label>
+            <input className={inputClass} value={client} onChange={(e) => setClient(e.target.value)} />
           </div>
-
-          {!user && (
-            <div>
-              <label className={labelClass}>Contrasena</label>
-              <input
-                required
-                type="password"
-                minLength={8}
-                className={inputClass}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-          )}
-
           <div>
-            <label className={labelClass}>Rol</label>
-            <select className={inputClass} value={role} onChange={(e) => setRole(e.target.value as Role)}>
-              {ROLE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+            <label className={labelClass}>Direccion</label>
+            <input className={inputClass} value={address} onChange={(e) => setAddress(e.target.value)} />
+          </div>
+          <div>
+            <label className={labelClass}>Notas</label>
+            <textarea className={inputClass} rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
         </div>
 

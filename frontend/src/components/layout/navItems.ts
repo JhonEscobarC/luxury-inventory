@@ -9,9 +9,10 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", icon: "dashboard", to: "/" },
-  { label: "Inventario", icon: "inventory_2", to: "/inventario" },
   { label: "Pedidos", icon: "assignment", to: "/pedidos" },
-  { label: "WhatsApp", icon: "forum", to: "/whatsapp" },
-  { label: "Reportes", icon: "analytics", to: "/reportes" },
+  { label: "Obras", icon: "construction", to: "/obras", roles: ["ADMIN", "CONTABILIDAD"] },
+  { label: "Proveedores", icon: "local_shipping", to: "/proveedores", roles: ["ADMIN", "CONTABILIDAD"] },
+  { label: "Inventario", icon: "inventory_2", to: "/inventario", roles: ["ADMIN", "CONTABILIDAD"] },
+  { label: "Reportes", icon: "analytics", to: "/reportes", roles: ["ADMIN", "CONTABILIDAD"] },
   { label: "Usuarios", icon: "group", to: "/usuarios", roles: ["ADMIN"] },
 ];
