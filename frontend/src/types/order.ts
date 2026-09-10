@@ -7,6 +7,8 @@ export interface OrderItem {
   unit: string;
   unitPrice: number | null;
   subtotal: number | null;
+  productId: string | null;
+  productName: string | null;
 }
 
 export interface Order {
@@ -40,5 +42,5 @@ export interface OrderInput {
 
 export interface AssignOrderInput {
   proveedorId: string;
-  items: { itemId: string; unitPrice: number }[];
+  items: { itemId: string; unitPrice: number; productId?: string | null }[];
 }

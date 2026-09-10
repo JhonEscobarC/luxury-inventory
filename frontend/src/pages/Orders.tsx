@@ -3,9 +3,11 @@ import { useAuth } from "../context/AuthContext";
 import { assignOrder, createOrder, listOrders, updateOrder, updateOrderStatus } from "../lib/orders";
 import { listMyObras, listObras } from "../lib/obras";
 import { listProveedores } from "../lib/proveedores";
+import { listAllProductsForReport } from "../lib/products";
 import type { AssignOrderInput, Order, OrderInput, OrderStatus } from "../types/order";
 import type { Obra } from "../types/obra";
 import type { Proveedor } from "../types/proveedor";
+import type { Product } from "../types/product";
 import { OrderFormModal } from "../components/orders/OrderFormModal";
 import { AssignOrderModal } from "../components/orders/AssignOrderModal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
@@ -47,6 +49,7 @@ export function Orders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "">("");
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -63,14 +66,16 @@ export function Orders() {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const [ordersResult, obrasResult, proveedoresResult] = await Promise.all([
+      const [ordersResult, obrasResult, proveedoresResult, productsResult] = await Promise.all([
         listOrders({ status: statusFilter || undefined }),
         isObra ? listMyObras() : listObras({ isActive: true }),
         canAssign ? listProveedores({ isActive: true }) : Promise.resolve([]),
+        canAssign ? listAllProductsForReport() : Promise.resolve([]),
       ]);
       setOrders(ordersResult);
       setObras(obrasResult);
       setProveedores(proveedoresResult);
+      setProducts(productsResult);
     } catch {
       setErrorMessage("No se pudieron cargar los pedidos.");
     } finally {
@@ -229,6 +234,11 @@ export function Orders() {
                         <div key={item.id} className="flex justify-between text-body-md text-on-surface-variant">
                           <span>
                             {item.description} - {item.quantity} {item.unit}
+                            {item.productName && (
+                              <span className="font-label-sm text-primary uppercase ml-2">
+                                (inventario: {item.productName})
+                              </span>
+                            )}
                           </span>
                           <span>{item.subtotal !== null ? currencyFormatter.format(item.subtotal) : "Sin precio"}</span>
                         </div>
@@ -299,6 +309,7 @@ export function Orders() {
         <AssignOrderModal
           order={assigningOrder}
           proveedores={proveedores}
+          products={products}
           onClose={() => setAssigningOrder(null)}
           onSubmit={handleAssign}
         />

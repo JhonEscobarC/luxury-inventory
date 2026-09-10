@@ -1,4 +1,13 @@
-import { Prisma, OrderStatus, type Order, type OrderItem, type Obra, type Proveedor, type User } from "@prisma/client";
+import {
+  Prisma,
+  OrderStatus,
+  type Order,
+  type OrderItem,
+  type Obra,
+  type Proveedor,
+  type Product,
+  type User,
+} from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { HttpError } from "../../middleware/errorHandler";
 
@@ -19,6 +28,7 @@ export type UpdateOrderInput = Partial<Pick<CreateOrderInput, "notes" | "items">
 export interface AssignmentItemInput {
   itemId: string;
   unitPrice: number;
+  productId?: string | null;
 }
 
 export interface AssignOrderInput {
@@ -26,8 +36,10 @@ export interface AssignOrderInput {
   items: AssignmentItemInput[];
 }
 
+type OrderItemWithProduct = OrderItem & { product: Product | null };
+
 type OrderWithRelations = Order & {
-  items: OrderItem[];
+  items: OrderItemWithProduct[];
   obra: Obra;
   proveedor: Proveedor | null;
   createdBy: User;
@@ -52,6 +64,8 @@ function serializeOrder(order: OrderWithRelations) {
       unit: item.unit,
       unitPrice,
       subtotal: unitPrice === null ? null : quantity * unitPrice,
+      productId: item.productId,
+      productName: item.product?.name ?? null,
     };
   });
 
@@ -78,7 +92,7 @@ function serializeOrder(order: OrderWithRelations) {
 }
 
 const orderInclude = {
-  items: true,
+  items: { include: { product: true } },
   obra: true,
   proveedor: true,
   createdBy: true,
@@ -224,9 +238,20 @@ export async function assignOrder(id: string, input: AssignOrderInput, assignedB
     throw new HttpError(400, "Debes asignar un precio a cada material del pedido");
   }
 
+  if (input.items.some((item) => item.productId)) {
+    const productIds = input.items.map((item) => item.productId).filter((v): v is string => Boolean(v));
+    const foundCount = await prisma.product.count({ where: { id: { in: productIds } } });
+    if (foundCount !== new Set(productIds).size) {
+      throw new HttpError(400, "Uno de los productos de inventario vinculados no existe");
+    }
+  }
+
   const order = await prisma.$transaction(async (tx) => {
     for (const priced of input.items) {
-      await tx.orderItem.update({ where: { id: priced.itemId }, data: { unitPrice: priced.unitPrice } });
+      await tx.orderItem.update({
+        where: { id: priced.itemId },
+        data: { unitPrice: priced.unitPrice, productId: priced.productId ?? null },
+      });
     }
     return tx.order.update({
       where: { id },
@@ -243,7 +268,7 @@ export async function assignOrder(id: string, input: AssignOrderInput, assignedB
 }
 
 export async function updateOrderStatus(id: string, nextStatus: OrderStatus) {
-  const existing = await prisma.order.findUnique({ where: { id } });
+  const existing = await prisma.order.findUnique({ where: { id }, include: orderInclude });
   if (!existing) {
     throw new HttpError(404, "Pedido no encontrado");
   }
@@ -251,6 +276,40 @@ export async function updateOrderStatus(id: string, nextStatus: OrderStatus) {
   const allowed = ALLOWED_TRANSITIONS[existing.status];
   if (!allowed.includes(nextStatus)) {
     throw new HttpError(400, `No se puede cambiar de "${existing.status}" a "${nextStatus}"`);
+  }
+
+  if (nextStatus === OrderStatus.DESPACHADO) {
+    const linkedItems = existing.items.filter((item) => item.productId);
+
+    const order = await prisma.$transaction(async (tx) => {
+      for (const item of linkedItems) {
+        const product = await tx.product.findUnique({ where: { id: item.productId! } });
+        if (!product) continue;
+        const available = Number(product.quantity);
+        const requested = Number(item.quantity);
+        if (available < requested) {
+          throw new HttpError(
+            400,
+            `Stock insuficiente para despachar "${product.name}" (disponible: ${available}, requerido: ${requested})`,
+          );
+        }
+      }
+
+      for (const item of linkedItems) {
+        await tx.product.update({
+          where: { id: item.productId! },
+          data: { quantity: { decrement: item.quantity } },
+        });
+      }
+
+      return tx.order.update({
+        where: { id },
+        data: { status: nextStatus },
+        include: orderInclude,
+      });
+    });
+
+    return serializeOrder(order);
   }
 
   const order = await prisma.order.update({

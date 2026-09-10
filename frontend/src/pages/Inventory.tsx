@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { createProduct, deleteProduct, listCategories, listProducts, updateProduct } from "../lib/products";
+import { listProveedores } from "../lib/proveedores";
 import type { Product, ProductInput } from "../types/product";
+import type { Proveedor } from "../types/proveedor";
 import { ProductFormModal } from "../components/inventory/ProductFormModal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 
@@ -18,6 +20,7 @@ export function Inventory() {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
+  const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
@@ -48,6 +51,12 @@ export function Inventory() {
       setIsLoading(false);
     }
   }
+
+  useEffect(() => {
+    listProveedores({ isActive: true })
+      .then(setProveedores)
+      .catch(() => setProveedores([]));
+  }, []);
 
   useEffect(() => {
     const timeout = setTimeout(refresh, 250);
@@ -176,8 +185,8 @@ export function Inventory() {
               <div className="md:col-span-4 w-full flex flex-col gap-1">
                 <span className="font-body-md font-semibold text-on-surface">{product.name}</span>
                 <span className="md:hidden font-label-sm text-on-surface-variant uppercase">{product.category}</span>
-                {product.supplier && (
-                  <span className="font-label-sm text-on-surface-variant/70 uppercase">{product.supplier}</span>
+                {product.proveedorName && (
+                  <span className="font-label-sm text-on-surface-variant/70 uppercase">{product.proveedorName}</span>
                 )}
               </div>
 
@@ -231,12 +240,18 @@ export function Inventory() {
       </div>
 
       {isCreating && (
-        <ProductFormModal product={null} onClose={() => setIsCreating(false)} onSubmit={handleCreate} />
+        <ProductFormModal
+          product={null}
+          proveedores={proveedores}
+          onClose={() => setIsCreating(false)}
+          onSubmit={handleCreate}
+        />
       )}
 
       {editingProduct && (
         <ProductFormModal
           product={editingProduct}
+          proveedores={proveedores}
           onClose={() => setEditingProduct(null)}
           onSubmit={handleUpdate}
         />

@@ -1,10 +1,12 @@
 import { type FormEvent, useState } from "react";
 import type { AssignOrderInput, Order } from "../../types/order";
 import type { Proveedor } from "../../types/proveedor";
+import type { Product } from "../../types/product";
 
 interface AssignOrderModalProps {
   order: Order;
   proveedores: Proveedor[];
+  products: Product[];
   onClose: () => void;
   onSubmit: (input: AssignOrderInput) => Promise<void>;
 }
@@ -16,10 +18,13 @@ const currencyFormatter = new Intl.NumberFormat("es-CO", {
   maximumFractionDigits: 0,
 });
 
-export function AssignOrderModal({ order, proveedores, onClose, onSubmit }: AssignOrderModalProps) {
+export function AssignOrderModal({ order, proveedores, products, onClose, onSubmit }: AssignOrderModalProps) {
   const [proveedorId, setProveedorId] = useState(order.proveedorId ?? proveedores[0]?.id ?? "");
   const [prices, setPrices] = useState<Record<string, number>>(
     Object.fromEntries(order.items.map((item) => [item.id, item.unitPrice ?? 0])),
+  );
+  const [productLinks, setProductLinks] = useState<Record<string, string>>(
+    Object.fromEntries(order.items.map((item) => [item.id, item.productId ?? ""])),
   );
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,6 +34,14 @@ export function AssignOrderModal({ order, proveedores, onClose, onSubmit }: Assi
   const labelClass = "font-label-sm text-on-surface-variant uppercase tracking-widest block mb-2";
 
   const total = order.items.reduce((sum, item) => sum + (prices[item.id] ?? 0) * item.quantity, 0);
+
+  function handleProductLink(itemId: string, productId: string) {
+    setProductLinks((prev) => ({ ...prev, [itemId]: productId }));
+    const product = products.find((p) => p.id === productId);
+    if (product && (prices[itemId] ?? 0) === 0) {
+      setPrices((prev) => ({ ...prev, [itemId]: product.price }));
+    }
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -43,7 +56,11 @@ export function AssignOrderModal({ order, proveedores, onClose, onSubmit }: Assi
     try {
       await onSubmit({
         proveedorId,
-        items: order.items.map((item) => ({ itemId: item.id, unitPrice: prices[item.id] ?? 0 })),
+        items: order.items.map((item) => ({
+          itemId: item.id,
+          unitPrice: prices[item.id] ?? 0,
+          productId: productLinks[item.id] || null,
+        })),
       });
       onClose();
     } catch (submitError: unknown) {
@@ -89,35 +106,67 @@ export function AssignOrderModal({ order, proveedores, onClose, onSubmit }: Assi
 
         <div className="flex flex-col gap-4 mb-6">
           {order.items.map((item) => (
-            <div key={item.id} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-              <div className="sm:col-span-6">
-                <p className="font-body-md text-on-surface">{item.description}</p>
-                <p className="font-label-sm text-on-surface-variant/70 uppercase">
-                  {item.quantity} {item.unit}
-                </p>
+            <div key={item.id} className="border border-outline-variant p-4">
+              <p className="font-body-md text-on-surface">{item.description}</p>
+              <p className="font-label-sm text-on-surface-variant/70 uppercase mb-3">
+                {item.quantity} {item.unit}
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                <div className="sm:col-span-6">
+                  <label className={labelClass}>Vincular a inventario (opcional)</label>
+                  <select
+                    className={inputClass}
+                    value={productLinks[item.id] ?? ""}
+                    onChange={(e) => handleProductLink(item.id, e.target.value)}
+                  >
+                    <option value="">Sin vincular</option>
+                    {products.map((product) => (
+                      <option key={product.id} value={product.id}>
+                        {product.name} ({product.quantity} {product.unit} disp.)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="sm:col-span-4">
+                  <label className={labelClass}>Precio unitario (COP)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step="1"
+                    className={inputClass}
+                    value={prices[item.id] ?? 0}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/^0+(?=\d)/, "");
+                      const parsed = raw === "" ? 0 : Number(raw);
+                      setPrices((prev) => ({ ...prev, [item.id]: Number.isNaN(parsed) ? 0 : parsed }));
+                    }}
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className={labelClass}>Subtotal</label>
+                  <p className="font-body-md text-on-surface py-3">
+                    {currencyFormatter.format((prices[item.id] ?? 0) * item.quantity)}
+                  </p>
+                </div>
               </div>
-              <div className="sm:col-span-4">
-                <label className={labelClass}>Precio unitario (COP)</label>
-                <input
-                  type="number"
-                  min={0}
-                  step="1"
-                  className={inputClass}
-                  value={prices[item.id] ?? 0}
-                  onFocus={(e) => e.target.select()}
-                  onChange={(e) => {
-                    const raw = e.target.value.replace(/^0+(?=\d)/, "");
-                    const parsed = raw === "" ? 0 : Number(raw);
-                    setPrices((prev) => ({ ...prev, [item.id]: Number.isNaN(parsed) ? 0 : parsed }));
-                  }}
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <label className={labelClass}>Subtotal</label>
-                <p className="font-body-md text-on-surface py-3">
-                  {currencyFormatter.format((prices[item.id] ?? 0) * item.quantity)}
-                </p>
-              </div>
+
+              {productLinks[item.id] &&
+                (() => {
+                  const linkedProduct = products.find((p) => p.id === productLinks[item.id]);
+                  if (!linkedProduct) return null;
+                  const insufficient = linkedProduct.quantity < item.quantity;
+                  return (
+                    <p
+                      className={`font-label-sm uppercase mt-2 ${insufficient ? "text-error" : "text-on-surface-variant/70"}`}
+                    >
+                      {insufficient
+                        ? `Stock insuficiente en inventario (disponible: ${linkedProduct.quantity} ${linkedProduct.unit})`
+                        : "Al despachar, se descontara del inventario"}
+                    </p>
+                  );
+                })()}
             </div>
           ))}
         </div>

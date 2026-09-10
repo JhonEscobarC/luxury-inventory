@@ -89,7 +89,7 @@ export async function exportInventoryExcel(products: Product[]) {
     { header: "Cantidad", key: "quantity", width: 12 },
     { header: "Unidad", key: "unit", width: 12 },
     { header: "Precio (COP)", key: "price", width: 16 },
-    { header: "Proveedor", key: "supplier", width: 22 },
+    { header: "Proveedor", key: "proveedorName", width: 22 },
     { header: "Stock minimo", key: "minStock", width: 14 },
     { header: "Estado", key: "status", width: 14 },
   ];
@@ -102,7 +102,7 @@ export async function exportInventoryExcel(products: Product[]) {
       quantity: product.quantity,
       unit: product.unit,
       price: product.price,
-      supplier: product.supplier ?? "",
+      proveedorName: product.proveedorName ?? "",
       minStock: product.minStock,
       status: product.isLowStock ? "Stock bajo" : "OK",
     });

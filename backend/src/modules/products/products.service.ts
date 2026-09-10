@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, type Proveedor } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { HttpError } from "../../middleware/errorHandler";
 
@@ -16,7 +16,7 @@ export interface ProductInput {
   quantity: number;
   unit: string;
   price: number;
-  supplier?: string | null;
+  proveedorId?: string | null;
   minStock: number;
 }
 
@@ -27,7 +27,8 @@ function serializeProduct(product: {
   quantity: Prisma.Decimal;
   unit: string;
   price: Prisma.Decimal;
-  supplier: string | null;
+  proveedorId: string | null;
+  proveedor?: Proveedor | null;
   minStock: Prisma.Decimal;
   createdAt: Date;
   updatedAt: Date;
@@ -41,13 +42,16 @@ function serializeProduct(product: {
     quantity,
     unit: product.unit,
     price: Number(product.price),
-    supplier: product.supplier,
+    proveedorId: product.proveedorId,
+    proveedorName: product.proveedor?.name ?? null,
     minStock,
     isLowStock: quantity <= minStock,
     createdAt: product.createdAt,
     updatedAt: product.updatedAt,
   };
 }
+
+const productInclude = { proveedor: true } satisfies Prisma.ProductInclude;
 
 export async function listProducts(params: ListProductsParams) {
   const page = params.page && params.page > 0 ? params.page : 1;
@@ -58,7 +62,7 @@ export async function listProducts(params: ListProductsParams) {
   if (params.search) {
     where.OR = [
       { name: { contains: params.search, mode: "insensitive" } },
-      { supplier: { contains: params.search, mode: "insensitive" } },
+      { proveedor: { name: { contains: params.search, mode: "insensitive" } } },
     ];
   }
 
@@ -69,6 +73,7 @@ export async function listProducts(params: ListProductsParams) {
   const [rows, total] = await Promise.all([
     prisma.product.findMany({
       where,
+      include: productInclude,
       orderBy: { name: "asc" },
       skip: params.lowStock ? undefined : (page - 1) * pageSize,
       take: params.lowStock ? undefined : pageSize,
@@ -94,7 +99,7 @@ export async function listAllProducts(params: Omit<ListProductsParams, "page" | 
   if (params.search) {
     where.OR = [
       { name: { contains: params.search, mode: "insensitive" } },
-      { supplier: { contains: params.search, mode: "insensitive" } },
+      { proveedor: { name: { contains: params.search, mode: "insensitive" } } },
     ];
   }
 
@@ -104,6 +109,7 @@ export async function listAllProducts(params: Omit<ListProductsParams, "page" | 
 
   const rows = await prisma.product.findMany({
     where,
+    include: productInclude,
     orderBy: [{ category: "asc" }, { name: "asc" }],
   });
 
@@ -126,7 +132,7 @@ export async function getCategories(): Promise<string[]> {
 }
 
 export async function getProductById(id: string) {
-  const product = await prisma.product.findUnique({ where: { id } });
+  const product = await prisma.product.findUnique({ where: { id }, include: productInclude });
   if (!product) {
     throw new HttpError(404, "Producto no encontrado");
   }
@@ -141,9 +147,10 @@ export async function createProduct(input: ProductInput) {
       quantity: input.quantity,
       unit: input.unit,
       price: input.price,
-      supplier: input.supplier ?? null,
+      proveedorId: input.proveedorId ?? null,
       minStock: input.minStock,
     },
+    include: productInclude,
   });
   return serializeProduct(product);
 }
@@ -159,9 +166,10 @@ export async function updateProduct(id: string, input: Partial<ProductInput>) {
       ...(input.quantity !== undefined && { quantity: input.quantity }),
       ...(input.unit !== undefined && { unit: input.unit }),
       ...(input.price !== undefined && { price: input.price }),
-      ...(input.supplier !== undefined && { supplier: input.supplier }),
+      ...(input.proveedorId !== undefined && { proveedorId: input.proveedorId }),
       ...(input.minStock !== undefined && { minStock: input.minStock }),
     },
+    include: productInclude,
   });
   return serializeProduct(product);
 }

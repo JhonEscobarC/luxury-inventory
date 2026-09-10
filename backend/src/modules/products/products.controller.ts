@@ -8,7 +8,7 @@ const productInputSchema = z.object({
   quantity: z.number().min(0, "La cantidad no puede ser negativa"),
   unit: z.string().trim().min(1, "La unidad es requerida"),
   price: z.number().min(0, "El precio no puede ser negativo"),
-  supplier: z.string().trim().min(1).optional().nullable(),
+  proveedorId: z.string().uuid("Proveedor invalido").optional().nullable(),
   minStock: z.number().min(0, "El stock minimo no puede ser negativo").default(0),
 });
 

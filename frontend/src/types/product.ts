@@ -5,7 +5,8 @@ export interface Product {
   quantity: number;
   unit: string;
   price: number;
-  supplier: string | null;
+  proveedorId: string | null;
+  proveedorName: string | null;
   minStock: number;
   isLowStock: boolean;
   createdAt: string;
@@ -18,6 +19,6 @@ export interface ProductInput {
   quantity: number;
   unit: string;
   price: number;
-  supplier?: string | null;
+  proveedorId?: string | null;
   minStock: number;
 }

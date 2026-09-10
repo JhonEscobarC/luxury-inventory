@@ -24,7 +24,15 @@ const updateOrderSchema = z.object({
 
 const assignOrderSchema = z.object({
   proveedorId: z.string().uuid("Proveedor invalido"),
-  items: z.array(z.object({ itemId: z.string().uuid(), unitPrice: z.number().min(0) })).min(1),
+  items: z
+    .array(
+      z.object({
+        itemId: z.string().uuid(),
+        unitPrice: z.number().min(0),
+        productId: z.string().uuid().optional().nullable(),
+      }),
+    )
+    .min(1),
 });
 
 const statusSchema = z.object({ status: z.nativeEnum(OrderStatus) });

@@ -1,8 +1,10 @@
 import { type FocusEvent, type FormEvent, useState } from "react";
 import type { Product, ProductInput } from "../../types/product";
+import type { Proveedor } from "../../types/proveedor";
 
 interface ProductFormModalProps {
   product: Product | null;
+  proveedores: Proveedor[];
   onClose: () => void;
   onSubmit: (input: ProductInput) => Promise<void>;
 }
@@ -13,11 +15,11 @@ const emptyForm: ProductInput = {
   quantity: 0,
   unit: "",
   price: 0,
-  supplier: "",
+  proveedorId: "",
   minStock: 0,
 };
 
-export function ProductFormModal({ product, onClose, onSubmit }: ProductFormModalProps) {
+export function ProductFormModal({ product, proveedores, onClose, onSubmit }: ProductFormModalProps) {
   const [form, setForm] = useState<ProductInput>(
     product
       ? {
@@ -26,7 +28,7 @@ export function ProductFormModal({ product, onClose, onSubmit }: ProductFormModa
           quantity: product.quantity,
           unit: product.unit,
           price: product.price,
-          supplier: product.supplier ?? "",
+          proveedorId: product.proveedorId ?? "",
           minStock: product.minStock,
         }
       : emptyForm,
@@ -53,7 +55,7 @@ export function ProductFormModal({ product, onClose, onSubmit }: ProductFormModa
     setError(null);
     setIsSubmitting(true);
     try {
-      await onSubmit({ ...form, supplier: form.supplier || null });
+      await onSubmit({ ...form, proveedorId: form.proveedorId || null });
       onClose();
     } catch {
       setError("No se pudo guardar el producto. Verifica los datos e intenta de nuevo.");
@@ -106,11 +108,18 @@ export function ProductFormModal({ product, onClose, onSubmit }: ProductFormModa
 
           <div>
             <label className={labelClass}>Proveedor</label>
-            <input
+            <select
               className={inputClass}
-              value={form.supplier ?? ""}
-              onChange={(event) => updateField("supplier", event.target.value)}
-            />
+              value={form.proveedorId ?? ""}
+              onChange={(event) => updateField("proveedorId", event.target.value)}
+            >
+              <option value="">Sin asignar</option>
+              {proveedores.map((proveedor) => (
+                <option key={proveedor.id} value={proveedor.id}>
+                  {proveedor.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
