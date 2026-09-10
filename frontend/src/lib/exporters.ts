@@ -118,9 +118,23 @@ export async function exportInventoryExcel(products: Product[]) {
   );
 }
 
-export function exportOrdersPdf(orders: Order[]) {
+export interface OrdersExportOptions {
+  title?: string;
+  filenamePrefix?: string;
+}
+
+function slugify(text: string) {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
+export function exportOrdersPdf(orders: Order[], options: OrdersExportOptions = {}) {
   const doc = new jsPDF();
-  addReportHeader(doc, "Reporte de Pedidos");
+  addReportHeader(doc, options.title ?? "Reporte de Pedidos");
 
   autoTable(doc, {
     startY: 36,
@@ -137,10 +151,11 @@ export function exportOrdersPdf(orders: Order[]) {
     styles: { fontSize: 8 },
   });
 
-  doc.save(`pedidos_${Date.now()}.pdf`);
+  const prefix = options.filenamePrefix ? `pedidos_${slugify(options.filenamePrefix)}` : "pedidos";
+  doc.save(`${prefix}_${Date.now()}.pdf`);
 }
 
-export async function exportOrdersExcel(orders: Order[]) {
+export async function exportOrdersExcel(orders: Order[], options: OrdersExportOptions = {}) {
   const workbook = newStyledWorkbook();
 
   const summary = workbook.addWorksheet("Pedidos");
@@ -192,8 +207,9 @@ export async function exportOrdersExcel(orders: Order[]) {
   });
 
   const buffer = await workbook.xlsx.writeBuffer();
+  const prefix = options.filenamePrefix ? `pedidos_${slugify(options.filenamePrefix)}` : "pedidos";
   downloadBlob(
     new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
-    `pedidos_${Date.now()}.xlsx`,
+    `${prefix}_${Date.now()}.xlsx`,
   );
 }
