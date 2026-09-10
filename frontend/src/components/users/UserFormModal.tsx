@@ -14,6 +14,14 @@ const ROLE_OPTIONS: { value: Role; label: string }[] = [
   { value: "OBRA", label: "Obra" },
 ];
 
+const EMAIL_DOMAIN = "@luxury.com";
+
+function withLuxuryDomain(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed === "") return trimmed;
+  return trimmed.toLowerCase().endsWith(EMAIL_DOMAIN) ? trimmed : `${trimmed}${EMAIL_DOMAIN}`;
+}
+
 export function UserFormModal({ user, onClose, onSubmit }: UserFormModalProps) {
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
@@ -30,11 +38,13 @@ export function UserFormModal({ user, onClose, onSubmit }: UserFormModalProps) {
     event.preventDefault();
     setError(null);
     setIsSubmitting(true);
+    const finalEmail = withLuxuryDomain(email);
+    setEmail(finalEmail);
     try {
       if (user) {
-        await onSubmit({ name, email, role });
+        await onSubmit({ name, email: finalEmail, role });
       } else {
-        await onSubmit({ name, email, password, role });
+        await onSubmit({ name, email: finalEmail, password, role });
       }
       onClose();
     } catch (submitError: unknown) {
@@ -74,11 +84,16 @@ export function UserFormModal({ user, onClose, onSubmit }: UserFormModalProps) {
             <label className={labelClass}>Correo electronico</label>
             <input
               required
-              type="email"
+              type="text"
+              placeholder="nombre.apellido"
               className={inputClass}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onBlur={(e) => setEmail(withLuxuryDomain(e.target.value))}
             />
+            <p className="font-label-sm text-on-surface-variant/60 uppercase mt-2">
+              Se completa automaticamente con {EMAIL_DOMAIN}
+            </p>
           </div>
 
           {!user && (
