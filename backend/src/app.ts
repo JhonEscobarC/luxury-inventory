@@ -14,7 +14,22 @@ import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 export const app = express();
 
 app.use(helmet());
-app.use(cors({ origin: env.corsOrigin, credentials: true }));
+app.use(
+  cors({
+    origin(origin, callback) {
+      // Sin origin (curl, health checks, server-to-server) siempre se permite.
+      if (!origin) return callback(null, true);
+      if (env.corsOrigins.includes(origin)) return callback(null, true);
+      // Cualquier alias/preview *.vercel.app que empiece por "frontend" o "luxury"
+      // (los nombres que usa este proyecto) tambien se acepta, para no romper el
+      // login cada vez que se agregue o cambie un dominio en Vercel. No se abre a
+      // cualquier subdominio de vercel.app por seguridad.
+      if (/^https:\/\/(frontend|luxury)[a-z0-9-]*\.vercel\.app$/.test(origin)) return callback(null, true);
+      return callback(new Error(`Origen no permitido por CORS: ${origin}`));
+    },
+    credentials: true,
+  }),
+);
 app.use(express.json());
 app.use(morgan(env.nodeEnv === "development" ? "dev" : "combined"));
 
