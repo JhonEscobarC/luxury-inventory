@@ -1,6 +1,7 @@
-import { Prisma, type Abono, type User } from "@prisma/client";
+import { Prisma, HistorialTipo, type Abono, type User } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { HttpError } from "../../middleware/errorHandler";
+import { recordEvento } from "../historial/historial.service";
 
 function serializeAbono(abono: Abono & { createdBy?: Pick<User, "id" | "name"> | null }) {
   return {
@@ -54,7 +55,18 @@ export async function createAbono(input: CreateAbonoInput, createdById: string) 
     },
     include: { createdBy: { select: { id: true, name: true } } },
   });
-  return serializeAbono(abono);
+
+  const serialized = serializeAbono(abono);
+  await recordEvento({
+    tipo: HistorialTipo.ABONO_REGISTRADO,
+    descripcion: `Abono registrado a "${proveedor.name}"`,
+    monto: serialized.amount,
+    userId: createdById,
+    proveedorId: proveedor.id,
+    abonoId: serialized.id,
+  });
+
+  return serialized;
 }
 
 export async function deleteAbono(id: string) {

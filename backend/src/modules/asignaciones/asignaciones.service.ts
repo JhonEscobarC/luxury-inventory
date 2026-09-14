@@ -1,6 +1,7 @@
 import {
   Prisma,
   EtapaStatus,
+  HistorialTipo,
   type ContratistaAsignacion,
   type ContratistaEtapa,
   type Obra,
@@ -8,6 +9,7 @@ import {
 } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { HttpError } from "../../middleware/errorHandler";
+import { recordEvento } from "../historial/historial.service";
 
 export interface EtapaInput {
   name: string;
@@ -123,7 +125,7 @@ export async function getAsignacionById(id: string) {
   return serializeAsignacion(asignacion);
 }
 
-export async function createAsignacion(input: CreateAsignacionInput) {
+export async function createAsignacion(input: CreateAsignacionInput, userId?: string) {
   if (input.totalAmount <= 0) {
     throw new HttpError(400, "El monto total debe ser mayor a cero");
   }
@@ -142,7 +144,18 @@ export async function createAsignacion(input: CreateAsignacionInput) {
     include: asignacionInclude,
   });
 
-  return serializeAsignacion(asignacion);
+  const serialized = serializeAsignacion(asignacion);
+  await recordEvento({
+    tipo: HistorialTipo.ASIGNACION_CREADA,
+    descripcion: `Contratista "${serialized.contratistaName}" asignado a "${serialized.obraName}"`,
+    monto: serialized.totalAmount,
+    userId,
+    obraId: serialized.obraId,
+    contratistaId: serialized.contratistaId,
+    asignacionId: serialized.id,
+  });
+
+  return serialized;
 }
 
 export async function updateAsignacion(id: string, input: UpdateAsignacionInput) {
@@ -186,7 +199,12 @@ export async function updateAsignacion(id: string, input: UpdateAsignacionInput)
   return serializeAsignacion(asignacion);
 }
 
-export async function updateEtapaStatus(asignacionId: string, etapaId: string, nextStatus: EtapaStatus) {
+export async function updateEtapaStatus(
+  asignacionId: string,
+  etapaId: string,
+  nextStatus: EtapaStatus,
+  userId?: string,
+) {
   const etapa = await prisma.contratistaEtapa.findUnique({ where: { id: etapaId } });
   if (!etapa || etapa.asignacionId !== asignacionId) {
     throw new HttpError(404, "Etapa no encontrada");
@@ -206,5 +224,23 @@ export async function updateEtapaStatus(asignacionId: string, etapaId: string, n
     },
   });
 
-  return getAsignacionById(asignacionId);
+  const asignacion = await getAsignacionById(asignacionId);
+
+  if (nextStatus === EtapaStatus.COMPLETADA || nextStatus === EtapaStatus.PAGADA) {
+    const etapaSerialized = asignacion.etapas.find((e) => e.id === etapaId);
+    await recordEvento({
+      tipo: nextStatus === EtapaStatus.PAGADA ? HistorialTipo.ETAPA_PAGADA : HistorialTipo.ETAPA_COMPLETADA,
+      descripcion:
+        nextStatus === EtapaStatus.PAGADA
+          ? `Pago de etapa "${etapa.name}" a "${asignacion.contratistaName}" en "${asignacion.obraName}"`
+          : `Etapa "${etapa.name}" completada por "${asignacion.contratistaName}" en "${asignacion.obraName}"`,
+      monto: etapaSerialized?.amount ?? null,
+      userId,
+      obraId: asignacion.obraId,
+      contratistaId: asignacion.contratistaId,
+      asignacionId: asignacion.id,
+    });
+  }
+
+  return asignacion;
 }

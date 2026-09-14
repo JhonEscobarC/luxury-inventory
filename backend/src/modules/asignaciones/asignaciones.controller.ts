@@ -51,7 +51,7 @@ export async function getHandler(req: Request, res: Response, next: NextFunction
 export async function createHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const input = createSchema.parse(req.body);
-    const asignacion = await asignacionesService.createAsignacion(input);
+    const asignacion = await asignacionesService.createAsignacion(input, req.user!.sub);
     res.status(201).json({ asignacion });
   } catch (error) {
     next(error);
@@ -71,7 +71,12 @@ export async function updateHandler(req: Request, res: Response, next: NextFunct
 export async function updateEtapaStatusHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const { status } = etapaStatusSchema.parse(req.body);
-    const asignacion = await asignacionesService.updateEtapaStatus(req.params.id, req.params.etapaId, status);
+    const asignacion = await asignacionesService.updateEtapaStatus(
+      req.params.id,
+      req.params.etapaId,
+      status,
+      req.user!.sub,
+    );
     res.json({ asignacion });
   } catch (error) {
     next(error);

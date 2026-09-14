@@ -26,6 +26,17 @@ enum EtapaStatus {
   PAGADA
 }
 
+enum HistorialTipo {
+  PEDIDO_CREADO
+  PEDIDO_CONFIRMADO
+  PEDIDO_DESPACHADO
+  PEDIDO_CANCELADO
+  ASIGNACION_CREADA
+  ETAPA_COMPLETADA
+  ETAPA_PAGADA
+  ABONO_REGISTRADO
+}
+
 model User {
   id           String   @id @default(uuid())
   name         String
@@ -207,6 +218,34 @@ model Order {
   updatedAt DateTime @updatedAt
 
   @@map("orders")
+}
+
+model HistorialEvento {
+  id          String        @id @default(uuid())
+  tipo        HistorialTipo
+  descripcion String
+  monto       Decimal?      @db.Decimal(14, 2)
+  createdAt   DateTime      @default(now())
+
+  userName String?
+
+  obraId   String?
+  obraName String?
+
+  proveedorId   String?
+  proveedorName String?
+
+  contratistaId   String?
+  contratistaName String?
+
+  orderId      String?
+  asignacionId String?
+  abonoId      String?
+
+  @@index([createdAt])
+  @@index([obraId])
+  @@index([proveedorId])
+  @@map("historial_eventos")
 }
 
 model OrderItem {

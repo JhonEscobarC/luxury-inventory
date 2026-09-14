@@ -1,6 +1,7 @@
 import {
   Prisma,
   OrderStatus,
+  HistorialTipo,
   type Order,
   type OrderItem,
   type Obra,
@@ -10,6 +11,7 @@ import {
 } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { HttpError } from "../../middleware/errorHandler";
+import { recordEvento } from "../historial/historial.service";
 
 export interface OrderItemInput {
   description: string;
@@ -175,7 +177,16 @@ export async function createOrder(input: CreateOrderInput, createdById: string) 
     include: orderInclude,
   });
 
-  return serializeOrder(order);
+  const serialized = serializeOrder(order);
+  await recordEvento({
+    tipo: HistorialTipo.PEDIDO_CREADO,
+    descripcion: `Pedido creado para "${serialized.obraName}"`,
+    userId: createdById,
+    obraId: serialized.obraId,
+    orderId: serialized.id,
+  });
+
+  return serialized;
 }
 
 export async function updateOrder(id: string, input: UpdateOrderInput) {
@@ -264,10 +275,21 @@ export async function assignOrder(id: string, input: AssignOrderInput, assignedB
     });
   });
 
-  return serializeOrder(order);
+  const serialized = serializeOrder(order);
+  await recordEvento({
+    tipo: HistorialTipo.PEDIDO_CONFIRMADO,
+    descripcion: `Pedido de "${serialized.obraName}" confirmado con proveedor "${serialized.proveedorName}"`,
+    monto: serialized.total,
+    userId: assignedById,
+    obraId: serialized.obraId,
+    proveedorId: serialized.proveedorId,
+    orderId: serialized.id,
+  });
+
+  return serialized;
 }
 
-export async function updateOrderStatus(id: string, nextStatus: OrderStatus) {
+export async function updateOrderStatus(id: string, nextStatus: OrderStatus, userId?: string) {
   const existing = await prisma.order.findUnique({ where: { id }, include: orderInclude });
   if (!existing) {
     throw new HttpError(404, "Pedido no encontrado");
@@ -309,7 +331,18 @@ export async function updateOrderStatus(id: string, nextStatus: OrderStatus) {
       });
     });
 
-    return serializeOrder(order);
+    const serialized = serializeOrder(order);
+    await recordEvento({
+      tipo: HistorialTipo.PEDIDO_DESPACHADO,
+      descripcion: `Pedido de "${serialized.obraName}" despachado`,
+      monto: serialized.total,
+      userId,
+      obraId: serialized.obraId,
+      proveedorId: serialized.proveedorId,
+      orderId: serialized.id,
+    });
+
+    return serialized;
   }
 
   const order = await prisma.order.update({
@@ -318,5 +351,17 @@ export async function updateOrderStatus(id: string, nextStatus: OrderStatus) {
     include: orderInclude,
   });
 
-  return serializeOrder(order);
+  const serialized = serializeOrder(order);
+  if (nextStatus === OrderStatus.CANCELADO) {
+    await recordEvento({
+      tipo: HistorialTipo.PEDIDO_CANCELADO,
+      descripcion: `Pedido de "${serialized.obraName}" cancelado`,
+      userId,
+      obraId: serialized.obraId,
+      proveedorId: serialized.proveedorId,
+      orderId: serialized.id,
+    });
+  }
+
+  return serialized;
 }

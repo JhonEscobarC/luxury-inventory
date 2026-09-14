@@ -124,7 +124,7 @@ export async function updateStatusHandler(req: Request, res: Response, next: Nex
         throw new HttpError(403, "Solo puedes cancelar tus propios pedidos pendientes");
       }
     }
-    const order = await ordersService.updateOrderStatus(req.params.id, status);
+    const order = await ordersService.updateOrderStatus(req.params.id, status, req.user!.sub);
     res.json({ order });
   } catch (error) {
     next(error);
