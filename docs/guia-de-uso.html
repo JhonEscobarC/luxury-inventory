@@ -1,0 +1,729 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Guia de Uso - LUXURY Diseno y Construccion</title>
+<style>
+  @page {
+    size: A4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    color: #1c1a16;
+    font-size: 10.5pt;
+    line-height: 1.55;
+  }
+  .gold { color: #9c7a2e; }
+  .cover {
+    position: relative;
+    background: #0a0a0a;
+    color: #f2ede2;
+    width: 210mm;
+    height: 297mm;
+    margin: 0;
+    padding: 0 18mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    page-break-after: always;
+    overflow: hidden;
+  }
+  .cover .brand {
+    font-size: 15pt;
+    letter-spacing: 4px;
+    color: #c6a15b;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .cover .brand-sub {
+    font-size: 9pt;
+    letter-spacing: 3px;
+    color: #8a8578;
+    text-transform: uppercase;
+    margin-bottom: 90px;
+  }
+  .cover h1 {
+    font-size: 34pt;
+    line-height: 1.15;
+    margin: 0 0 14px 0;
+    font-weight: 800;
+    text-transform: uppercase;
+    max-width: 480px;
+  }
+  .cover .accent-line {
+    width: 70px;
+    height: 3px;
+    background: #c6a15b;
+    margin: 22px 0;
+  }
+  .cover p.desc {
+    font-size: 12pt;
+    color: #c9c4b8;
+    max-width: 420px;
+  }
+  .cover .footer-meta {
+    position: absolute;
+    bottom: 26mm;
+    left: 18mm;
+    font-size: 8.5pt;
+    color: #6f6a5d;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .toc {
+    page-break-after: always;
+  }
+  .toc h2 {
+    font-size: 20pt;
+    text-transform: uppercase;
+    color: #1c1a16;
+    border-bottom: 3px solid #c6a15b;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    letter-spacing: 1px;
+  }
+  .toc ol {
+    list-style: none;
+    counter-reset: toc-counter;
+    padding: 0;
+    margin: 0;
+  }
+  .toc li {
+    counter-increment: toc-counter;
+    padding: 9px 0;
+    border-bottom: 1px dotted #d8d2c2;
+    font-size: 11.5pt;
+    display: flex;
+  }
+  .toc li::before {
+    content: counter(toc-counter) ".";
+    color: #9c7a2e;
+    font-weight: 700;
+    width: 28px;
+    flex-shrink: 0;
+  }
+  .toc a { color: #1c1a16; text-decoration: none; }
+
+  h2.section-title {
+    font-size: 18pt;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #1c1a16;
+    border-bottom: 3px solid #c6a15b;
+    padding-bottom: 8px;
+    margin: 0 0 16px 0;
+    page-break-before: always;
+  }
+  section:first-of-type h2.section-title { page-break-before: auto; }
+
+  h3 {
+    font-size: 12.5pt;
+    color: #7a5f22;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin: 22px 0 8px 0;
+    border-left: 3px solid #c6a15b;
+    padding-left: 10px;
+  }
+  h4 {
+    font-size: 11pt;
+    color: #1c1a16;
+    margin: 14px 0 6px 0;
+  }
+  p { margin: 6px 0; text-align: left; }
+  ul, ol { margin: 6px 0; padding-left: 20px; }
+  li { margin-bottom: 4px; }
+
+  .badge {
+    display: inline-block;
+    font-size: 8pt;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 2px;
+    color: #fff;
+  }
+  .badge.admin { background: #7a2e2e; }
+  .badge.cont { background: #2e5b7a; }
+  .badge.obra { background: #3c6b3f; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0 16px 0;
+    font-size: 9.5pt;
+  }
+  th, td {
+    border: 1px solid #d8d2c2;
+    padding: 6px 8px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background: #f2ede0;
+    text-transform: uppercase;
+    font-size: 8.5pt;
+    letter-spacing: 0.3px;
+    color: #5c5646;
+  }
+  tr:nth-child(even) td { background: #fbfaf6; }
+
+  .callout {
+    background: #f7f3e8;
+    border-left: 4px solid #c6a15b;
+    padding: 10px 14px;
+    margin: 12px 0;
+    font-size: 9.5pt;
+  }
+  .callout strong { color: #7a5f22; }
+  .warn {
+    background: #fbeeee;
+    border-left: 4px solid #a53b3b;
+  }
+  .warn strong { color: #a53b3b; }
+
+  .steps {
+    counter-reset: step-counter;
+    list-style: none;
+    padding-left: 0;
+  }
+  .steps li {
+    counter-increment: step-counter;
+    position: relative;
+    padding-left: 32px;
+    margin-bottom: 10px;
+  }
+  .steps li::before {
+    content: counter(step-counter);
+    position: absolute;
+    left: 0; top: 0;
+    width: 20px; height: 20px;
+    background: #c6a15b;
+    color: #1c1a16;
+    font-weight: 700;
+    font-size: 9pt;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .flow {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 12px 0;
+    font-size: 9pt;
+  }
+  .flow .node {
+    background: #1c1a16;
+    color: #f2ede2;
+    padding: 6px 12px;
+    border-radius: 3px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  .flow .node.gold { background: #c6a15b; color: #1c1a16; }
+  .flow .arrow { color: #9c7a2e; font-weight: 700; }
+
+  .two-col {
+    display: flex;
+    gap: 18px;
+  }
+  .two-col > div { flex: 1; }
+
+  .footer-note {
+    margin-top: 30px;
+    padding-top: 10px;
+    border-top: 1px solid #d8d2c2;
+    font-size: 8.5pt;
+    color: #8a8578;
+    font-style: italic;
+  }
+
+  code {
+    background: #f2ede0;
+    padding: 1px 5px;
+    border-radius: 2px;
+    font-size: 9pt;
+  }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="brand">Luxury</div>
+  <div class="brand-sub">Diseno y Construccion</div>
+  <h1>Guia de Uso del Sistema de Gestion</h1>
+  <div class="accent-line"></div>
+  <p class="desc">
+    Manual completo para administradores, contabilidad y personal de obra:
+    como usar cada modulo, el flujo de pedidos, el control de contratistas
+    y proveedores, y los reportes financieros.
+  </p>
+  <div class="footer-meta">Version 1.0 &middot; luxury-design.vercel.app</div>
+</div>
+
+<!-- TOC -->
+<div class="toc">
+  <h2>Contenido</h2>
+  <ol>
+    <li><a href="#s1">Introduccion al sistema</a></li>
+    <li><a href="#s2">Roles y permisos</a></li>
+    <li><a href="#s3">Iniciar sesion y navegacion</a></li>
+    <li><a href="#s4">Obras</a></li>
+    <li><a href="#s5">Proyectos</a></li>
+    <li><a href="#s6">Proveedores y Abonos</a></li>
+    <li><a href="#s7">Contratistas y Asignaciones</a></li>
+    <li><a href="#s8">Inventario</a></li>
+    <li><a href="#s9">Pedidos: ciclo de vida completo</a></li>
+    <li><a href="#s10">Reportes</a></li>
+    <li><a href="#s11">Usuarios (solo Administrador)</a></li>
+    <li><a href="#s12">Flujo de trabajo recomendado</a></li>
+    <li><a href="#s13">Preguntas frecuentes</a></li>
+  </ol>
+</div>
+
+<!-- 1. INTRODUCCION -->
+<section id="s1">
+<h2 class="section-title">1. Introduccion al sistema</h2>
+<p>
+  Este sistema centraliza la operacion de <strong>LUXURY - Diseno y Construccion</strong>:
+  el control de las obras activas, los pedidos de materiales a proveedores, el pago
+  a contratistas por etapas, el inventario propio, y los reportes financieros que
+  permiten saber cuanto se ha gastado y a quien se le debe dinero.
+</p>
+<p>Los modulos disponibles son:</p>
+<ul>
+  <li><strong>Dashboard</strong> — resumen rapido segun el rol del usuario.</li>
+  <li><strong>Pedidos</strong> — solicitudes de materiales de cada obra.</li>
+  <li><strong>Obras</strong> — los proyectos de construccion activos.</li>
+  <li><strong>Proyectos</strong> — agrupador de varias obras (ej. una urbanizacion con varias casas).</li>
+  <li><strong>Proveedores</strong> — quienes suministran materiales, y sus abonos/deuda.</li>
+  <li><strong>Contratistas</strong> — trabajadores externos pagados por etapas (plomeros, electricistas, etc.).</li>
+  <li><strong>Inventario</strong> — productos propios en bodega, con alerta de stock bajo.</li>
+  <li><strong>Reportes</strong> — exportaciones e indicadores financieros.</li>
+  <li><strong>Usuarios</strong> — administracion de cuentas (solo Administrador).</li>
+</ul>
+<div class="callout">
+  <strong>Nota:</strong> que un modulo aparezca o no en el menu lateral depende del
+  rol de la persona que inicio sesion. La seccion 2 explica esto en detalle.
+</div>
+</section>
+
+<!-- 2. ROLES -->
+<section id="s2">
+<h2 class="section-title">2. Roles y permisos</h2>
+<p>El sistema tiene tres roles. Cada usuario tiene exactamente uno.</p>
+<table>
+  <tr>
+    <th style="width:110px">Rol</th>
+    <th>Puede hacer</th>
+  </tr>
+  <tr>
+    <td><span class="badge admin">Admin</span></td>
+    <td>
+      Acceso total. Ademas de todo lo que hace Contabilidad, es el unico que puede
+      crear y administrar usuarios (modulo <strong>Usuarios</strong>), y el unico
+      autorizado para eliminar un abono.
+    </td>
+  </tr>
+  <tr>
+    <td><span class="badge cont">Contabilidad</span></td>
+    <td>
+      Administra Obras, Proyectos, Proveedores, Contratistas e Inventario. Revisa los
+      pedidos que llegan de las obras, les asigna proveedor y precio, y actualiza su
+      estado (confirmar, despachar, cancelar). Registra abonos a proveedores y
+      consulta todos los Reportes.
+    </td>
+  </tr>
+  <tr>
+    <td><span class="badge obra">Obra</span></td>
+    <td>
+      Usuario de campo (ej. el residente de una obra). Solo ve las obras que se le
+      asignaron. Crea pedidos de materiales en texto libre para esas obras, y puede
+      cancelar los propios mientras sigan <code>PENDIENTE</code>. No tiene acceso a
+      Inventario, Proveedores, Contratistas, Proyectos, Reportes ni Usuarios.
+    </td>
+  </tr>
+</table>
+<div class="callout">
+  <strong>Importante:</strong> un usuario Obra puede estar asignado a mas de una
+  obra a la vez (por ejemplo, si supervisa dos frentes de trabajo). Vera un
+  selector de obra al crear un pedido si tiene mas de una asignada.
+</div>
+</section>
+
+<!-- 3. LOGIN -->
+<section id="s3">
+<h2 class="section-title">3. Iniciar sesion y navegacion</h2>
+<ol class="steps">
+  <li>Entra a la direccion del sistema en el navegador (computador o celular).</li>
+  <li>Escribe tu correo (termina siempre en <code>@luxury.com</code>) y tu contrasena.</li>
+  <li>Presiona <strong>Iniciar sesion</strong>. Si los datos son correctos entraras al Dashboard.</li>
+</ol>
+<p>
+  En computador el menu de modulos esta siempre visible a la izquierda. En
+  celular, se abre con el icono de menu (tres lineas) arriba, y ademas hay
+  accesos rapidos como una barra inferior fija.
+</p>
+<p>
+  Arriba a la derecha (o en el menu lateral, abajo) esta tu nombre y el boton
+  para <strong>cerrar sesion</strong>.
+</p>
+</section>
+
+<!-- 4. OBRAS -->
+<section id="s4">
+<h2 class="section-title">4. Obras</h2>
+<p><em>Disponible para Administrador y Contabilidad.</em></p>
+<p>
+  Una <strong>obra</strong> es un frente de trabajo de la constructora: una casa,
+  una torre, un lote. Cada obra tiene nombre, cliente, direccion y notas, y puede
+  (opcionalmente) pertenecer a un <strong>Proyecto</strong> que agrupe varias obras.
+</p>
+<h3>Crear o editar una obra</h3>
+<ol class="steps">
+  <li>Entra a <strong>Obras</strong> y presiona <strong>Nueva obra</strong> (o el lapiz de edicion en una existente).</li>
+  <li>Llena nombre, cliente, direccion y notas. Si la obra pertenece a un proyecto (ej. es una de las casas de una urbanizacion), selecciónalo en el campo <strong>Proyecto</strong>; si no, deja "Sin proyecto".</li>
+  <li>Guarda. La obra queda <strong>Activa</strong> por defecto.</li>
+</ol>
+<h3>Asignar usuarios de campo</h3>
+<p>
+  Con el boton <strong>Usuarios</strong> de cada tarjeta de obra se elige que
+  usuarios con rol Obra pueden ver y pedir materiales para esa obra especifica.
+  Un usuario sin ninguna obra asignada no vera nada al entrar a Pedidos.
+</p>
+<h3>Contratistas de la obra</h3>
+<p>
+  El boton <strong>Contratistas</strong> abre la lista de trabajadores externos
+  asignados a esa obra, con sus etapas de pago y el avance de cada una (ver
+  seccion 7).
+</p>
+<h3>Desactivar una obra</h3>
+<p>
+  Una obra terminada se <strong>desactiva</strong> (no se elimina) con el boton
+  correspondiente en su tarjeta. Una obra inactiva deja de aparecer para los
+  usuarios de campo, pero su historial de pedidos y contratistas se conserva
+  intacto para efectos de reportes.
+</p>
+</section>
+
+<!-- 5. PROYECTOS -->
+<section id="s5">
+<h2 class="section-title">5. Proyectos</h2>
+<p><em>Disponible para Administrador y Contabilidad.</em></p>
+<p>
+  Un <strong>Proyecto</strong> agrupa varias obras que en realidad son parte de
+  un mismo desarrollo — por ejemplo, una urbanizacion de 24 casas, donde cada
+  casa es una obra independiente en el sistema (con su propio avance, pedidos
+  y contratistas), pero todas comparten el mismo cliente y se quieren ver
+  sumadas en los reportes.
+</p>
+<ol class="steps">
+  <li>Entra a <strong>Proyectos</strong> y presiona <strong>Nuevo proyecto</strong>.</li>
+  <li>Escribe el nombre (ej. "Urbanizacion Los Robles") y el cliente.</li>
+  <li>Guarda el proyecto. Luego, desde <strong>Obras</strong>, edita cada casa/obra y selecciona este proyecto en el campo correspondiente.</li>
+</ol>
+<p>
+  Asignar una obra a un proyecto es totalmente opcional: las obras que no
+  pertenecen a ningun proyecto siguen funcionando igual y aparecen agrupadas
+  como <strong>"Obras sin proyecto"</strong> en el reporte financiero.
+</p>
+<div class="callout">
+  <strong>Donde se nota:</strong> en el reporte <em>Gastos por proyecto y
+  obra</em> (seccion 10) puedes ver el total combinado de todas las casas de
+  un proyecto, y tambien el detalle de cada una por separado.
+</div>
+</section>
+
+<!-- 6. PROVEEDORES -->
+<section id="s6">
+<h2 class="section-title">6. Proveedores y Abonos</h2>
+<p><em>Disponible para Administrador y Contabilidad.</em></p>
+<h3>Registrar un proveedor</h3>
+<p>
+  Desde <strong>Proveedores</strong>, con <strong>Nuevo proveedor</strong> se
+  registra nombre, categoria (ej. "Estructural", "Electrico"), datos de
+  contacto y notas. Un proveedor debe existir en esta lista antes de poder
+  asignarlo a un pedido.
+</p>
+<h3>Deuda y Abonos</h3>
+<p>
+  La columna <strong>Saldo</strong> de la lista de proveedores muestra cuanto
+  se le debe a cada uno: la suma de todos sus pedidos ya <code>DESPACHADO</code>
+  (los que aun no se despachan no cuentan como deuda), menos los abonos que se
+  le hayan registrado.
+</p>
+<ol class="steps">
+  <li>Presiona el icono de <strong>Abonos</strong> (billete) en la fila del proveedor.</li>
+  <li>Escribe el monto pagado y, opcionalmente, una nota (ej. numero de factura).</li>
+  <li>Presiona <strong>Registrar abono</strong>. El saldo del proveedor baja de inmediato, y el abono queda en el historial de esa ventana.</li>
+</ol>
+<div class="callout">
+  <strong>Un abono es un pago general</strong> al proveedor, no se asocia a un
+  pedido especifico — asi se puede registrar un pago que cubre varias facturas
+  a la vez, tal como suele pagarse en la practica.
+</div>
+</section>
+
+<!-- 7. CONTRATISTAS -->
+<section id="s7">
+<h2 class="section-title">7. Contratistas y Asignaciones</h2>
+<p><em>Disponible para Administrador y Contabilidad.</em></p>
+<p>
+  Un <strong>Contratista</strong> es un trabajador externo pagado por labor
+  (plomero, electricista, pintor, maestro de obra) en lugar de por materiales.
+  Su pago se organiza en <strong>etapas</strong>: cada etapa es un porcentaje
+  del monto total acordado, y se va marcando como completada y pagada a medida
+  que avanza la obra.
+</p>
+<h3>Paso 1 — Crear el contratista</h3>
+<p>
+  Desde <strong>Contratistas</strong>, <strong>Nuevo contratista</strong>:
+  nombre, oficio y datos de contacto. Esto se hace una sola vez; el mismo
+  contratista luego se puede asignar a varias obras distintas.
+</p>
+<h3>Paso 2 — Asignarlo a una obra con sus etapas</h3>
+<p>
+  Desde <strong>Obras</strong>, boton <strong>Contratistas</strong> de la obra
+  correspondiente, luego <strong>Asignar contratista</strong>:
+</p>
+<ol class="steps">
+  <li>Elige el contratista y escribe el <strong>monto total</strong> acordado por su trabajo en esa obra.</li>
+  <li>Agrega una o mas <strong>etapas</strong> (ej. "Instalacion de tuberia" 40%, "Prueba de presion" 30%, "Acabados" 30%).</li>
+  <li>Los porcentajes de todas las etapas deben sumar exactamente <strong>100%</strong> para poder guardar.</li>
+  <li>Guarda. El sistema calcula automaticamente cuanto dinero representa cada etapa (monto total &times; porcentaje).</li>
+</ol>
+<h3>Paso 3 — Avanzar el estado de cada etapa</h3>
+<p>Cada etapa avanza en un solo sentido, sin saltos ni retrocesos:</p>
+<div class="flow">
+  <span class="node">Pendiente</span>
+  <span class="arrow">&rarr;</span>
+  <span class="node">Completada</span>
+  <span class="arrow">&rarr;</span>
+  <span class="node gold">Pagada</span>
+</div>
+<p>
+  Desde la ventana de contratistas de la obra, cada etapa tiene un boton para
+  avanzar al siguiente estado cuando corresponda. No se puede marcar una etapa
+  como pagada sin antes marcarla completada, ni "devolverla" a un estado
+  anterior por error.
+</p>
+<div class="callout warn">
+  <strong>Etapas bloqueadas:</strong> una vez que al menos una etapa de una
+  asignacion avanzo de "Pendiente", ya no se pueden agregar, quitar ni cambiar
+  los porcentajes de las etapas de esa asignacion (para no alterar pagos ya en
+  curso). Aun asi se puede seguir editando el monto total y las notas.
+</div>
+<p>
+  La ventana de contratistas de cada obra muestra tambien el resumen de cuanto
+  ya se ha <strong>pagado</strong> y cuanto queda <strong>pendiente</strong>
+  por cada contratista asignado.
+</p>
+</section>
+
+<!-- 8. INVENTARIO -->
+<section id="s8">
+<h2 class="section-title">8. Inventario</h2>
+<p><em>Disponible para Administrador y Contabilidad.</em></p>
+<p>
+  El inventario es el stock de materiales que la empresa ya tiene comprado en
+  bodega (a diferencia de los pedidos, que son compras a un proveedor externo).
+  Es un solo inventario global, no se divide por obra.
+</p>
+<ul>
+  <li>Cada producto tiene categoria, cantidad disponible, unidad, precio y un
+    <strong>stock minimo</strong>. Cuando la cantidad cae al stock minimo o por
+    debajo, el producto se marca como <strong>stock bajo</strong> (visible en el
+    Dashboard y filtrable en Reportes).</li>
+  <li>Un producto puede tener un <strong>proveedor</strong> asociado, el que
+    normalmente lo suministra.</li>
+  <li>Si un pedido de materiales incluye un item vinculado a un producto de
+    este inventario y ese pedido se marca <code>DESPACHADO</code>, el sistema
+    <strong>descuenta automaticamente</strong> esa cantidad del stock. Si no
+    hay suficiente stock disponible, el sistema bloquea el despacho hasta que
+    se corrija.</li>
+</ul>
+<div class="callout">
+  Vincular un item de un pedido a un producto de inventario es opcional: los
+  pedidos de materiales que no existen en el inventario (compras puntuales)
+  se manejan igual, simplemente no afectan el stock.
+</div>
+</section>
+
+<!-- 9. PEDIDOS -->
+<section id="s9">
+<h2 class="section-title">9. Pedidos: ciclo de vida completo</h2>
+<p>
+  Un <strong>pedido</strong> es la forma en que una obra solicita materiales a
+  comprar. Tiene cuatro estados posibles:
+</p>
+<div class="flow">
+  <span class="node">Pendiente</span>
+  <span class="arrow">&rarr;</span>
+  <span class="node">Confirmado</span>
+  <span class="arrow">&rarr;</span>
+  <span class="node gold">Despachado</span>
+</div>
+<p style="margin-top:-4px; font-size:9pt; color:#8a8578;">
+  (En cualquier punto antes de Despachado, el pedido tambien puede pasar a <strong>Cancelado</strong>.)
+</p>
+
+<h3>Paso 1 — El usuario Obra crea el pedido <span class="badge obra">Obra</span></h3>
+<ol class="steps">
+  <li>Entra a <strong>Pedidos</strong> y presiona <strong>Nuevo pedido</strong>.</li>
+  <li>Si tiene mas de una obra asignada, elige para cual es.</li>
+  <li>Agrega uno o varios materiales en texto libre: descripcion, cantidad y unidad (no requiere que existan en el catalogo de inventario).</li>
+  <li>Guarda. El pedido queda en estado <strong>Pendiente</strong>, visible para Contabilidad.</li>
+</ol>
+<p>
+  Mientras el pedido siga Pendiente, quien lo creo puede editarlo o cancelarlo.
+  Una vez que Contabilidad lo confirma, ya no se puede modificar desde el lado
+  de la obra.
+</p>
+
+<h3>Paso 2 — Contabilidad asigna proveedor y precio <span class="badge cont">Contabilidad</span></h3>
+<ol class="steps">
+  <li>Entra a <strong>Pedidos</strong>, donde ve todos los de todas las obras.</li>
+  <li>Abre un pedido Pendiente y elige el <strong>proveedor</strong> que lo va a suministrar.</li>
+  <li>Escribe el <strong>precio unitario</strong> de cada material del pedido (y, si aplica, lo vincula a un producto del inventario propio).</li>
+  <li>Confirma. El pedido pasa a estado <strong>Confirmado</strong> y ya tiene un valor total calculado.</li>
+</ol>
+
+<h3>Paso 3 — Despacho <span class="badge cont">Contabilidad</span></h3>
+<p>
+  Cuando el material efectivamente llega a la obra, Contabilidad marca el
+  pedido como <strong>Despachado</strong>. Este es el estado final: a partir
+  de aqui, el pedido cuenta como gasto real en los reportes y en la deuda al
+  proveedor, y si algun item estaba vinculado a inventario, se descuenta el
+  stock automaticamente.
+</p>
+
+<div class="callout">
+  <strong>Por que importa la diferencia entre Confirmado y Despachado:</strong>
+  un pedido Confirmado ya tiene precio y proveedor, pero todavia no ha llegado
+  fisicamente ni se ha pagado — por eso los reportes financieros (gasto por
+  obra, deuda a proveedores) solo cuentan los pedidos <strong>Despachados</strong>.
+</div>
+</section>
+
+<!-- 10. REPORTES -->
+<section id="s10">
+<h2 class="section-title">10. Reportes</h2>
+<p><em>Disponible para Administrador y Contabilidad.</em></p>
+<p>El modulo de Reportes tiene varias secciones independientes:</p>
+
+<h3>Inventario</h3>
+<p>Filtra por categoria y/o solo stock bajo, y exporta la lista en PDF o Excel.</p>
+
+<h3>Pedidos (general)</h3>
+<p>Filtra todos los pedidos del sistema por estado y rango de fechas, y exporta.</p>
+
+<h3>Reporte por obra / Reporte por proveedor</h3>
+<p>
+  Elige una obra o un proveedor puntual y ve un resumen (cantidad de pedidos,
+  total gastado, desglose por estado) con exportacion PDF/Excel de esos
+  pedidos especificos.
+</p>
+
+<h3>Gastos por proyecto y obra</h3>
+<p>
+  Esta es la vista financiera principal. Para cada <strong>Proyecto</strong>
+  muestra sus obras por separado y el total combinado, dividiendo siempre el
+  gasto en dos columnas:
+</p>
+<ul>
+  <li><strong>Material</strong> — el valor de los pedidos Despachados de esa obra.</li>
+  <li><strong>Operacion</strong> — el monto total acordado con los contratistas asignados a esa obra.</li>
+</ul>
+<p>
+  Cada obra tiene una casilla de seleccion. Al desmarcarla, esa obra se excluye
+  del total general que se muestra abajo — util para, por ejemplo, comparar
+  cuanto se ha gastado solo en un subconjunto de casas de una urbanizacion.
+  Las obras que no pertenecen a ningun proyecto aparecen agrupadas aparte,
+  bajo "Obras sin proyecto".
+</p>
+
+<h3>Deuda a proveedores</h3>
+<p>
+  Lista todos los proveedores ordenados por cuanto se les debe (de mayor a
+  menor, o al reves con el boton de orden), calculado como sus pedidos
+  Despachados menos sus abonos. Desde aqui mismo se puede presionar
+  <strong>Abonar</strong> para registrar un pago sin salir de Reportes.
+</p>
+</section>
+
+<!-- 11. USUARIOS -->
+<section id="s11">
+<h2 class="section-title">11. Usuarios <span style="font-size:12pt;">(solo Administrador)</span></h2>
+<p><em>Disponible unicamente para el rol Administrador.</em></p>
+<ol class="steps">
+  <li>Entra a <strong>Usuarios</strong> y presiona <strong>Nuevo usuario</strong>.</li>
+  <li>Escribe el nombre y el correo. Si no escribes <code>@luxury.com</code> al final, el sistema lo agrega automaticamente al guardar.</li>
+  <li>Define una contrasena inicial y el <strong>rol</strong> (Admin, Contabilidad u Obra).</li>
+  <li>Guarda. Si el nuevo usuario es de rol Obra, recuerda ir a <strong>Obras</strong> y asignarle las obras que le correspondan (ver seccion 4) — de lo contrario no vera ningun pedido.</li>
+</ol>
+<p>
+  Desde la misma lista se puede editar el nombre/rol de un usuario, restablecer
+  su contrasena, o desactivar su acceso sin borrar su historial (pedidos que
+  haya creado, etc.).
+</p>
+</section>
+
+<!-- 12. FLUJO RECOMENDADO -->
+<section id="s12">
+<h2 class="section-title">12. Flujo de trabajo recomendado</h2>
+<p>Ejemplo completo de como se usan los modulos juntos en el dia a dia:</p>
+<ol class="steps">
+  <li><strong>Administrador</strong> crea la obra nueva (y, si hace parte de un desarrollo mayor, el Proyecto al que pertenece) y le asigna el usuario de campo correspondiente.</li>
+  <li><strong>Contabilidad</strong> registra los proveedores que se van a usar en esa obra, y los contratistas (electricista, plomero, etc.) con sus etapas de pago.</li>
+  <li><strong>Obra</strong> (el residente) va creando pedidos de materiales a medida que los necesita.</li>
+  <li><strong>Contabilidad</strong> revisa cada pedido Pendiente, le asigna proveedor y precio (queda Confirmado), y lo marca Despachado cuando el material llega fisicamente.</li>
+  <li>A medida que el contratista completa su trabajo, <strong>Contabilidad</strong> avanza sus etapas de Pendiente a Completada y, al pagarle, a Pagada.</li>
+  <li>Cuando se le paga a un proveedor (total o parcial), <strong>Contabilidad</strong> registra el <strong>abono</strong> correspondiente.</li>
+  <li>En cualquier momento, <strong>Administrador</strong> o <strong>Contabilidad</strong> revisan <strong>Reportes &rarr; Gastos por proyecto y obra</strong> para ver el costo real acumulado (material + operacion), y <strong>Deuda a proveedores</strong> para saber a quien se le debe pagar primero.</li>
+</ol>
+</section>
+
+<!-- 13. FAQ -->
+<section id="s13">
+<h2 class="section-title">13. Preguntas frecuentes</h2>
+
+<h4>¿Por que no veo el modulo de Reportes / Proveedores / Contratistas?</h4>
+<p>Esos modulos solo son visibles para los roles Administrador y Contabilidad. Un usuario Obra solo ve Dashboard y Pedidos.</p>
+
+<h4>Cree un usuario Obra pero no ve ninguna obra para pedir materiales</h4>
+<p>Falta asignarle la obra: entra a <strong>Obras</strong>, abre la obra correspondiente y usa el boton <strong>Usuarios</strong> para agregarlo.</p>
+
+<h4>¿Por que un pedido Confirmado no aparece en el gasto del reporte?</h4>
+<p>Los reportes financieros (gasto por obra/proyecto, deuda a proveedores) solo cuentan pedidos en estado <strong>Despachado</strong>. Un pedido Confirmado ya tiene precio pero aun no se considera un gasto realizado.</p>
+
+<h4>Me equivoque en el porcentaje de una etapa de un contratista, ¿como lo corrijo?</h4>
+<p>Mientras ninguna etapa de esa asignacion haya avanzado de "Pendiente", se puede editar la asignacion completa y volver a definir las etapas. Si alguna etapa ya avanzo, las etapas quedan bloqueadas (solo se puede ajustar el monto total y las notas) para no alterar pagos en curso.</p>
+
+<h4>¿Puedo eliminar un abono registrado por error?</h4>
+<p>Solo el rol Administrador puede eliminar un abono.</p>
+
+<h4>¿Que pasa si despacho un pedido pero no hay suficiente stock del producto vinculado?</h4>
+<p>El sistema bloquea el despacho y muestra un aviso indicando cuanto stock hay disponible contra cuanto se necesita. Hay que ajustar el inventario o el pedido antes de continuar.</p>
+
+<h4>Una obra ya no esta activa, ¿pierdo su informacion?</h4>
+<p>No. Desactivar una obra (o un proveedor, contratista o proyecto) solo la oculta de las listas activas; todo su historial de pedidos, asignaciones y reportes se conserva.</p>
+
+<div class="footer-note">
+  Guia de uso — LUXURY Diseno y Construccion. Ante cualquier duda adicional
+  sobre el funcionamiento del sistema, contacta al equipo que administra la
+  plataforma.
+</div>
+</section>
+
+</body>
+</html>
