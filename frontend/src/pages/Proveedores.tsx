@@ -186,6 +186,7 @@ export function Proveedores() {
       {abonosProveedor && (
         <ProveedorAbonosModal
           proveedor={abonosProveedor}
+          saldoPendiente={deudas.find((d) => d.proveedorId === abonosProveedor.id)?.saldo}
           onClose={() => setAbonosProveedor(null)}
           onChanged={refresh}
         />

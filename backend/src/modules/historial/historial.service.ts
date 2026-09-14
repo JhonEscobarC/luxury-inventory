@@ -1,5 +1,6 @@
 import { Prisma, HistorialTipo, type HistorialEvento } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
+import { endOfDay } from "../../utils/dates";
 
 function serializeEvento(evento: HistorialEvento) {
   return {
@@ -88,7 +89,7 @@ export async function listHistorial(filters: ListHistorialFilters) {
   if (filters.from || filters.to) {
     where.createdAt = {
       ...(filters.from && { gte: filters.from }),
-      ...(filters.to && { lte: filters.to }),
+      ...(filters.to && { lte: endOfDay(filters.to) }),
     };
   }
 

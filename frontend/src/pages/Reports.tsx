@@ -389,6 +389,7 @@ export function Reports() {
               type="date"
               className={selectClass}
               value={orderFrom}
+              max={orderTo || undefined}
               onChange={(event) => setOrderFrom(event.target.value)}
             />
           </div>
@@ -399,6 +400,7 @@ export function Reports() {
               type="date"
               className={selectClass}
               value={orderTo}
+              min={orderFrom || undefined}
               onChange={(event) => setOrderTo(event.target.value)}
             />
           </div>
@@ -677,6 +679,7 @@ export function Reports() {
       {abonosProveedor && (
         <ProveedorAbonosModal
           proveedor={abonosProveedor}
+          saldoPendiente={deudas.find((d) => d.proveedorId === abonosProveedor.id)?.saldo}
           onClose={() => setAbonosProveedor(null)}
           onChanged={refreshDeudas}
         />

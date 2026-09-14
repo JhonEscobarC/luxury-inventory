@@ -104,6 +104,25 @@ export async function getFinancieroReport(): Promise<FinancieroReport> {
   };
 }
 
+export async function getProveedorSaldo(proveedorId: string): Promise<number> {
+  const [orders, abonoSum] = await Promise.all([
+    prisma.order.findMany({
+      where: { status: OrderStatus.DESPACHADO, proveedorId },
+      include: { items: true },
+    }),
+    prisma.abono.aggregate({ where: { proveedorId }, _sum: { amount: true } }),
+  ]);
+
+  const totalDespachado = orders.reduce((sum, order) => {
+    const hasAllPrices = order.items.every((item) => item.unitPrice !== null);
+    if (!hasAllPrices) return sum;
+    return sum + order.items.reduce((s, item) => s + Number(item.quantity) * Number(item.unitPrice), 0);
+  }, 0);
+  const totalAbonado = Number(abonoSum._sum.amount ?? 0);
+
+  return totalDespachado - totalAbonado;
+}
+
 export interface ProveedorDeuda {
   proveedorId: string;
   proveedorName: string;

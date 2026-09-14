@@ -129,11 +129,23 @@ export function Historial() {
           </div>
           <div>
             <label className={labelClass}>Desde</label>
-            <input type="date" className={selectClass} value={from} onChange={(e) => setFrom(e.target.value)} />
+            <input
+              type="date"
+              className={selectClass}
+              value={from}
+              max={to || undefined}
+              onChange={(e) => setFrom(e.target.value)}
+            />
           </div>
           <div>
             <label className={labelClass}>Hasta</label>
-            <input type="date" className={selectClass} value={to} onChange={(e) => setTo(e.target.value)} />
+            <input
+              type="date"
+              className={selectClass}
+              value={to}
+              min={from || undefined}
+              onChange={(e) => setTo(e.target.value)}
+            />
           </div>
         </div>
       </div>

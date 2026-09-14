@@ -2,6 +2,14 @@ import { Prisma, HistorialTipo, type Abono, type User } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { HttpError } from "../../middleware/errorHandler";
 import { recordEvento } from "../historial/historial.service";
+import { getProveedorSaldo } from "../reports/reports.service";
+
+const currencyFormatter = new Intl.NumberFormat("es-CO", {
+  style: "currency",
+  currency: "COP",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
 
 function serializeAbono(abono: Abono & { createdBy?: Pick<User, "id" | "name"> | null }) {
   return {
@@ -44,6 +52,16 @@ export async function createAbono(input: CreateAbonoInput, createdById: string) 
   const proveedor = await prisma.proveedor.findUnique({ where: { id: input.proveedorId } });
   if (!proveedor) {
     throw new HttpError(404, "Proveedor no encontrado");
+  }
+
+  const saldo = await getProveedorSaldo(input.proveedorId);
+  if (input.amount > saldo) {
+    throw new HttpError(
+      400,
+      saldo > 0
+        ? `El abono no puede superar el saldo pendiente (${currencyFormatter.format(saldo)})`
+        : `Este proveedor no tiene saldo pendiente por abonar`,
+    );
   }
 
   const abono = await prisma.abono.create({

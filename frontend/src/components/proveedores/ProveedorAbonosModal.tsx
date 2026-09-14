@@ -5,6 +5,7 @@ import type { Proveedor } from "../../types/proveedor";
 
 interface ProveedorAbonosModalProps {
   proveedor: Proveedor;
+  saldoPendiente?: number;
   onClose: () => void;
   onChanged?: () => void;
 }
@@ -16,7 +17,7 @@ const currencyFormatter = new Intl.NumberFormat("es-CO", {
   maximumFractionDigits: 0,
 });
 
-export function ProveedorAbonosModal({ proveedor, onClose, onChanged }: ProveedorAbonosModalProps) {
+export function ProveedorAbonosModal({ proveedor, saldoPendiente, onClose, onChanged }: ProveedorAbonosModalProps) {
   const [abonos, setAbonos] = useState<Abono[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [amount, setAmount] = useState("");
@@ -52,6 +53,10 @@ export function ProveedorAbonosModal({ proveedor, onClose, onChanged }: Proveedo
       setError("El monto debe ser mayor a cero");
       return;
     }
+    if (saldoPendiente !== undefined && value > saldoPendiente) {
+      setError(`El abono no puede superar el saldo pendiente (${currencyFormatter.format(saldoPendiente)})`);
+      return;
+    }
     setIsSubmitting(true);
     try {
       await createAbono({ proveedorId: proveedor.id, amount: value, notes: notes || null });
@@ -85,6 +90,15 @@ export function ProveedorAbonosModal({ proveedor, onClose, onChanged }: Proveedo
         </div>
         <p className="font-label-sm text-on-surface-variant uppercase mb-8">
           Total abonado: <span className="text-primary">{currencyFormatter.format(totalAbonado)}</span>
+          {saldoPendiente !== undefined && (
+            <>
+              {" "}
+              &middot; Saldo pendiente:{" "}
+              <span className={saldoPendiente > 0 ? "text-error" : "text-on-surface-variant"}>
+                {currencyFormatter.format(saldoPendiente)}
+              </span>
+            </>
+          )}
         </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4 items-end mb-8">
@@ -93,6 +107,7 @@ export function ProveedorAbonosModal({ proveedor, onClose, onChanged }: Proveedo
             <input
               type="number"
               min="0"
+              max={saldoPendiente}
               step="1"
               className={inputClass}
               value={amount}

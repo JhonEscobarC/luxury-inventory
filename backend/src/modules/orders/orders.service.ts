@@ -12,6 +12,7 @@ import {
 import { prisma } from "../../lib/prisma";
 import { HttpError } from "../../middleware/errorHandler";
 import { recordEvento } from "../historial/historial.service";
+import { endOfDay } from "../../utils/dates";
 
 export interface OrderItemInput {
   description: string;
@@ -119,7 +120,7 @@ export async function listOrders(filters: ListOrdersFilters) {
   if (filters.from || filters.to) {
     where.createdAt = {
       ...(filters.from && { gte: filters.from }),
-      ...(filters.to && { lte: filters.to }),
+      ...(filters.to && { lte: endOfDay(filters.to) }),
     };
   }
   if (filters.restrictToObraIds) {
