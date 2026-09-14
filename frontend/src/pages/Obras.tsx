@@ -159,31 +159,33 @@ export function Obras() {
                 ))}
               </div>
 
-              <div className="flex gap-4 border-t border-outline-variant pt-4">
-                <button
-                  onClick={() => setEditingObra(obra)}
-                  className="font-label-sm uppercase text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1"
-                >
-                  <span className="material-symbols-outlined text-[18px]">edit</span>
-                  Editar
-                </button>
-                <button
-                  onClick={() => setAssigningObra(obra)}
-                  className="font-label-sm uppercase text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1"
-                >
-                  <span className="material-symbols-outlined text-[18px]">group</span>
-                  Usuarios
-                </button>
-                <button
-                  onClick={() => setContratistasObra(obra)}
-                  className="font-label-sm uppercase text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1"
-                >
-                  <span className="material-symbols-outlined text-[18px]">engineering</span>
-                  Contratistas
-                </button>
+              <div className="flex flex-wrap justify-between items-center gap-x-4 gap-y-2 border-t border-outline-variant pt-4">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <button
+                    onClick={() => setEditingObra(obra)}
+                    className="font-label-sm uppercase text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">edit</span>
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => setAssigningObra(obra)}
+                    className="font-label-sm uppercase text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">group</span>
+                    Usuarios
+                  </button>
+                  <button
+                    onClick={() => setContratistasObra(obra)}
+                    className="font-label-sm uppercase text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">engineering</span>
+                    Contratistas
+                  </button>
+                </div>
                 <button
                   onClick={() => handleToggleActive(obra)}
-                  className="font-label-sm uppercase text-on-surface-variant hover:text-error transition-colors flex items-center gap-1 ml-auto"
+                  className="font-label-sm uppercase text-on-surface-variant hover:text-error transition-colors flex items-center gap-1"
                 >
                   <span className="material-symbols-outlined text-[18px]">
                     {obra.isActive ? "block" : "check_circle"}
