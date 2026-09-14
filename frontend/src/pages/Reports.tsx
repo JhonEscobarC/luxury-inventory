@@ -534,19 +534,15 @@ export function Reports() {
               const subtotal = sumObras(proyecto.obras);
               return (
                 <div key={proyecto.proyectoId} className="border border-outline-variant">
-                  <div className="bg-surface px-4 py-3 flex flex-wrap justify-between items-center gap-2 border-b border-outline-variant">
+                  <div className="bg-surface px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 border-b border-outline-variant">
                     <span className="font-body-md font-semibold text-primary uppercase">{proyecto.proyectoName}</span>
-                    <div className="flex gap-4 font-label-sm uppercase text-on-surface-variant">
-                      <span>
-                        Material: <span className="text-on-surface">{currencyFormatter.format(subtotal.gastoMaterial)}</span>
-                      </span>
-                      <span>
-                        Operacion: <span className="text-on-surface">{currencyFormatter.format(subtotal.gastoOperacion)}</span>
-                      </span>
-                      <span>
-                        Total: <span className="text-primary">{currencyFormatter.format(subtotal.total)}</span>
-                      </span>
-                    </div>
+                    <MoneyStats
+                      items={[
+                        { label: "Material", value: currencyFormatter.format(subtotal.gastoMaterial) },
+                        { label: "Operacion", value: currencyFormatter.format(subtotal.gastoOperacion) },
+                        { label: "Total", value: currencyFormatter.format(subtotal.total), emphasize: true },
+                      ]}
+                    />
                   </div>
                   <div className="flex flex-col">
                     {proyecto.obras.map((obra) => (
@@ -580,33 +576,29 @@ export function Reports() {
               </div>
             )}
 
-            <div className="border border-primary p-4 flex flex-wrap justify-between items-center gap-2">
+            <div className="border border-primary p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
               <span className="font-label-sm uppercase text-on-surface-variant">Total general (obras seleccionadas)</span>
-              <div className="flex gap-6 font-label-sm uppercase">
-                <span className="text-on-surface-variant">
-                  Material: <span className="text-on-surface">{currencyFormatter.format(grandTotal.gastoMaterial)}</span>
-                </span>
-                <span className="text-on-surface-variant">
-                  Operacion: <span className="text-on-surface">{currencyFormatter.format(grandTotal.gastoOperacion)}</span>
-                </span>
-                <span className="text-headline-md-mobile text-primary normal-case">
-                  {currencyFormatter.format(grandTotal.total)}
-                </span>
-              </div>
+              <MoneyStats
+                items={[
+                  { label: "Material", value: currencyFormatter.format(grandTotal.gastoMaterial) },
+                  { label: "Operacion", value: currencyFormatter.format(grandTotal.gastoOperacion) },
+                  { label: "Total", value: currencyFormatter.format(grandTotal.total), emphasize: true },
+                ]}
+              />
             </div>
           </div>
         )}
       </section>
 
       <section className="bg-surface-container lux-card-border p-6 md:p-8">
-        <div className="flex items-center gap-3 mb-6 border-b border-outline-variant pb-4 justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6 border-b border-outline-variant pb-4 sm:justify-between">
           <div className="flex items-center gap-3">
             <span className="material-symbols-outlined text-primary">local_shipping</span>
             <h3 className="text-headline-md-mobile text-on-surface uppercase">Deuda a proveedores</h3>
           </div>
           <button
             onClick={() => setDeudaSort((prev) => (prev === "desc" ? "asc" : "desc"))}
-            className="font-label-sm uppercase text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1"
+            className="font-label-sm uppercase text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1 whitespace-nowrap self-start sm:self-auto"
           >
             <span className="material-symbols-outlined text-[18px]">
               {deudaSort === "desc" ? "arrow_downward" : "arrow_upward"}
@@ -636,12 +628,17 @@ export function Reports() {
               >
                 <div className="md:col-span-4 font-body-md font-semibold text-on-surface">{deuda.proveedorName}</div>
                 <div className="md:col-span-2 font-body-md text-on-surface-variant">
+                  <span className="md:hidden font-label-sm uppercase text-on-surface-variant/70 mr-1">Despachado:</span>
                   {currencyFormatter.format(deuda.totalDespachado)}
                 </div>
                 <div className="md:col-span-2 font-body-md text-on-surface-variant">
+                  <span className="md:hidden font-label-sm uppercase text-on-surface-variant/70 mr-1">Abonado:</span>
                   {currencyFormatter.format(deuda.totalAbonado)}
                 </div>
                 <div className="md:col-span-2 font-body-md font-semibold">
+                  <span className="md:hidden font-label-sm uppercase text-on-surface-variant/70 mr-1 font-normal">
+                    Saldo:
+                  </span>
                   <span className={deuda.saldo > 0 ? "text-error" : "text-on-surface-variant"}>
                     {currencyFormatter.format(deuda.saldo)}
                   </span>
@@ -696,23 +693,42 @@ interface ObraFinancieroRowProps {
 
 function ObraFinancieroRow({ obra, checked, onToggle }: ObraFinancieroRowProps) {
   return (
-    <div className="px-4 py-3 flex flex-wrap justify-between items-center gap-2 border-b border-outline-variant last:border-b-0">
+    <div className="px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 border-b border-outline-variant last:border-b-0">
       <label className="flex items-center gap-3 font-body-md text-on-surface cursor-pointer">
-        <input type="checkbox" checked={checked} onChange={onToggle} className="w-4 h-4 accent-primary" />
-        {obra.obraName}
+        <input type="checkbox" checked={checked} onChange={onToggle} className="w-4 h-4 accent-primary shrink-0" />
+        <span>{obra.obraName}</span>
         {!obra.isActive && <span className="font-label-sm text-error uppercase">(inactiva)</span>}
       </label>
-      <div className="flex gap-4 font-label-sm uppercase text-on-surface-variant">
-        <span>
-          Material: <span className="text-on-surface">{currencyFormatter.format(obra.gastoMaterial)}</span>
-        </span>
-        <span>
-          Operacion: <span className="text-on-surface">{currencyFormatter.format(obra.gastoOperacion)}</span>
-        </span>
-        <span>
-          Total: <span className="text-on-surface">{currencyFormatter.format(obra.total)}</span>
-        </span>
-      </div>
+      <MoneyStats
+        items={[
+          { label: "Material", value: currencyFormatter.format(obra.gastoMaterial) },
+          { label: "Operacion", value: currencyFormatter.format(obra.gastoOperacion) },
+          { label: "Total", value: currencyFormatter.format(obra.total) },
+        ]}
+      />
+    </div>
+  );
+}
+
+interface MoneyStatsProps {
+  items: { label: string; value: string; emphasize?: boolean }[];
+}
+
+function MoneyStats({ items }: MoneyStatsProps) {
+  return (
+    <div className="grid grid-cols-3 gap-x-2 gap-y-1 sm:flex sm:gap-6">
+      {items.map((item) => (
+        <div key={item.label} className="flex flex-col min-w-0">
+          <span className="font-label-sm text-on-surface-variant uppercase tracking-wider truncate">
+            {item.label}
+          </span>
+          <span
+            className={`font-body-md normal-case truncate ${item.emphasize ? "text-primary font-semibold" : "text-on-surface"}`}
+          >
+            {item.value}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }

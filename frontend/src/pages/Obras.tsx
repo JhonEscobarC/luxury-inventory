@@ -137,9 +137,9 @@ export function Obras() {
                 </span>
               </div>
               {obra.proyectoName && (
-                <p className="font-label-sm text-primary uppercase mb-1 flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[16px]">apartment</span>
-                  {obra.proyectoName}
+                <p className="font-label-sm text-primary uppercase mb-1 flex items-start gap-1">
+                  <span className="material-symbols-outlined text-[16px] mt-[1px] shrink-0">apartment</span>
+                  <span>{obra.proyectoName}</span>
                 </p>
               )}
               {obra.client && <p className="font-label-sm text-on-surface-variant uppercase mb-1">Cliente: {obra.client}</p>}

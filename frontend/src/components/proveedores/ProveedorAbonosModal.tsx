@@ -73,9 +73,13 @@ export function ProveedorAbonosModal({ proveedor, onClose, onChanged }: Proveedo
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-margin-mobile">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-2xl bg-surface-container border border-outline-variant p-6 md:p-8 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-2">
+        <div className="flex justify-between items-start gap-4 mb-2">
           <h3 className="text-headline-md-mobile text-primary uppercase">Abonos - {proveedor.name}</h3>
-          <button type="button" onClick={onClose} className="text-on-surface-variant hover:text-primary">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-on-surface-variant hover:text-primary shrink-0"
+          >
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
