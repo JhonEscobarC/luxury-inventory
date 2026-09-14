@@ -8,13 +8,13 @@ export function Sidebar() {
   const visibleItems = NAV_ITEMS.filter((item) => !item.roles || (user && item.roles.includes(user.role)));
 
   return (
-    <aside className="hidden md:flex flex-col py-8 fixed left-0 top-0 h-full w-[280px] z-[60] bg-surface-container border-r border-outline-variant">
-      <div className="px-8 mb-12">
+    <aside className="hidden md:flex flex-col py-5 fixed left-0 top-0 h-full w-[280px] z-[60] bg-surface-container border-r border-outline-variant">
+      <div className="px-8 mb-6 shrink-0">
         <h1 className="text-headline-md-mobile text-primary uppercase font-bold tracking-widest">LUXURY</h1>
         <p className="font-label-sm text-on-surface-variant uppercase mt-1">Diseno y Construccion</p>
       </div>
 
-      <nav className="flex-1 flex flex-col gap-1 px-4">
+      <nav className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-1 px-4">
         {visibleItems.map((item) => (
           <NavLink
             key={item.to}
@@ -22,7 +22,7 @@ export function Sidebar() {
             end={item.to === "/"}
             className={({ isActive }) =>
               [
-                "flex items-center gap-4 px-4 py-3 border-l-2 transition-colors duration-300",
+                "flex items-center gap-4 px-4 py-2.5 border-l-2 transition-colors duration-300 shrink-0",
                 isActive
                   ? "border-primary bg-surface-container-high text-primary font-semibold"
                   : "border-transparent text-on-surface-variant hover:bg-surface-bright hover:text-primary",
@@ -35,8 +35,8 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="mt-auto px-8">
-        <div className="flex items-center gap-3 border-t border-outline-variant pt-6">
+      <div className="mt-auto px-8 shrink-0">
+        <div className="flex items-center gap-3 border-t border-outline-variant pt-4">
           <div className="w-10 h-10 rounded-full bg-surface-bright flex items-center justify-center border border-primary-container">
             <span className="material-symbols-outlined text-primary-container">person</span>
           </div>
