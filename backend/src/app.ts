@@ -11,6 +11,9 @@ import { obrasRouter } from "./modules/obras/obras.routes";
 import { proveedoresRouter } from "./modules/proveedores/proveedores.routes";
 import { contratistasRouter } from "./modules/contratistas/contratistas.routes";
 import { asignacionesRouter } from "./modules/asignaciones/asignaciones.routes";
+import { proyectosRouter } from "./modules/proyectos/proyectos.routes";
+import { abonosRouter } from "./modules/abonos/abonos.routes";
+import { reportsRouter } from "./modules/reports/reports.routes";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
 export const app = express();
@@ -47,6 +50,9 @@ app.use("/api/obras", obrasRouter);
 app.use("/api/proveedores", proveedoresRouter);
 app.use("/api/contratistas", contratistasRouter);
 app.use("/api/asignaciones", asignacionesRouter);
+app.use("/api/proyectos", proyectosRouter);
+app.use("/api/abonos", abonosRouter);
+app.use("/api/reports", reportsRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

@@ -1,12 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { listAllProductsForReport, listCategories } from "../lib/products";
 import { listOrders } from "../lib/orders";
 import { listObras } from "../lib/obras";
 import { listProveedores } from "../lib/proveedores";
+import { getFinancieroReport, getProveedoresDeudaReport } from "../lib/reports";
 import { exportInventoryExcel, exportInventoryPdf, exportOrdersExcel, exportOrdersPdf } from "../lib/exporters";
 import type { Order, OrderStatus } from "../types/order";
 import type { Obra } from "../types/obra";
 import type { Proveedor } from "../types/proveedor";
+import type { FinancieroReport, ObraFinanciero, ProveedorDeuda } from "../types/report";
+import { ProveedorAbonosModal } from "../components/proveedores/ProveedorAbonosModal";
 
 const ORDER_STATUS_OPTIONS: { value: OrderStatus | ""; label: string }[] = [
   { value: "", label: "Todos" },
@@ -103,6 +106,15 @@ export function Reports() {
   const [isLoadingProveedorOrders, setIsLoadingProveedorOrders] = useState(false);
   const [isExportingProveedor, setIsExportingProveedor] = useState<"pdf" | "excel" | null>(null);
 
+  const [financiero, setFinanciero] = useState<FinancieroReport | null>(null);
+  const [isLoadingFinanciero, setIsLoadingFinanciero] = useState(true);
+  const [excludedObraIds, setExcludedObraIds] = useState<Set<string>>(new Set());
+
+  const [deudas, setDeudas] = useState<ProveedorDeuda[]>([]);
+  const [isLoadingDeudas, setIsLoadingDeudas] = useState(true);
+  const [deudaSort, setDeudaSort] = useState<"desc" | "asc">("desc");
+  const [abonosProveedor, setAbonosProveedor] = useState<Proveedor | null>(null);
+
   useEffect(() => {
     listCategories().then(setCategories).catch(() => setCategories([]));
     listObras({ isActive: true })
@@ -117,7 +129,58 @@ export function Reports() {
         if (items[0]) setSelectedProveedorId(items[0].id);
       })
       .catch(() => setProveedores([]));
+    refreshFinanciero();
+    refreshDeudas();
   }, []);
+
+  function refreshFinanciero() {
+    setIsLoadingFinanciero(true);
+    getFinancieroReport()
+      .then(setFinanciero)
+      .catch(() => setFinanciero(null))
+      .finally(() => setIsLoadingFinanciero(false));
+  }
+
+  function refreshDeudas() {
+    setIsLoadingDeudas(true);
+    getProveedoresDeudaReport()
+      .then(setDeudas)
+      .catch(() => setDeudas([]))
+      .finally(() => setIsLoadingDeudas(false));
+  }
+
+  function toggleObraIncluded(obraId: string) {
+    setExcludedObraIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(obraId)) next.delete(obraId);
+      else next.add(obraId);
+      return next;
+    });
+  }
+
+  function sumObras(obrasList: ObraFinanciero[]) {
+    return obrasList
+      .filter((o) => !excludedObraIds.has(o.obraId))
+      .reduce(
+        (acc, o) => ({
+          gastoMaterial: acc.gastoMaterial + o.gastoMaterial,
+          gastoOperacion: acc.gastoOperacion + o.gastoOperacion,
+          total: acc.total + o.total,
+        }),
+        { gastoMaterial: 0, gastoOperacion: 0, total: 0 },
+      );
+  }
+
+  const allObrasFlat = useMemo(
+    () => (financiero ? [...financiero.proyectos.flatMap((p) => p.obras), ...financiero.obrasSinProyecto] : []),
+    [financiero],
+  );
+  const grandTotal = useMemo(() => sumObras(allObrasFlat), [allObrasFlat, excludedObraIds]);
+
+  const sortedDeudas = useMemo(
+    () => [...deudas].sort((a, b) => (deudaSort === "desc" ? b.saldo - a.saldo : a.saldo - b.saldo)),
+    [deudas, deudaSort],
+  );
 
   useEffect(() => {
     if (!selectedObraId) {
@@ -452,6 +515,204 @@ export function Reports() {
           </button>
         </div>
       </section>
+
+      <section className="bg-surface-container lux-card-border p-6 md:p-8 mb-10 mt-10">
+        <div className="flex items-center gap-3 mb-6 border-b border-outline-variant pb-4">
+          <span className="material-symbols-outlined text-primary">apartment</span>
+          <h3 className="text-headline-md-mobile text-on-surface uppercase">Gastos por proyecto y obra</h3>
+        </div>
+        <p className="font-body-md text-on-surface-variant mb-6">
+          Gastos de material (pedidos despachados) y de operacion (contratistas). Desmarca una obra para excluirla de
+          los totales.
+        </p>
+
+        {isLoadingFinanciero && <p className="font-label-sm uppercase text-on-surface-variant mb-6">Cargando...</p>}
+
+        {!isLoadingFinanciero && financiero && (
+          <div className="flex flex-col gap-6">
+            {financiero.proyectos.map((proyecto) => {
+              const subtotal = sumObras(proyecto.obras);
+              return (
+                <div key={proyecto.proyectoId} className="border border-outline-variant">
+                  <div className="bg-surface px-4 py-3 flex flex-wrap justify-between items-center gap-2 border-b border-outline-variant">
+                    <span className="font-body-md font-semibold text-primary uppercase">{proyecto.proyectoName}</span>
+                    <div className="flex gap-4 font-label-sm uppercase text-on-surface-variant">
+                      <span>
+                        Material: <span className="text-on-surface">{currencyFormatter.format(subtotal.gastoMaterial)}</span>
+                      </span>
+                      <span>
+                        Operacion: <span className="text-on-surface">{currencyFormatter.format(subtotal.gastoOperacion)}</span>
+                      </span>
+                      <span>
+                        Total: <span className="text-primary">{currencyFormatter.format(subtotal.total)}</span>
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col">
+                    {proyecto.obras.map((obra) => (
+                      <ObraFinancieroRow
+                        key={obra.obraId}
+                        obra={obra}
+                        checked={!excludedObraIds.has(obra.obraId)}
+                        onToggle={() => toggleObraIncluded(obra.obraId)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+
+            {financiero.obrasSinProyecto.length > 0 && (
+              <div className="border border-outline-variant">
+                <div className="bg-surface px-4 py-3 border-b border-outline-variant">
+                  <span className="font-body-md font-semibold text-on-surface-variant uppercase">Obras sin proyecto</span>
+                </div>
+                <div className="flex flex-col">
+                  {financiero.obrasSinProyecto.map((obra) => (
+                    <ObraFinancieroRow
+                      key={obra.obraId}
+                      obra={obra}
+                      checked={!excludedObraIds.has(obra.obraId)}
+                      onToggle={() => toggleObraIncluded(obra.obraId)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="border border-primary p-4 flex flex-wrap justify-between items-center gap-2">
+              <span className="font-label-sm uppercase text-on-surface-variant">Total general (obras seleccionadas)</span>
+              <div className="flex gap-6 font-label-sm uppercase">
+                <span className="text-on-surface-variant">
+                  Material: <span className="text-on-surface">{currencyFormatter.format(grandTotal.gastoMaterial)}</span>
+                </span>
+                <span className="text-on-surface-variant">
+                  Operacion: <span className="text-on-surface">{currencyFormatter.format(grandTotal.gastoOperacion)}</span>
+                </span>
+                <span className="text-headline-md-mobile text-primary normal-case">
+                  {currencyFormatter.format(grandTotal.total)}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="bg-surface-container lux-card-border p-6 md:p-8">
+        <div className="flex items-center gap-3 mb-6 border-b border-outline-variant pb-4 justify-between">
+          <div className="flex items-center gap-3">
+            <span className="material-symbols-outlined text-primary">local_shipping</span>
+            <h3 className="text-headline-md-mobile text-on-surface uppercase">Deuda a proveedores</h3>
+          </div>
+          <button
+            onClick={() => setDeudaSort((prev) => (prev === "desc" ? "asc" : "desc"))}
+            className="font-label-sm uppercase text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1"
+          >
+            <span className="material-symbols-outlined text-[18px]">
+              {deudaSort === "desc" ? "arrow_downward" : "arrow_upward"}
+            </span>
+            {deudaSort === "desc" ? "Mayor a menor" : "Menor a mayor"}
+          </button>
+        </div>
+
+        {isLoadingDeudas && <p className="font-label-sm uppercase text-on-surface-variant mb-6">Cargando...</p>}
+
+        {!isLoadingDeudas && (
+          <div className="flex flex-col gap-3">
+            <div className="hidden md:grid grid-cols-12 gap-4 pb-2 border-b border-outline-variant font-label-sm text-on-surface-variant uppercase tracking-widest px-2">
+              <div className="col-span-4">Proveedor</div>
+              <div className="col-span-2">Despachado</div>
+              <div className="col-span-2">Abonado</div>
+              <div className="col-span-2">Saldo</div>
+              <div className="col-span-2 text-right">Acciones</div>
+            </div>
+            {sortedDeudas.length === 0 && (
+              <p className="text-on-surface-variant/60 font-label-sm uppercase px-2 py-6">Sin proveedores</p>
+            )}
+            {sortedDeudas.map((deuda) => (
+              <div
+                key={deuda.proveedorId}
+                className="border border-outline-variant p-3 md:px-2 md:py-3 grid grid-cols-1 md:grid-cols-12 gap-2 items-center"
+              >
+                <div className="md:col-span-4 font-body-md font-semibold text-on-surface">{deuda.proveedorName}</div>
+                <div className="md:col-span-2 font-body-md text-on-surface-variant">
+                  {currencyFormatter.format(deuda.totalDespachado)}
+                </div>
+                <div className="md:col-span-2 font-body-md text-on-surface-variant">
+                  {currencyFormatter.format(deuda.totalAbonado)}
+                </div>
+                <div className="md:col-span-2 font-body-md font-semibold">
+                  <span className={deuda.saldo > 0 ? "text-error" : "text-on-surface-variant"}>
+                    {currencyFormatter.format(deuda.saldo)}
+                  </span>
+                </div>
+                <div className="md:col-span-2 flex justify-start md:justify-end">
+                  <button
+                    onClick={() =>
+                      setAbonosProveedor(
+                        proveedores.find((p) => p.id === deuda.proveedorId) ?? {
+                          id: deuda.proveedorId,
+                          name: deuda.proveedorName,
+                          contactName: null,
+                          phone: null,
+                          email: null,
+                          address: null,
+                          category: null,
+                          notes: null,
+                          isActive: deuda.isActive,
+                          createdAt: "",
+                          updatedAt: "",
+                        },
+                      )
+                    }
+                    className="font-label-sm uppercase text-primary hover:text-primary-fixed transition-colors flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">payments</span>
+                    Abonar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {abonosProveedor && (
+        <ProveedorAbonosModal
+          proveedor={abonosProveedor}
+          onClose={() => setAbonosProveedor(null)}
+          onChanged={refreshDeudas}
+        />
+      )}
+    </div>
+  );
+}
+
+interface ObraFinancieroRowProps {
+  obra: ObraFinanciero;
+  checked: boolean;
+  onToggle: () => void;
+}
+
+function ObraFinancieroRow({ obra, checked, onToggle }: ObraFinancieroRowProps) {
+  return (
+    <div className="px-4 py-3 flex flex-wrap justify-between items-center gap-2 border-b border-outline-variant last:border-b-0">
+      <label className="flex items-center gap-3 font-body-md text-on-surface cursor-pointer">
+        <input type="checkbox" checked={checked} onChange={onToggle} className="w-4 h-4 accent-primary" />
+        {obra.obraName}
+        {!obra.isActive && <span className="font-label-sm text-error uppercase">(inactiva)</span>}
+      </label>
+      <div className="flex gap-4 font-label-sm uppercase text-on-surface-variant">
+        <span>
+          Material: <span className="text-on-surface">{currencyFormatter.format(obra.gastoMaterial)}</span>
+        </span>
+        <span>
+          Operacion: <span className="text-on-surface">{currencyFormatter.format(obra.gastoOperacion)}</span>
+        </span>
+        <span>
+          Total: <span className="text-on-surface">{currencyFormatter.format(obra.total)}</span>
+        </span>
+      </div>
     </div>
   );
 }

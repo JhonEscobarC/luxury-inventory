@@ -7,6 +7,7 @@ const obraInputSchema = z.object({
   address: z.string().trim().min(1).optional().nullable(),
   client: z.string().trim().min(1).optional().nullable(),
   notes: z.string().trim().min(1).optional().nullable(),
+  proyectoId: z.string().uuid().optional().nullable(),
 });
 
 const obraUpdateSchema = obraInputSchema.partial();
@@ -20,12 +21,16 @@ const listQuerySchema = z.object({
     .string()
     .optional()
     .transform((value) => (value === undefined ? undefined : value === "true")),
+  proyectoId: z.string().optional(),
 });
 
 export async function listHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const query = listQuerySchema.parse(req.query);
-    const items = await obrasService.listObras(query);
+    const items = await obrasService.listObras({
+      ...query,
+      proyectoId: query.proyectoId === "none" ? null : query.proyectoId,
+    });
     res.json({ items });
   } catch (error) {
     next(error);

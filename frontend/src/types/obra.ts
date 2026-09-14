@@ -13,6 +13,8 @@ export interface Obra {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  proyectoId: string | null;
+  proyectoName: string | null;
   users?: ObraUser[];
 }
 
@@ -21,4 +23,5 @@ export interface ObraInput {
   address?: string | null;
   client?: string | null;
   notes?: string | null;
+  proyectoId?: string | null;
 }

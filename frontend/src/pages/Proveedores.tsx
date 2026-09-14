@@ -1,24 +1,41 @@
 import { useEffect, useState } from "react";
 import { createProveedor, listProveedores, setProveedorActive, updateProveedor } from "../lib/proveedores";
+import { getProveedoresDeudaReport } from "../lib/reports";
 import type { Proveedor, ProveedorInput } from "../types/proveedor";
+import type { ProveedorDeuda } from "../types/report";
 import { ProveedorFormModal } from "../components/proveedores/ProveedorFormModal";
+import { ProveedorAbonosModal } from "../components/proveedores/ProveedorAbonosModal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+
+const currencyFormatter = new Intl.NumberFormat("es-CO", {
+  style: "currency",
+  currency: "COP",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
 
 export function Proveedores() {
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
+  const [deudas, setDeudas] = useState<ProveedorDeuda[]>([]);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [isCreating, setIsCreating] = useState(false);
   const [editingProveedor, setEditingProveedor] = useState<Proveedor | null>(null);
+  const [abonosProveedor, setAbonosProveedor] = useState<Proveedor | null>(null);
   const [deactivatingProveedor, setDeactivatingProveedor] = useState<Proveedor | null>(null);
 
   async function refresh() {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      setProveedores(await listProveedores({ search: search || undefined }));
+      const [proveedoresResult, deudasResult] = await Promise.all([
+        listProveedores({ search: search || undefined }),
+        getProveedoresDeudaReport(),
+      ]);
+      setProveedores(proveedoresResult);
+      setDeudas(deudasResult);
     } catch {
       setErrorMessage("No se pudieron cargar los proveedores.");
     } finally {
@@ -96,29 +113,38 @@ export function Proveedores() {
 
       <div className="flex flex-col gap-4">
         <div className="hidden md:grid grid-cols-12 gap-4 pb-2 border-b border-outline-variant font-label-sm text-on-surface-variant uppercase tracking-widest px-4">
-          <div className="col-span-3">Nombre</div>
+          <div className="col-span-2">Nombre</div>
           <div className="col-span-2">Categoria</div>
-          <div className="col-span-3">Contacto</div>
-          <div className="col-span-2">Estado</div>
-          <div className="col-span-2 text-right">Acciones</div>
+          <div className="col-span-2">Contacto</div>
+          <div className="col-span-2">Saldo</div>
+          <div className="col-span-1">Estado</div>
+          <div className="col-span-3 text-right">Acciones</div>
         </div>
 
         {!isLoading &&
-          proveedores.map((proveedor) => (
+          proveedores.map((proveedor) => {
+            const deuda = deudas.find((d) => d.proveedorId === proveedor.id);
+            const saldo = deuda?.saldo ?? 0;
+            return (
             <div
               key={proveedor.id}
               className={`border bg-surface p-4 md:px-4 md:py-5 flex flex-col md:grid md:grid-cols-12 gap-3 items-start md:items-center transition-colors ${
                 proveedor.isActive ? "border-outline-variant hover:border-primary" : "border-outline-variant opacity-60"
               }`}
             >
-              <div className="md:col-span-3 font-body-md font-semibold text-on-surface">{proveedor.name}</div>
+              <div className="md:col-span-2 font-body-md font-semibold text-on-surface">{proveedor.name}</div>
               <div className="md:col-span-2 font-label-sm uppercase text-on-surface-variant">
                 {proveedor.category || "-"}
               </div>
-              <div className="md:col-span-3 font-body-md text-on-surface-variant">
+              <div className="md:col-span-2 font-body-md text-on-surface-variant">
                 {proveedor.contactName || "-"} {proveedor.phone && `- ${proveedor.phone}`}
               </div>
-              <div className="md:col-span-2">
+              <div className="md:col-span-2 font-body-md font-semibold">
+                <span className={saldo > 0 ? "text-error" : "text-on-surface-variant"}>
+                  {currencyFormatter.format(saldo)}
+                </span>
+              </div>
+              <div className="md:col-span-1">
                 <span
                   className={`font-label-sm uppercase px-2 py-1 border ${
                     proveedor.isActive ? "border-primary text-primary" : "border-error text-error"
@@ -127,7 +153,14 @@ export function Proveedores() {
                   {proveedor.isActive ? "Activo" : "Inactivo"}
                 </span>
               </div>
-              <div className="md:col-span-2 w-full flex justify-start md:justify-end items-center gap-3">
+              <div className="md:col-span-3 w-full flex justify-start md:justify-end items-center gap-3">
+                <button
+                  onClick={() => setAbonosProveedor(proveedor)}
+                  className="text-on-surface-variant hover:text-primary transition-colors"
+                  title="Abonos"
+                >
+                  <span className="material-symbols-outlined text-[20px]">payments</span>
+                </button>
                 <button
                   onClick={() => setEditingProveedor(proveedor)}
                   className="text-on-surface-variant hover:text-primary transition-colors"
@@ -146,8 +179,17 @@ export function Proveedores() {
                 </button>
               </div>
             </div>
-          ))}
+            );
+          })}
       </div>
+
+      {abonosProveedor && (
+        <ProveedorAbonosModal
+          proveedor={abonosProveedor}
+          onClose={() => setAbonosProveedor(null)}
+          onChanged={refresh}
+        />
+      )}
 
       {isCreating && (
         <ProveedorFormModal proveedor={null} onClose={() => setIsCreating(false)} onSubmit={handleCreate} />

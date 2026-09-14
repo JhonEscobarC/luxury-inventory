@@ -8,6 +8,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { Inventory } from "./pages/Inventory";
 import { Orders } from "./pages/Orders";
 import { Obras } from "./pages/Obras";
+import { Proyectos } from "./pages/Proyectos";
 import { Proveedores } from "./pages/Proveedores";
 import { Contratistas } from "./pages/Contratistas";
 import { Users } from "./pages/Users";
@@ -64,6 +65,16 @@ function AppRoutes() {
           <ProtectedRoute allowedRoles={[...ADMIN_CONTABILIDAD]}>
             <AppLayout>
               <Obras />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/proyectos"
+        element={
+          <ProtectedRoute allowedRoles={[...ADMIN_CONTABILIDAD]}>
+            <AppLayout>
+              <Proyectos />
             </AppLayout>
           </ProtectedRoute>
         }

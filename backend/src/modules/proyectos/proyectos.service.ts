@@ -1,0 +1,95 @@
+import { Prisma, type Proyecto } from "@prisma/client";
+import { prisma } from "../../lib/prisma";
+import { HttpError } from "../../middleware/errorHandler";
+
+function serializeProyecto(proyecto: Proyecto & { obras?: { id: string; name: string; isActive: boolean }[] }) {
+  return {
+    id: proyecto.id,
+    name: proyecto.name,
+    client: proyecto.client,
+    notes: proyecto.notes,
+    isActive: proyecto.isActive,
+    createdAt: proyecto.createdAt,
+    updatedAt: proyecto.updatedAt,
+    obras: proyecto.obras ?? undefined,
+  };
+}
+
+export interface ListProyectosFilters {
+  search?: string;
+  isActive?: boolean;
+}
+
+export async function listProyectos(filters: ListProyectosFilters) {
+  const where: Prisma.ProyectoWhereInput = {};
+  if (filters.search) {
+    where.OR = [
+      { name: { contains: filters.search, mode: "insensitive" } },
+      { client: { contains: filters.search, mode: "insensitive" } },
+    ];
+  }
+  if (filters.isActive !== undefined) {
+    where.isActive = filters.isActive;
+  }
+
+  const proyectos = await prisma.proyecto.findMany({
+    where,
+    orderBy: { name: "asc" },
+    include: { obras: { select: { id: true, name: true, isActive: true } } },
+  });
+  return proyectos.map(serializeProyecto);
+}
+
+export async function getProyectoById(id: string) {
+  const proyecto = await prisma.proyecto.findUnique({
+    where: { id },
+    include: { obras: { select: { id: true, name: true, isActive: true } } },
+  });
+  if (!proyecto) {
+    throw new HttpError(404, "Proyecto no encontrado");
+  }
+  return serializeProyecto(proyecto);
+}
+
+export interface ProyectoInput {
+  name: string;
+  client?: string | null;
+  notes?: string | null;
+}
+
+export async function createProyecto(input: ProyectoInput) {
+  const proyecto = await prisma.proyecto.create({
+    data: {
+      name: input.name,
+      client: input.client ?? null,
+      notes: input.notes ?? null,
+    },
+  });
+  return serializeProyecto(proyecto);
+}
+
+export async function updateProyecto(id: string, input: Partial<ProyectoInput>) {
+  const existing = await prisma.proyecto.findUnique({ where: { id } });
+  if (!existing) {
+    throw new HttpError(404, "Proyecto no encontrado");
+  }
+  const proyecto = await prisma.proyecto.update({
+    where: { id },
+    data: {
+      ...(input.name !== undefined && { name: input.name }),
+      ...(input.client !== undefined && { client: input.client }),
+      ...(input.notes !== undefined && { notes: input.notes }),
+    },
+  });
+  return serializeProyecto(proyecto);
+}
+
+export async function setProyectoActive(id: string, isActive: boolean) {
+  const existing = await prisma.proyecto.findUnique({ where: { id } });
+  if (!existing) {
+    throw new HttpError(404, "Proyecto no encontrado");
+  }
+  const proyecto = await prisma.proyecto.update({ where: { id }, data: { isActive } });
+  return serializeProyecto(proyecto);
+}
+

@@ -39,6 +39,7 @@ model User {
   ordersCreated  Order[] @relation("OrderCreatedBy")
   ordersAssigned Order[] @relation("OrderAssignedBy")
   obras          Obra[]  @relation("UserObras")
+  abonosCreated  Abono[] @relation("AbonoCreatedBy")
 
   @@map("users")
 }
@@ -63,6 +64,20 @@ model Product {
   @@map("products")
 }
 
+model Proyecto {
+  id        String   @id @default(uuid())
+  name      String
+  client    String?
+  notes     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  obras Obra[]
+
+  @@map("proyectos")
+}
+
 model Obra {
   id        String   @id @default(uuid())
   name      String
@@ -72,6 +87,9 @@ model Obra {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  proyectoId String?
+  proyecto   Proyecto? @relation(fields: [proyectoId], references: [id], onDelete: SetNull)
 
   users  User[]  @relation("UserObras")
   orders Order[]
@@ -146,8 +164,24 @@ model Proveedor {
 
   orders   Order[]
   products Product[]
+  abonos   Abono[]
 
   @@map("proveedores")
+}
+
+model Abono {
+  id        String   @id @default(uuid())
+  amount    Decimal  @db.Decimal(14, 2)
+  notes     String?
+  createdAt DateTime @default(now())
+
+  proveedorId String
+  proveedor   Proveedor @relation(fields: [proveedorId], references: [id])
+
+  createdById String?
+  createdBy   User?   @relation("AbonoCreatedBy", fields: [createdById], references: [id])
+
+  @@map("abonos")
 }
 
 model Order {

@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { createObra, listObras, setObraActive, setObraUsers, updateObra } from "../lib/obras";
 import { listUsers } from "../lib/users";
+import { listProyectos } from "../lib/proyectos";
 import type { Obra, ObraInput } from "../types/obra";
 import type { ManagedUser } from "../types/user";
+import type { Proyecto } from "../types/proyecto";
 import { ObraFormModal } from "../components/obras/ObraFormModal";
 import { AssignUsersModal } from "../components/obras/AssignUsersModal";
 import { ObraContratistasModal } from "../components/contratistas/ObraContratistasModal";
@@ -11,6 +13,7 @@ import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 export function Obras() {
   const [obras, setObras] = useState<Obra[]>([]);
   const [obraUsers, setObraUsersList] = useState<ManagedUser[]>([]);
+  const [proyectos, setProyectos] = useState<Proyecto[]>([]);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -25,12 +28,14 @@ export function Obras() {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const [obrasResult, usersResult] = await Promise.all([
+      const [obrasResult, usersResult, proyectosResult] = await Promise.all([
         listObras({ search: search || undefined }),
         listUsers(),
+        listProyectos(),
       ]);
       setObras(obrasResult);
       setObraUsersList(usersResult.filter((u) => u.role === "OBRA"));
+      setProyectos(proyectosResult);
     } catch {
       setErrorMessage("No se pudieron cargar las obras.");
     } finally {
@@ -131,6 +136,12 @@ export function Obras() {
                   {obra.isActive ? "Activa" : "Inactiva"}
                 </span>
               </div>
+              {obra.proyectoName && (
+                <p className="font-label-sm text-primary uppercase mb-1 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[16px]">apartment</span>
+                  {obra.proyectoName}
+                </p>
+              )}
               {obra.client && <p className="font-label-sm text-on-surface-variant uppercase mb-1">Cliente: {obra.client}</p>}
               {obra.address && <p className="font-body-md text-on-surface-variant mb-3">{obra.address}</p>}
 
@@ -184,10 +195,17 @@ export function Obras() {
           ))}
       </div>
 
-      {isCreating && <ObraFormModal obra={null} onClose={() => setIsCreating(false)} onSubmit={handleCreate} />}
+      {isCreating && (
+        <ObraFormModal obra={null} proyectos={proyectos} onClose={() => setIsCreating(false)} onSubmit={handleCreate} />
+      )}
 
       {editingObra && (
-        <ObraFormModal obra={editingObra} onClose={() => setEditingObra(null)} onSubmit={handleUpdate} />
+        <ObraFormModal
+          obra={editingObra}
+          proyectos={proyectos}
+          onClose={() => setEditingObra(null)}
+          onSubmit={handleUpdate}
+        />
       )}
 
       {assigningObra && (
