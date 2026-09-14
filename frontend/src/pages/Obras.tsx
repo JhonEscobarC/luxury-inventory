@@ -5,6 +5,7 @@ import type { Obra, ObraInput } from "../types/obra";
 import type { ManagedUser } from "../types/user";
 import { ObraFormModal } from "../components/obras/ObraFormModal";
 import { AssignUsersModal } from "../components/obras/AssignUsersModal";
+import { ObraContratistasModal } from "../components/contratistas/ObraContratistasModal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 
 export function Obras() {
@@ -17,6 +18,7 @@ export function Obras() {
   const [isCreating, setIsCreating] = useState(false);
   const [editingObra, setEditingObra] = useState<Obra | null>(null);
   const [assigningObra, setAssigningObra] = useState<Obra | null>(null);
+  const [contratistasObra, setContratistasObra] = useState<Obra | null>(null);
   const [deactivatingObra, setDeactivatingObra] = useState<Obra | null>(null);
 
   async function refresh() {
@@ -162,6 +164,13 @@ export function Obras() {
                   Usuarios
                 </button>
                 <button
+                  onClick={() => setContratistasObra(obra)}
+                  className="font-label-sm uppercase text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1"
+                >
+                  <span className="material-symbols-outlined text-[18px]">engineering</span>
+                  Contratistas
+                </button>
+                <button
                   onClick={() => handleToggleActive(obra)}
                   className="font-label-sm uppercase text-on-surface-variant hover:text-error transition-colors flex items-center gap-1 ml-auto"
                 >
@@ -188,6 +197,10 @@ export function Obras() {
           onClose={() => setAssigningObra(null)}
           onSubmit={handleAssignUsers}
         />
+      )}
+
+      {contratistasObra && (
+        <ObraContratistasModal obra={contratistasObra} onClose={() => setContratistasObra(null)} />
       )}
 
       {deactivatingObra && (

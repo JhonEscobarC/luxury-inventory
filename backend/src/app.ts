@@ -9,6 +9,8 @@ import { ordersRouter } from "./modules/orders/orders.routes";
 import { usersRouter } from "./modules/users/users.routes";
 import { obrasRouter } from "./modules/obras/obras.routes";
 import { proveedoresRouter } from "./modules/proveedores/proveedores.routes";
+import { contratistasRouter } from "./modules/contratistas/contratistas.routes";
+import { asignacionesRouter } from "./modules/asignaciones/asignaciones.routes";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
 export const app = express();
@@ -43,6 +45,8 @@ app.use("/api/orders", ordersRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/obras", obrasRouter);
 app.use("/api/proveedores", proveedoresRouter);
+app.use("/api/contratistas", contratistasRouter);
+app.use("/api/asignaciones", asignacionesRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

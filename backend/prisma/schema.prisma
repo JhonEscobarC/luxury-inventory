@@ -20,6 +20,12 @@ enum OrderStatus {
   CANCELADO
 }
 
+enum EtapaStatus {
+  PENDIENTE
+  COMPLETADA
+  PAGADA
+}
+
 model User {
   id           String   @id @default(uuid())
   name         String
@@ -70,7 +76,59 @@ model Obra {
   users  User[]  @relation("UserObras")
   orders Order[]
 
+  contratistaAsignaciones ContratistaAsignacion[]
+
   @@map("obras")
+}
+
+model Contratista {
+  id        String   @id @default(uuid())
+  name      String
+  oficio    String?
+  phone     String?
+  email     String?
+  notes     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  asignaciones ContratistaAsignacion[]
+
+  @@map("contratistas")
+}
+
+model ContratistaAsignacion {
+  id            String   @id @default(uuid())
+  totalAmount   Decimal  @db.Decimal(14, 2)
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  obraId String
+  obra   Obra   @relation(fields: [obraId], references: [id])
+
+  contratistaId String
+  contratista   Contratista @relation(fields: [contratistaId], references: [id])
+
+  etapas ContratistaEtapa[]
+
+  @@map("contratista_asignaciones")
+}
+
+model ContratistaEtapa {
+  id          String      @id @default(uuid())
+  name        String
+  percentage  Decimal     @db.Decimal(5, 2)
+  status      EtapaStatus @default(PENDIENTE)
+  completedAt DateTime?
+  paidAt      DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  asignacionId String
+  asignacion   ContratistaAsignacion @relation(fields: [asignacionId], references: [id], onDelete: Cascade)
+
+  @@map("contratista_etapas")
 }
 
 model Proveedor {
