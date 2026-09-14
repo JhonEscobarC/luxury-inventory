@@ -100,9 +100,10 @@ export function OrderFormModal({ order, obras, onClose, onSubmit }: OrderFormMod
             <label className={labelClass}>Obra</label>
             {order ? (
               <p className="font-body-md text-on-surface py-3">{order.obraName}</p>
+            ) : obras.length <= 1 ? (
+              <p className="font-body-md text-on-surface py-3">{obras[0]?.name ?? "No tienes obras asignadas"}</p>
             ) : (
               <select className={inputClass} value={obraId} onChange={(e) => setObraId(e.target.value)}>
-                {obras.length === 0 && <option value="">No tienes obras asignadas</option>}
                 {obras.map((obra) => (
                   <option key={obra.id} value={obra.id}>
                     {obra.name}
