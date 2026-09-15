@@ -196,13 +196,15 @@ export function Reports() {
     [financiero],
   );
 
-  // El select de Obra del reporte de Inventario solo muestra las obras del
-  // proyecto elegido (o todas / sin proyecto, segun corresponda).
+  // El select de Obra del reporte de Inventario queda bloqueado hasta elegir un
+  // proyecto; luego solo muestra las obras de ese proyecto (o las que no tienen
+  // proyecto, cuando se elige "Sin proyecto").
   const inventoryObraOptions = useMemo(() => {
-    if (!inventoryProyectoId) return obras;
+    if (!inventoryProyectoId || inventoryProyectoId === "general") return [];
     if (inventoryProyectoId === "none") return obras.filter((o) => !o.proyectoId);
     return obras.filter((o) => o.proyectoId === inventoryProyectoId);
   }, [obras, inventoryProyectoId]);
+  const isInventoryObraLocked = !inventoryProyectoId || inventoryProyectoId === "general";
   const grandTotal = useMemo(() => sumObras(allObrasFlat), [allObrasFlat, excludedObraIds]);
 
   const sortedDeudas = useMemo(
@@ -238,10 +240,11 @@ export function Reports() {
     setIsExportingInventory(format);
     setInventoryStatus(null);
     try {
+      const isGeneral = inventoryProyectoId === "general";
       const allProducts = await listAllProductsForReport({
         categoriaId: inventoryCategoriaId || undefined,
-        obraId: inventoryObraId || undefined,
-        proyectoId: !inventoryObraId ? inventoryProyectoId || undefined : undefined,
+        obraId: isGeneral ? "none" : inventoryObraId || undefined,
+        proyectoId: !isGeneral && !inventoryObraId ? inventoryProyectoId || undefined : undefined,
         lowStock: inventoryLowStockOnly,
       });
       // Los materiales agotados (cantidad 0) ya no representan stock real disponible
@@ -253,7 +256,7 @@ export function Reports() {
       }
 
       let scopeName: string | undefined;
-      if (inventoryObraId === "none") {
+      if (isGeneral) {
         scopeName = "General";
       } else if (inventoryObraId) {
         scopeName = obras.find((o) => o.id === inventoryObraId)?.name;
@@ -383,6 +386,7 @@ export function Reports() {
               }}
             >
               <option value="">Todos</option>
+              <option value="general">General (sin obra)</option>
               <option value="none">Sin proyecto</option>
               {proyectos.map((proyecto) => (
                 <option key={proyecto.id} value={proyecto.id}>
@@ -395,18 +399,23 @@ export function Reports() {
           <div>
             <label className={labelClass}>Obra</label>
             <select
-              className={selectClass}
+              className={`${selectClass} disabled:opacity-40 disabled:cursor-not-allowed`}
               value={inventoryObraId}
+              disabled={isInventoryObraLocked}
               onChange={(event) => setInventoryObraId(event.target.value)}
             >
               <option value="">Todas</option>
-              {!inventoryProyectoId && <option value="none">General (sin obra)</option>}
               {inventoryObraOptions.map((obra) => (
                 <option key={obra.id} value={obra.id}>
                   {obra.name}
                 </option>
               ))}
             </select>
+            {isInventoryObraLocked && (
+              <p className="font-label-sm text-on-surface-variant/60 uppercase mt-2">
+                Elige un proyecto para filtrar por obra
+              </p>
+            )}
           </div>
 
           <div className="flex items-end">
