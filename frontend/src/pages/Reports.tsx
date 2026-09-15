@@ -212,10 +212,13 @@ export function Reports() {
     setIsExportingInventory(format);
     setInventoryStatus(null);
     try {
-      const products = await listAllProductsForReport({
+      const allProducts = await listAllProductsForReport({
         categoriaId: inventoryCategoriaId || undefined,
         lowStock: inventoryLowStockOnly,
       });
+      // Los materiales agotados (cantidad 0) ya no representan stock real disponible
+      // en la obra, asi que no se cuentan en este reporte.
+      const products = allProducts.filter((product) => product.quantity > 0);
       if (products.length === 0) {
         setInventoryStatus("No hay productos que coincidan con los filtros seleccionados.");
         return;

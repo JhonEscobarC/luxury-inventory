@@ -56,10 +56,11 @@ export function exportInventoryPdf(products: Product[]) {
 
   autoTable(doc, {
     startY: 36,
-    head: [["Nombre", "Categoria", "Cantidad", "Unidad", "Precio (COP)", "Stock min.", "Estado"]],
+    head: [["Nombre", "Categoria", "Obra", "Cantidad", "Unidad", "Precio (COP)", "Stock min.", "Estado"]],
     body: products.map((product) => [
       product.name,
       product.categoriaName ?? "-",
+      product.obraName ?? "General",
       product.quantity.toString(),
       product.unit,
       product.price.toLocaleString("es-CO"),
@@ -69,7 +70,7 @@ export function exportInventoryPdf(products: Product[]) {
     headStyles: { fillColor: GOLD, textColor: [10, 10, 10] },
     styles: { fontSize: 8 },
     didParseCell: (data) => {
-      if (data.section === "body" && data.column.index === 6 && data.cell.raw === "Stock bajo") {
+      if (data.section === "body" && data.column.index === 7 && data.cell.raw === "Stock bajo") {
         data.cell.styles.textColor = [180, 40, 40];
         data.cell.styles.fontStyle = "bold";
       }
@@ -86,6 +87,7 @@ export async function exportInventoryExcel(products: Product[]) {
   sheet.columns = [
     { header: "Nombre", key: "name", width: 30 },
     { header: "Categoria", key: "category", width: 18 },
+    { header: "Obra", key: "obraName", width: 22 },
     { header: "Cantidad", key: "quantity", width: 12 },
     { header: "Unidad", key: "unit", width: 12 },
     { header: "Precio (COP)", key: "price", width: 16 },
@@ -99,6 +101,7 @@ export async function exportInventoryExcel(products: Product[]) {
     const row = sheet.addRow({
       name: product.name,
       category: product.categoriaName ?? "-",
+      obraName: product.obraName ?? "General",
       quantity: product.quantity,
       unit: product.unit,
       price: product.price,
