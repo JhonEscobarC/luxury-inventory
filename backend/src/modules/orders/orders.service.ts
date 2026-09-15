@@ -303,17 +303,19 @@ export async function assignOrder(id: string, input: AssignOrderInput, assignedB
 }
 
 // Al recibir un pedido, cada material con categoria asignada se suma automaticamente al
-// inventario: si ya existe un producto con la misma categoria y nombre se le incrementa
-// la cantidad, si no existe se crea. Los materiales sin categoria no se inventarian.
+// inventario de la obra del pedido: si ya existe un producto de esa obra con la misma
+// categoria y nombre se le incrementa la cantidad, si no existe se crea ligado a esa obra.
+// Los materiales sin categoria no se inventarian.
 async function receiveItemsIntoInventory(
   tx: Prisma.TransactionClient,
+  obraId: string,
   items: { id: string; description: string; quantity: Prisma.Decimal; unit: string; unitPrice: Prisma.Decimal | null; categoriaId: string | null }[],
 ) {
   for (const item of items) {
     if (!item.categoriaId) continue;
 
     const existingProduct = await tx.product.findFirst({
-      where: { categoriaId: item.categoriaId, name: { equals: item.description, mode: "insensitive" } },
+      where: { obraId, categoriaId: item.categoriaId, name: { equals: item.description, mode: "insensitive" } },
     });
 
     if (existingProduct) {
@@ -327,6 +329,7 @@ async function receiveItemsIntoInventory(
         data: {
           name: item.description,
           categoriaId: item.categoriaId,
+          obraId,
           quantity: item.quantity,
           unit: item.unit,
           price: item.unitPrice ?? 0,
@@ -351,7 +354,7 @@ export async function updateOrderStatus(id: string, nextStatus: OrderStatus, use
 
   if (nextStatus === OrderStatus.DESPACHADO) {
     const order = await prisma.$transaction(async (tx) => {
-      await receiveItemsIntoInventory(tx, existing.items);
+      await receiveItemsIntoInventory(tx, existing.obraId, existing.items);
       return tx.order.update({
         where: { id },
         data: { status: nextStatus },

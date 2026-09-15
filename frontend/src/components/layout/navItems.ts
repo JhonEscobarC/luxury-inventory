@@ -10,6 +10,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", icon: "dashboard", to: "/" },
   { label: "Pedidos", icon: "assignment", to: "/pedidos" },
+  { label: "Materiales", icon: "construction", to: "/materiales", roles: ["OBRA"] },
   { label: "Proyectos", icon: "apartment", to: "/proyectos", roles: ["ADMIN", "CONTABILIDAD"] },
   { label: "Proveedores", icon: "local_shipping", to: "/proveedores", roles: ["ADMIN", "CONTABILIDAD"] },
   { label: "Contratistas", icon: "engineering", to: "/contratistas", roles: ["ADMIN", "CONTABILIDAD"] },

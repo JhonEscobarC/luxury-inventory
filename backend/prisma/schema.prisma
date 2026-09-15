@@ -43,6 +43,7 @@ enum HistorialTipo {
   ETAPA_COMPLETADA
   ETAPA_PAGADA
   ABONO_REGISTRADO
+  MATERIAL_USADO
 }
 
 model User {
@@ -55,10 +56,11 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  ordersCreated  Order[] @relation("OrderCreatedBy")
-  ordersAssigned Order[] @relation("OrderAssignedBy")
-  obras          Obra[]  @relation("UserObras")
-  abonosCreated  Abono[] @relation("AbonoCreatedBy")
+  ordersCreated  Order[]       @relation("OrderCreatedBy")
+  ordersAssigned Order[]       @relation("OrderAssignedBy")
+  obras          Obra[]        @relation("UserObras")
+  abonosCreated  Abono[]       @relation("AbonoCreatedBy")
+  materialUsos   MaterialUso[]
 
   @@map("users")
 }
@@ -92,9 +94,16 @@ model Product {
   proveedorId String?
   proveedor   Proveedor? @relation(fields: [proveedorId], references: [id], onDelete: SetNull)
 
-  orderItems OrderItem[]
+  // El inventario ahora se maneja por obra: un producto sin obraId es stock general
+  // (visible para ADMIN/CONTABILIDAD); uno con obraId solo pertenece a esa obra.
+  obraId String?
+  obra   Obra?   @relation(fields: [obraId], references: [id], onDelete: SetNull)
+
+  orderItems   OrderItem[]
+  materialUsos MaterialUso[]
 
   @@index([categoriaId])
+  @@index([obraId])
   @@map("products")
 }
 
@@ -129,8 +138,30 @@ model Obra {
   orders Order[]
 
   contratistaAsignaciones ContratistaAsignacion[]
+  products                Product[]
+  materialUsos            MaterialUso[]
 
   @@map("obras")
+}
+
+model MaterialUso {
+  id        String   @id @default(uuid())
+  quantity  Decimal  @db.Decimal(12, 2)
+  reason    String
+  createdAt DateTime @default(now())
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  obraId String
+  obra   Obra   @relation(fields: [obraId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([obraId])
+  @@index([productId])
+  @@map("material_usos")
 }
 
 model Contratista {

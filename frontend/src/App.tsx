@@ -6,6 +6,7 @@ import { AppLayout } from "./components/layout/AppLayout";
 import { Login } from "./pages/Login";
 import { Dashboard } from "./pages/Dashboard";
 import { Inventory } from "./pages/Inventory";
+import { Materiales } from "./pages/Materiales";
 import { Orders } from "./pages/Orders";
 import { Obras } from "./pages/Obras";
 import { Proyectos } from "./pages/Proyectos";
@@ -96,6 +97,16 @@ function AppRoutes() {
           <ProtectedRoute allowedRoles={[...ADMIN_CONTABILIDAD]}>
             <AppLayout>
               <Contratistas />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/materiales"
+        element={
+          <ProtectedRoute allowedRoles={["OBRA"]}>
+            <AppLayout>
+              <Materiales />
             </AppLayout>
           </ProtectedRoute>
         }

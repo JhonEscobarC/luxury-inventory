@@ -6,7 +6,8 @@ export type HistorialTipo =
   | "ASIGNACION_CREADA"
   | "ETAPA_COMPLETADA"
   | "ETAPA_PAGADA"
-  | "ABONO_REGISTRADO";
+  | "ABONO_REGISTRADO"
+  | "MATERIAL_USADO";
 
 export interface HistorialEvento {
   id: string;

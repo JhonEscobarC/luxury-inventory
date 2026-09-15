@@ -4,14 +4,17 @@ import { createHandler, deleteHandler, exportHandler, getHandler, listHandler, l
 
 export const productsRouter = Router();
 
-// Inventario es exclusivo de ADMIN y CONTABILIDAD; los usuarios de OBRA no lo necesitan.
-productsRouter.use(requireAuth, requireRole("ADMIN", "CONTABILIDAD"));
+productsRouter.use(requireAuth);
 
-productsRouter.get("/", listHandler);
-productsRouter.get("/export", exportHandler);
-productsRouter.get("/low-stock-count", lowStockCountHandler);
-productsRouter.get("/:id", getHandler);
+// Lectura: ADMIN/CONTABILIDAD ven todo el inventario; OBRA solo el de sus obras
+// asignadas (el scoping se aplica en el controlador).
+productsRouter.get("/", requireRole("ADMIN", "CONTABILIDAD", "OBRA"), listHandler);
+productsRouter.get("/export", requireRole("ADMIN", "CONTABILIDAD", "OBRA"), exportHandler);
+productsRouter.get("/low-stock-count", requireRole("ADMIN", "CONTABILIDAD"), lowStockCountHandler);
+productsRouter.get("/:id", requireRole("ADMIN", "CONTABILIDAD", "OBRA"), getHandler);
 
-productsRouter.post("/", createHandler);
-productsRouter.put("/:id", updateHandler);
-productsRouter.delete("/:id", deleteHandler);
+// Escritura directa de inventario: exclusiva de ADMIN y CONTABILIDAD. Los usuarios
+// OBRA registran consumo mediante el modulo de materialUsos, no editan productos.
+productsRouter.post("/", requireRole("ADMIN", "CONTABILIDAD"), createHandler);
+productsRouter.put("/:id", requireRole("ADMIN", "CONTABILIDAD"), updateHandler);
+productsRouter.delete("/:id", requireRole("ADMIN", "CONTABILIDAD"), deleteHandler);

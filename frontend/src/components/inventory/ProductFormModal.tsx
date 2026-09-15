@@ -2,11 +2,13 @@ import { type FocusEvent, type FormEvent, useState } from "react";
 import type { Product, ProductInput } from "../../types/product";
 import type { Proveedor } from "../../types/proveedor";
 import type { Categoria } from "../../types/categoria";
+import type { Obra } from "../../types/obra";
 
 interface ProductFormModalProps {
   product: Product | null;
   proveedores: Proveedor[];
   categorias: Categoria[];
+  obras: Obra[];
   onClose: () => void;
   onSubmit: (input: ProductInput) => Promise<void>;
 }
@@ -14,6 +16,7 @@ interface ProductFormModalProps {
 const emptyForm: ProductInput = {
   name: "",
   categoriaId: "",
+  obraId: "",
   quantity: 0,
   unit: "",
   price: 0,
@@ -21,12 +24,13 @@ const emptyForm: ProductInput = {
   minStock: 0,
 };
 
-export function ProductFormModal({ product, proveedores, categorias, onClose, onSubmit }: ProductFormModalProps) {
+export function ProductFormModal({ product, proveedores, categorias, obras, onClose, onSubmit }: ProductFormModalProps) {
   const [form, setForm] = useState<ProductInput>(
     product
       ? {
           name: product.name,
           categoriaId: product.categoriaId ?? "",
+          obraId: product.obraId ?? "",
           quantity: product.quantity,
           unit: product.unit,
           price: product.price,
@@ -57,7 +61,12 @@ export function ProductFormModal({ product, proveedores, categorias, onClose, on
     setError(null);
     setIsSubmitting(true);
     try {
-      await onSubmit({ ...form, proveedorId: form.proveedorId || null, categoriaId: form.categoriaId || null });
+      await onSubmit({
+        ...form,
+        proveedorId: form.proveedorId || null,
+        categoriaId: form.categoriaId || null,
+        obraId: form.obraId || null,
+      });
       onClose();
     } catch {
       setError("No se pudo guardar el producto. Verifica los datos e intenta de nuevo.");
@@ -126,6 +135,22 @@ export function ProductFormModal({ product, proveedores, categorias, onClose, on
               {proveedores.map((proveedor) => (
                 <option key={proveedor.id} value={proveedor.id}>
                   {proveedor.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className={labelClass}>Obra</label>
+            <select
+              className={inputClass}
+              value={form.obraId ?? ""}
+              onChange={(event) => updateField("obraId", event.target.value)}
+            >
+              <option value="">General (sin obra)</option>
+              {obras.map((obra) => (
+                <option key={obra.id} value={obra.id}>
+                  {obra.name}
                 </option>
               ))}
             </select>

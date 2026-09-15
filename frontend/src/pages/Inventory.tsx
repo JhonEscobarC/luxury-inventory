@@ -3,9 +3,11 @@ import { useAuth } from "../context/AuthContext";
 import { createProduct, deleteProduct, listProducts, updateProduct } from "../lib/products";
 import { listProveedores } from "../lib/proveedores";
 import { listCategorias } from "../lib/categorias";
+import { listObras } from "../lib/obras";
 import type { Product, ProductInput } from "../types/product";
 import type { Proveedor } from "../types/proveedor";
 import type { Categoria } from "../types/categoria";
+import type { Obra } from "../types/obra";
 import { ProductFormModal } from "../components/inventory/ProductFormModal";
 import { CategoriasModal } from "../components/inventory/CategoriasModal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
@@ -24,8 +26,10 @@ export function Inventory() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
+  const [obras, setObras] = useState<Obra[]>([]);
   const [search, setSearch] = useState("");
   const [activeCategoriaId, setActiveCategoriaId] = useState<string | null>(null);
+  const [activeObraId, setActiveObraId] = useState<string>("");
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -43,6 +47,7 @@ export function Inventory() {
         listProducts({
           search: search || undefined,
           categoriaId: activeCategoriaId || undefined,
+          obraId: activeObraId === "" ? undefined : activeObraId,
           lowStock: showLowStockOnly,
         }),
         listCategorias(),
@@ -60,13 +65,16 @@ export function Inventory() {
     listProveedores({ isActive: true })
       .then(setProveedores)
       .catch(() => setProveedores([]));
+    listObras({ isActive: true })
+      .then(setObras)
+      .catch(() => setObras([]));
   }, []);
 
   useEffect(() => {
     const timeout = setTimeout(refresh, 250);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, activeCategoriaId, showLowStockOnly]);
+  }, [search, activeCategoriaId, activeObraId, showLowStockOnly]);
 
   const lowStockCount = useMemo(() => products.filter((product) => product.isLowStock).length, [products]);
 
@@ -144,6 +152,25 @@ export function Inventory() {
           </select>
         </div>
 
+        <div className="w-52">
+          <label className="font-label-sm text-on-surface-variant uppercase tracking-widest block mb-2">
+            Obra
+          </label>
+          <select
+            value={activeObraId}
+            onChange={(event) => setActiveObraId(event.target.value)}
+            className="w-full bg-surface border border-outline-variant focus:outline-none focus:border-primary text-on-surface font-body-md px-3 py-3"
+          >
+            <option value="">Todas</option>
+            <option value="none">General (sin obra)</option>
+            {obras.map((obra) => (
+              <option key={obra.id} value={obra.id}>
+                {obra.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {canManage && (
           <button
             onClick={() => setIsManagingCategorias(true)}
@@ -171,8 +198,9 @@ export function Inventory() {
 
       <div className="flex flex-col gap-4">
         <div className="hidden md:grid grid-cols-12 gap-4 pb-2 border-b border-outline-variant font-label-sm text-on-surface-variant uppercase tracking-widest px-4">
-          <div className="col-span-4">Producto</div>
+          <div className="col-span-2">Producto</div>
           <div className="col-span-2">Categoria</div>
+          <div className="col-span-2">Obra</div>
           <div className="col-span-2 text-right">Stock</div>
           <div className="col-span-2 text-right">Precio unitario</div>
           <div className="col-span-2 text-right">Acciones</div>
@@ -192,10 +220,10 @@ export function Inventory() {
                 product.isLowStock ? "border-secondary" : "border-outline-variant hover:border-primary"
               } transition-colors duration-300`}
             >
-              <div className="md:col-span-4 w-full flex flex-col gap-1">
+              <div className="md:col-span-2 w-full flex flex-col gap-1">
                 <span className="font-body-md font-semibold text-on-surface">{product.name}</span>
                 <span className="md:hidden font-label-sm text-on-surface-variant uppercase">
-                  {product.categoriaName}
+                  {product.categoriaName} - {product.obraName ?? "General"}
                 </span>
                 {product.proveedorName && (
                   <span className="font-label-sm text-on-surface-variant/70 uppercase">{product.proveedorName}</span>
@@ -204,6 +232,10 @@ export function Inventory() {
 
               <div className="hidden md:block md:col-span-2 font-label-sm text-on-surface-variant uppercase tracking-wider">
                 {product.categoriaName ?? "-"}
+              </div>
+
+              <div className="hidden md:block md:col-span-2 font-label-sm text-on-surface-variant uppercase tracking-wider truncate">
+                {product.obraName ?? "General"}
               </div>
 
               <div className="md:col-span-2 w-full flex justify-between md:justify-end items-center gap-2">
@@ -256,6 +288,7 @@ export function Inventory() {
           product={null}
           proveedores={proveedores}
           categorias={categorias}
+          obras={obras}
           onClose={() => setIsCreating(false)}
           onSubmit={handleCreate}
         />
@@ -266,6 +299,7 @@ export function Inventory() {
           product={editingProduct}
           proveedores={proveedores}
           categorias={categorias}
+          obras={obras}
           onClose={() => setEditingProduct(null)}
           onSubmit={handleUpdate}
         />

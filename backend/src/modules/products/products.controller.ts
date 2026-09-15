@@ -5,6 +5,7 @@ import * as productsService from "./products.service";
 const productInputSchema = z.object({
   name: z.string().trim().min(1, "El nombre es requerido"),
   categoriaId: z.string().uuid("Categoria invalida").optional().nullable(),
+  obraId: z.string().uuid("Obra invalida").optional().nullable(),
   quantity: z.number().min(0, "La cantidad no puede ser negativa"),
   unit: z.string().trim().min(1, "La unidad es requerida"),
   price: z.number().min(0, "El precio no puede ser negativo"),
@@ -17,6 +18,7 @@ const productUpdateSchema = productInputSchema.partial();
 const listQuerySchema = z.object({
   search: z.string().trim().optional(),
   categoriaId: z.string().uuid().optional(),
+  obraId: z.string().optional(),
   lowStock: z
     .string()
     .optional()
@@ -25,10 +27,31 @@ const listQuerySchema = z.object({
   pageSize: z.coerce.number().int().positive().optional(),
 });
 
+// obraId="" (o el literal "none") en la query representa "stock general (sin obra)".
+function parseObraIdFilter(raw: string | undefined): string | null | undefined {
+  if (raw === undefined) return undefined;
+  if (raw === "" || raw === "none") return null;
+  return raw;
+}
+
+// Los usuarios OBRA solo ven el inventario de las obras que tienen asignadas.
+async function getScopeForRequest(req: Request) {
+  if (req.user?.role === "OBRA") {
+    const restrictToObraIds = await productsService.getObraIdsForUser(req.user.sub);
+    return { restrictToObraIds };
+  }
+  return {};
+}
+
 export async function listHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const query = listQuerySchema.parse(req.query);
-    const result = await productsService.listProducts(query);
+    const scope = await getScopeForRequest(req);
+    const result = await productsService.listProducts({
+      ...query,
+      obraId: parseObraIdFilter(query.obraId),
+      ...scope,
+    });
     res.json(result);
   } catch (error) {
     next(error);
@@ -38,7 +61,12 @@ export async function listHandler(req: Request, res: Response, next: NextFunctio
 export async function exportHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const query = listQuerySchema.parse(req.query);
-    const items = await productsService.listAllProducts(query);
+    const scope = await getScopeForRequest(req);
+    const items = await productsService.listAllProducts({
+      ...query,
+      obraId: parseObraIdFilter(query.obraId),
+      ...scope,
+    });
     res.json({ items });
   } catch (error) {
     next(error);

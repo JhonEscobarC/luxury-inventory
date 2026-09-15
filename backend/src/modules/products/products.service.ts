@@ -1,4 +1,4 @@
-import { Prisma, type Proveedor, type Categoria } from "@prisma/client";
+import { Prisma, type Proveedor, type Categoria, type Obra } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { HttpError } from "../../middleware/errorHandler";
 
@@ -8,11 +8,16 @@ export interface ListProductsParams {
   lowStock?: boolean;
   page?: number;
   pageSize?: number;
+  /** Filtro explicito por obra (incluye "sin obra" cuando se pasa null). */
+  obraId?: string | null;
+  /** Restringe la consulta a estas obras (usado para el rol OBRA, ignora obraId si no esta incluido). */
+  restrictToObraIds?: string[];
 }
 
 export interface ProductInput {
   name: string;
   categoriaId?: string | null;
+  obraId?: string | null;
   quantity: number;
   unit: string;
   price: number;
@@ -30,6 +35,8 @@ function serializeProduct(product: {
   proveedor?: Proveedor | null;
   categoriaId: string | null;
   categoria?: Categoria | null;
+  obraId: string | null;
+  obra?: Obra | null;
   minStock: Prisma.Decimal;
   createdAt: Date;
   updatedAt: Date;
@@ -41,6 +48,8 @@ function serializeProduct(product: {
     name: product.name,
     categoriaId: product.categoriaId,
     categoriaName: product.categoria?.name ?? null,
+    obraId: product.obraId,
+    obraName: product.obra?.name ?? null,
     quantity,
     unit: product.unit,
     price: Number(product.price),
@@ -53,12 +62,9 @@ function serializeProduct(product: {
   };
 }
 
-const productInclude = { proveedor: true, categoria: true } satisfies Prisma.ProductInclude;
+const productInclude = { proveedor: true, categoria: true, obra: true } satisfies Prisma.ProductInclude;
 
-export async function listProducts(params: ListProductsParams) {
-  const page = params.page && params.page > 0 ? params.page : 1;
-  const pageSize = params.pageSize && params.pageSize > 0 ? Math.min(params.pageSize, 100) : 20;
-
+function buildWhere(params: ListProductsParams): Prisma.ProductWhereInput {
   const where: Prisma.ProductWhereInput = {};
 
   if (params.search) {
@@ -71,6 +77,25 @@ export async function listProducts(params: ListProductsParams) {
   if (params.categoriaId) {
     where.categoriaId = params.categoriaId;
   }
+
+  if (params.restrictToObraIds) {
+    if (params.obraId && params.restrictToObraIds.includes(params.obraId)) {
+      where.obraId = params.obraId;
+    } else {
+      where.obraId = { in: params.restrictToObraIds };
+    }
+  } else if (params.obraId !== undefined) {
+    where.obraId = params.obraId;
+  }
+
+  return where;
+}
+
+export async function listProducts(params: ListProductsParams) {
+  const page = params.page && params.page > 0 ? params.page : 1;
+  const pageSize = params.pageSize && params.pageSize > 0 ? Math.min(params.pageSize, 100) : 20;
+
+  const where = buildWhere(params);
 
   const [rows, total] = await Promise.all([
     prisma.product.findMany({
@@ -96,18 +121,7 @@ export async function listProducts(params: ListProductsParams) {
 }
 
 export async function listAllProducts(params: Omit<ListProductsParams, "page" | "pageSize">) {
-  const where: Prisma.ProductWhereInput = {};
-
-  if (params.search) {
-    where.OR = [
-      { name: { contains: params.search, mode: "insensitive" } },
-      { proveedor: { name: { contains: params.search, mode: "insensitive" } } },
-    ];
-  }
-
-  if (params.categoriaId) {
-    where.categoriaId = params.categoriaId;
-  }
+  const where = buildWhere(params);
 
   const rows = await prisma.product.findMany({
     where,
@@ -137,6 +151,7 @@ export async function createProduct(input: ProductInput) {
     data: {
       name: input.name,
       categoriaId: input.categoriaId ?? null,
+      obraId: input.obraId ?? null,
       quantity: input.quantity,
       unit: input.unit,
       price: input.price,
@@ -156,6 +171,7 @@ export async function updateProduct(id: string, input: Partial<ProductInput>) {
     data: {
       ...(input.name !== undefined && { name: input.name }),
       ...(input.categoriaId !== undefined && { categoriaId: input.categoriaId }),
+      ...(input.obraId !== undefined && { obraId: input.obraId }),
       ...(input.quantity !== undefined && { quantity: input.quantity }),
       ...(input.unit !== undefined && { unit: input.unit }),
       ...(input.price !== undefined && { price: input.price }),
@@ -177,4 +193,9 @@ export async function getLowStockCount(): Promise<number> {
     select: { quantity: true, minStock: true },
   });
   return rows.filter((row) => Number(row.quantity) <= Number(row.minStock)).length;
+}
+
+export async function getObraIdsForUser(userId: string): Promise<string[]> {
+  const obras = await prisma.obra.findMany({ where: { users: { some: { id: userId } } }, select: { id: true } });
+  return obras.map((obra) => obra.id);
 }

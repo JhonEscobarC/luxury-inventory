@@ -16,6 +16,7 @@ import { abonosRouter } from "./modules/abonos/abonos.routes";
 import { reportsRouter } from "./modules/reports/reports.routes";
 import { historialRouter } from "./modules/historial/historial.routes";
 import { categoriasRouter } from "./modules/categorias/categorias.routes";
+import { materialUsosRouter } from "./modules/materialUsos/materialUsos.routes";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
 export const app = express();
@@ -57,6 +58,7 @@ app.use("/api/abonos", abonosRouter);
 app.use("/api/reports", reportsRouter);
 app.use("/api/historial", historialRouter);
 app.use("/api/categorias", categoriasRouter);
+app.use("/api/material-usos", materialUsosRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

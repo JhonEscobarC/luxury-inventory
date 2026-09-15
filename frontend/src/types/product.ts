@@ -3,6 +3,8 @@ export interface Product {
   name: string;
   categoriaId: string | null;
   categoriaName: string | null;
+  obraId: string | null;
+  obraName: string | null;
   quantity: number;
   unit: string;
   price: number;
@@ -17,6 +19,7 @@ export interface Product {
 export interface ProductInput {
   name: string;
   categoriaId?: string | null;
+  obraId?: string | null;
   quantity: number;
   unit: string;
   price: number;
