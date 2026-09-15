@@ -133,6 +133,13 @@ export function Reports() {
       .then((items) => {
         setObras(items);
         if (items[0]) setSelectedObraId(items[0].id);
+        // Si se llego con ?obraId= desde una card de Obra, precargar tambien su
+        // proyecto para que el select de Obra quede consistente con el de Proyecto.
+        const obraIdParam = searchParams.get("obraId");
+        if (obraIdParam) {
+          const obra = items.find((o) => o.id === obraIdParam);
+          if (obra) setInventoryProyectoId(obra.proyectoId ?? "none");
+        }
       })
       .catch(() => setObras([]));
     listProyectos({ isActive: true }).then(setProyectos).catch(() => setProyectos([]));
@@ -188,6 +195,14 @@ export function Reports() {
     () => (financiero ? [...financiero.proyectos.flatMap((p) => p.obras), ...financiero.obrasSinProyecto] : []),
     [financiero],
   );
+
+  // El select de Obra del reporte de Inventario solo muestra las obras del
+  // proyecto elegido (o todas / sin proyecto, segun corresponda).
+  const inventoryObraOptions = useMemo(() => {
+    if (!inventoryProyectoId) return obras;
+    if (inventoryProyectoId === "none") return obras.filter((o) => !o.proyectoId);
+    return obras.filter((o) => o.proyectoId === inventoryProyectoId);
+  }, [obras, inventoryProyectoId]);
   const grandTotal = useMemo(() => sumObras(allObrasFlat), [allObrasFlat, excludedObraIds]);
 
   const sortedDeudas = useMemo(
@@ -358,26 +373,6 @@ export function Reports() {
           </div>
 
           <div>
-            <label className={labelClass}>Obra</label>
-            <select
-              className={selectClass}
-              value={inventoryObraId}
-              onChange={(event) => {
-                setInventoryObraId(event.target.value);
-                setInventoryProyectoId("");
-              }}
-            >
-              <option value="">Todas</option>
-              <option value="none">General (sin obra)</option>
-              {obras.map((obra) => (
-                <option key={obra.id} value={obra.id}>
-                  {obra.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
             <label className={labelClass}>Proyecto</label>
             <select
               className={selectClass}
@@ -392,6 +387,23 @@ export function Reports() {
               {proyectos.map((proyecto) => (
                 <option key={proyecto.id} value={proyecto.id}>
                   {proyecto.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className={labelClass}>Obra</label>
+            <select
+              className={selectClass}
+              value={inventoryObraId}
+              onChange={(event) => setInventoryObraId(event.target.value)}
+            >
+              <option value="">Todas</option>
+              {!inventoryProyectoId && <option value="none">General (sin obra)</option>}
+              {inventoryObraOptions.map((obra) => (
+                <option key={obra.id} value={obra.id}>
+                  {obra.name}
                 </option>
               ))}
             </select>
