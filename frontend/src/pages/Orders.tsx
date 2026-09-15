@@ -189,7 +189,7 @@ export function Orders() {
           orders.map((order) => {
             const isExpanded = expandedId === order.id;
             const isOwner = order.createdById === user?.id;
-            const canEdit = (isObra ? isOwner : canAssign) && order.status === "PENDIENTE";
+            const canEditAsObra = isObra && isOwner && order.status === "PENDIENTE";
             const canCancel =
               (isObra && isOwner && order.status === "PENDIENTE") ||
               (canAssign && (order.status === "PENDIENTE" || order.status === "CONFIRMADO"));
@@ -250,7 +250,7 @@ export function Orders() {
                     )}
 
                     <div className="flex flex-wrap gap-3" onClick={(e) => e.stopPropagation()}>
-                      {canEdit && (
+                      {canEditAsObra && (
                         <button
                           onClick={() => setEditingOrder(order)}
                           className="border border-outline-variant text-on-surface-variant font-label-sm uppercase px-4 py-2 hover:border-primary hover:text-primary transition-colors"
@@ -263,7 +263,7 @@ export function Orders() {
                           onClick={() => setAssigningOrder(order)}
                           className="border border-primary text-primary font-label-sm uppercase px-4 py-2 hover:bg-primary hover:text-on-primary transition-colors"
                         >
-                          Asignar proveedor
+                          Editar y asignar proveedor
                         </button>
                       )}
                       {canAssign && order.status === "CONFIRMADO" && (

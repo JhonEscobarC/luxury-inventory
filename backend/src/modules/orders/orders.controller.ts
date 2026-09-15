@@ -24,15 +24,18 @@ const updateOrderSchema = z.object({
 
 const assignOrderSchema = z.object({
   proveedorId: z.string().uuid("Proveedor invalido"),
+  notes: z.string().trim().min(1).optional().nullable(),
   items: z
     .array(
       z.object({
-        itemId: z.string().uuid(),
+        description: z.string().trim().min(1, "Describe el material"),
+        quantity: z.number().positive("La cantidad debe ser mayor a cero"),
+        unit: z.string().trim().min(1, "La unidad es requerida"),
         unitPrice: z.number().min(0),
         productId: z.string().uuid().optional().nullable(),
       }),
     )
-    .min(1),
+    .min(1, "El pedido debe tener al menos un material"),
 });
 
 const statusSchema = z.object({ status: z.nativeEnum(OrderStatus) });

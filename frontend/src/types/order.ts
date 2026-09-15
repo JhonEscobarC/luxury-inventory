@@ -42,5 +42,6 @@ export interface OrderInput {
 
 export interface AssignOrderInput {
   proveedorId: string;
-  items: { itemId: string; unitPrice: number; productId?: string | null }[];
+  notes?: string | null;
+  items: { description: string; quantity: number; unit: string; unitPrice: number; productId?: string | null }[];
 }

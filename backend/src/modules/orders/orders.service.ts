@@ -29,13 +29,16 @@ export interface CreateOrderInput {
 export type UpdateOrderInput = Partial<Pick<CreateOrderInput, "notes" | "items">>;
 
 export interface AssignmentItemInput {
-  itemId: string;
+  description: string;
+  quantity: number;
+  unit: string;
   unitPrice: number;
   productId?: string | null;
 }
 
 export interface AssignOrderInput {
   proveedorId: string;
+  notes?: string | null;
   items: AssignmentItemInput[];
 }
 
@@ -229,7 +232,7 @@ export async function updateOrder(id: string, input: UpdateOrderInput) {
 }
 
 export async function assignOrder(id: string, input: AssignOrderInput, assignedById: string) {
-  const existing = await prisma.order.findUnique({ where: { id }, include: { items: true } });
+  const existing = await prisma.order.findUnique({ where: { id } });
   if (!existing) {
     throw new HttpError(404, "Pedido no encontrado");
   }
@@ -237,17 +240,13 @@ export async function assignOrder(id: string, input: AssignOrderInput, assignedB
     throw new HttpError(400, "Solo se puede asignar proveedor a un pedido pendiente");
   }
 
-  const existingItemIds = new Set(existing.items.map((item) => item.id));
-  for (const priced of input.items) {
-    if (!existingItemIds.has(priced.itemId)) {
-      throw new HttpError(400, `El item ${priced.itemId} no pertenece a este pedido`);
+  for (const item of input.items) {
+    if (item.quantity <= 0) {
+      throw new HttpError(400, `La cantidad debe ser mayor a cero (${item.description})`);
     }
-    if (priced.unitPrice < 0) {
+    if (item.unitPrice < 0) {
       throw new HttpError(400, "El precio no puede ser negativo");
     }
-  }
-  if (input.items.length !== existing.items.length) {
-    throw new HttpError(400, "Debes asignar un precio a cada material del pedido");
   }
 
   if (input.items.some((item) => item.productId)) {
@@ -259,18 +258,23 @@ export async function assignOrder(id: string, input: AssignOrderInput, assignedB
   }
 
   const order = await prisma.$transaction(async (tx) => {
-    for (const priced of input.items) {
-      await tx.orderItem.update({
-        where: { id: priced.itemId },
-        data: { unitPrice: priced.unitPrice, productId: priced.productId ?? null },
-      });
-    }
+    await tx.orderItem.deleteMany({ where: { orderId: id } });
     return tx.order.update({
       where: { id },
       data: {
         proveedorId: input.proveedorId,
         assignedById,
         status: OrderStatus.CONFIRMADO,
+        ...(input.notes !== undefined && { notes: input.notes || null }),
+        items: {
+          create: input.items.map((item) => ({
+            description: item.description,
+            quantity: item.quantity,
+            unit: item.unit,
+            unitPrice: item.unitPrice,
+            productId: item.productId ?? null,
+          })),
+        },
       },
       include: orderInclude,
     });
