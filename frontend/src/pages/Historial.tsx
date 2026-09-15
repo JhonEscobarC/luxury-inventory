@@ -24,6 +24,7 @@ const TIPO_OPTIONS: { value: HistorialTipo | ""; label: string }[] = [
   { value: "ETAPA_PAGADA", label: "Etapa pagada" },
   { value: "ABONO_REGISTRADO", label: "Abono registrado" },
   { value: "MATERIAL_USADO", label: "Material usado" },
+  { value: "ABONO_CLIENTE_REGISTRADO", label: "Abono de cliente" },
 ];
 
 const TIPO_META: Record<HistorialTipo, { label: string; icon: string; color: string }> = {
@@ -36,6 +37,7 @@ const TIPO_META: Record<HistorialTipo, { label: string; icon: string; color: str
   ETAPA_PAGADA: { label: "Etapa pagada", icon: "payments", color: "text-primary" },
   ABONO_REGISTRADO: { label: "Abono registrado", icon: "payments", color: "text-primary" },
   MATERIAL_USADO: { label: "Material usado", icon: "construction", color: "text-secondary" },
+  ABONO_CLIENTE_REGISTRADO: { label: "Abono de cliente", icon: "receipt_long", color: "text-primary" },
 };
 
 const selectClass =

@@ -3,6 +3,7 @@ import autoTable from "jspdf-autotable";
 import ExcelJS from "exceljs";
 import type { Product } from "../types/product";
 import type { Order } from "../types/order";
+import type { ObraClientes } from "../types/report";
 
 const GOLD: [number, number, number] = [198, 161, 91];
 const GOLD_ARGB = "FFC6A15B";
@@ -216,6 +217,62 @@ export async function exportOrdersExcel(orders: Order[], options: ExportOptions 
 
   const buffer = await workbook.xlsx.writeBuffer();
   const prefix = options.filenamePrefix ? `pedidos_${slugify(options.filenamePrefix)}` : "pedidos";
+  downloadBlob(
+    new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
+    `${prefix}_${Date.now()}.xlsx`,
+  );
+}
+
+export function exportClientesPdf(obras: ObraClientes[], options: ExportOptions = {}) {
+  const doc = new jsPDF();
+  addReportHeader(doc, options.title ?? "Reporte de Pagos de Clientes");
+
+  autoTable(doc, {
+    startY: 36,
+    head: [["Obra", "Comprador", "Precio de venta", "Abonado", "Saldo"]],
+    body: obras.map((obra) => [
+      obra.obraName,
+      obra.client ?? "-",
+      obra.precioVenta !== null ? obra.precioVenta.toLocaleString("es-CO") : "-",
+      obra.totalAbonado.toLocaleString("es-CO"),
+      obra.saldo !== null ? obra.saldo.toLocaleString("es-CO") : "-",
+    ]),
+    headStyles: { fillColor: GOLD, textColor: [10, 10, 10] },
+    styles: { fontSize: 8 },
+  });
+
+  const prefix = options.filenamePrefix ? `pagos_clientes_${slugify(options.filenamePrefix)}` : "pagos_clientes";
+  doc.save(`${prefix}_${Date.now()}.pdf`);
+}
+
+export async function exportClientesExcel(obras: ObraClientes[], options: ExportOptions = {}) {
+  const workbook = newStyledWorkbook();
+  const sheet = workbook.addWorksheet("Pagos de clientes");
+
+  sheet.columns = [
+    { header: "Obra", key: "obraName", width: 26 },
+    { header: "Comprador", key: "client", width: 24 },
+    { header: "Precio de venta", key: "precioVenta", width: 18 },
+    { header: "Abonado", key: "totalAbonado", width: 18 },
+    { header: "Saldo", key: "saldo", width: 18 },
+  ];
+  styleHeaderRow(sheet.getRow(1));
+
+  obras.forEach((obra) => {
+    const row = sheet.addRow({
+      obraName: obra.obraName,
+      client: obra.client ?? "",
+      precioVenta: obra.precioVenta,
+      totalAbonado: obra.totalAbonado,
+      saldo: obra.saldo,
+    });
+    if (obra.saldo !== null && obra.saldo > 0) {
+      row.getCell("saldo").font = { color: { argb: ERROR_ARGB }, bold: true };
+    }
+  });
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const prefix = options.filenamePrefix ? `pagos_clientes_${slugify(options.filenamePrefix)}` : "pagos_clientes";
   downloadBlob(
     new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
     `${prefix}_${Date.now()}.xlsx`,

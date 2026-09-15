@@ -18,3 +18,12 @@ export async function proveedoresDeudaHandler(_req: Request, res: Response, next
     next(error);
   }
 }
+
+export async function clientesHandler(_req: Request, res: Response, next: NextFunction) {
+  try {
+    const report = await reportsService.getClientesReport();
+    res.json(report);
+  } catch (error) {
+    next(error);
+  }
+}

@@ -7,6 +7,7 @@ const obraInputSchema = z.object({
   address: z.string().trim().min(1).optional().nullable(),
   client: z.string().trim().min(1).optional().nullable(),
   notes: z.string().trim().min(1).optional().nullable(),
+  precioVenta: z.number().min(0, "El precio de venta no puede ser negativo").optional().nullable(),
   proyectoId: z.string().uuid().optional().nullable(),
 });
 

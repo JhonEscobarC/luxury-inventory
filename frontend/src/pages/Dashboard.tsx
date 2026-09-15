@@ -4,7 +4,15 @@ import { useAuth } from "../context/AuthContext";
 import { listProducts } from "../lib/products";
 import { listOrders } from "../lib/orders";
 import { listMyObras } from "../lib/obras";
+import { getClientesReport } from "../lib/reports";
 import { api } from "../lib/api";
+
+const currencyFormatter = new Intl.NumberFormat("es-CO", {
+  style: "currency",
+  currency: "COP",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
 
 export function Dashboard() {
   const { user } = useAuth();
@@ -14,6 +22,8 @@ export function Dashboard() {
   const [lowStockCount, setLowStockCount] = useState<number | null>(null);
   const [pendingOrders, setPendingOrders] = useState<number | null>(null);
   const [myObrasCount, setMyObrasCount] = useState<number | null>(null);
+  const [cobradoClientes, setCobradoClientes] = useState<number | null>(null);
+  const [saldoPendienteClientes, setSaldoPendienteClientes] = useState<number | null>(null);
 
   useEffect(() => {
     listOrders({ status: "PENDIENTE" }).then((orders) => setPendingOrders(orders.length));
@@ -22,6 +32,10 @@ export function Dashboard() {
     } else {
       listProducts().then((result) => setTotalProducts(result.total));
       api.get<{ count: number }>("/products/low-stock-count").then((res) => setLowStockCount(res.data.count));
+      getClientesReport().then((report) => {
+        setCobradoClientes(report.totalAbonado);
+        setSaldoPendienteClientes(report.totalPrecioVenta - report.totalAbonado);
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -37,7 +51,7 @@ export function Dashboard() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-16">
         {isObra ? (
           <>
             <Link
@@ -109,6 +123,24 @@ export function Dashboard() {
               <h3 className="text-display-lg-mobile text-on-surface group-hover:text-primary transition-colors">
                 {pendingOrders ?? "..."}
               </h3>
+            </Link>
+
+            <Link
+              to="/reportes"
+              className="bg-surface-container p-6 lux-card-border relative overflow-hidden group block"
+            >
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <span className="material-symbols-outlined text-6xl text-primary">payments</span>
+              </div>
+              <p className="font-label-sm text-on-surface-variant uppercase mb-2">Cobrado a clientes</p>
+              <h3 className="text-display-lg-mobile text-on-surface group-hover:text-primary transition-colors">
+                {cobradoClientes !== null ? currencyFormatter.format(cobradoClientes) : "..."}
+              </h3>
+              {saldoPendienteClientes !== null && saldoPendienteClientes > 0 && (
+                <p className="font-label-sm text-on-surface-variant mt-2">
+                  Saldo pendiente: {currencyFormatter.format(saldoPendienteClientes)}
+                </p>
+              )}
             </Link>
           </>
         )}

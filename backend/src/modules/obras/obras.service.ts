@@ -11,6 +11,7 @@ function serializeObra(
     address: obra.address,
     client: obra.client,
     notes: obra.notes,
+    precioVenta: obra.precioVenta === null ? null : Number(obra.precioVenta),
     isActive: obra.isActive,
     createdAt: obra.createdAt,
     updatedAt: obra.updatedAt,
@@ -70,6 +71,7 @@ export interface ObraInput {
   address?: string | null;
   client?: string | null;
   notes?: string | null;
+  precioVenta?: number | null;
   proyectoId?: string | null;
 }
 
@@ -86,6 +88,7 @@ export async function createObra(input: ObraInput) {
       address: input.address ?? null,
       client: input.client ?? null,
       notes: input.notes ?? null,
+      precioVenta: input.precioVenta ?? null,
       proyectoId: input.proyectoId ?? null,
     },
     include: { proyecto: { select: { id: true, name: true } } },
@@ -111,6 +114,7 @@ export async function updateObra(id: string, input: Partial<ObraInput>) {
       ...(input.address !== undefined && { address: input.address }),
       ...(input.client !== undefined && { client: input.client }),
       ...(input.notes !== undefined && { notes: input.notes }),
+      ...(input.precioVenta !== undefined && { precioVenta: input.precioVenta }),
       ...(input.proyectoId !== undefined && { proyectoId: input.proyectoId }),
     },
     include: { proyecto: { select: { id: true, name: true } } },

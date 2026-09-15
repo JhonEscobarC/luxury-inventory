@@ -16,6 +16,7 @@ export function ObraFormModal({ obra, proyectos, defaultProyectoId, onClose, onS
   const [address, setAddress] = useState(obra?.address ?? "");
   const [client, setClient] = useState(obra?.client ?? "");
   const [notes, setNotes] = useState(obra?.notes ?? "");
+  const [precioVenta, setPrecioVenta] = useState(obra?.precioVenta?.toString() ?? "");
   const [proyectoId, setProyectoId] = useState(obra?.proyectoId ?? defaultProyectoId ?? "");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,6 +35,7 @@ export function ObraFormModal({ obra, proyectos, defaultProyectoId, onClose, onS
         address: address || null,
         client: client || null,
         notes: notes || null,
+        precioVenta: precioVenta ? Number(precioVenta) : null,
         proyectoId: proyectoId || null,
       });
       onClose();
@@ -69,6 +71,22 @@ export function ObraFormModal({ obra, proyectos, defaultProyectoId, onClose, onS
           <div>
             <label className={labelClass}>Cliente</label>
             <input className={inputClass} value={client} onChange={(e) => setClient(e.target.value)} />
+          </div>
+          <div>
+            <label className={labelClass}>Precio de venta (opcional)</label>
+            <input
+              type="number"
+              min={0}
+              step="1"
+              className={inputClass}
+              placeholder="Sin definir"
+              value={precioVenta}
+              onFocus={(e) => e.target.select()}
+              onChange={(e) => setPrecioVenta(e.target.value.replace(/^0+(?=\d)/, ""))}
+            />
+            <p className="font-label-sm text-on-surface-variant/70 uppercase mt-2">
+              Permite ver cuanto le falta pagar al comprador en los abonos de esta obra.
+            </p>
           </div>
           <div>
             <label className={labelClass}>Proyecto</label>

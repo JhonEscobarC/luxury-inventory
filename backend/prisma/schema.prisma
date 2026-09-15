@@ -44,6 +44,7 @@ enum HistorialTipo {
   ETAPA_PAGADA
   ABONO_REGISTRADO
   MATERIAL_USADO
+  ABONO_CLIENTE_REGISTRADO
 }
 
 model User {
@@ -56,11 +57,12 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  ordersCreated  Order[]       @relation("OrderCreatedBy")
-  ordersAssigned Order[]       @relation("OrderAssignedBy")
-  obras          Obra[]        @relation("UserObras")
-  abonosCreated  Abono[]       @relation("AbonoCreatedBy")
-  materialUsos   MaterialUso[]
+  ordersCreated        Order[]        @relation("OrderCreatedBy")
+  ordersAssigned       Order[]        @relation("OrderAssignedBy")
+  obras                Obra[]         @relation("UserObras")
+  abonosCreated        Abono[]        @relation("AbonoCreatedBy")
+  abonosClienteCreated AbonoCliente[] @relation("AbonoClienteCreatedBy")
+  materialUsos         MaterialUso[]
 
   @@map("users")
 }
@@ -122,14 +124,16 @@ model Proyecto {
 }
 
 model Obra {
-  id        String   @id @default(uuid())
-  name      String
-  address   String?
-  client    String?
-  notes     String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(uuid())
+  name        String
+  address     String?
+  client      String?
+  notes       String?
+  // Precio de venta acordado con el comprador (client); null si la obra no esta en venta.
+  precioVenta Decimal? @db.Decimal(14, 2)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   proyectoId String?
   proyecto   Proyecto? @relation(fields: [proyectoId], references: [id], onDelete: SetNull)
@@ -140,6 +144,7 @@ model Obra {
   contratistaAsignaciones ContratistaAsignacion[]
   products                Product[]
   materialUsos            MaterialUso[]
+  abonosCliente           AbonoCliente[]
 
   @@map("obras")
 }
@@ -250,6 +255,23 @@ model Abono {
   @@map("abonos")
 }
 
+// Pagos que hace el comprador de una obra (casa) hacia su precio de venta.
+// Distinto de Abono, que es lo que la empresa le paga a un Proveedor.
+model AbonoCliente {
+  id        String   @id @default(uuid())
+  amount    Decimal  @db.Decimal(14, 2)
+  notes     String?
+  createdAt DateTime @default(now())
+
+  obraId String
+  obra   Obra   @relation(fields: [obraId], references: [id])
+
+  createdById String?
+  createdBy   User?   @relation("AbonoClienteCreatedBy", fields: [createdById], references: [id])
+
+  @@map("abonos_cliente")
+}
+
 model Order {
   id        String      @id @default(uuid())
   status    OrderStatus @default(PENDIENTE)
@@ -294,9 +316,10 @@ model HistorialEvento {
   contratistaId   String?
   contratistaName String?
 
-  orderId      String?
-  asignacionId String?
-  abonoId      String?
+  orderId        String?
+  asignacionId   String?
+  abonoId        String?
+  abonoClienteId String?
 
   @@index([createdAt])
   @@index([obraId])

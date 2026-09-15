@@ -182,3 +182,109 @@ export async function getProveedoresDeudaReport(): Promise<ProveedorDeuda[]> {
     })
     .sort((a, b) => b.saldo - a.saldo);
 }
+
+// Cuanto ha pagado el comprador de una obra hacia su precio de venta.
+export async function getObraSaldoCliente(obraId: string) {
+  const [obra, abonoSum] = await Promise.all([
+    prisma.obra.findUnique({ where: { id: obraId } }),
+    prisma.abonoCliente.aggregate({ where: { obraId }, _sum: { amount: true } }),
+  ]);
+  if (!obra) return null;
+
+  const precioVenta = obra.precioVenta === null ? null : Number(obra.precioVenta);
+  const totalAbonado = Number(abonoSum._sum.amount ?? 0);
+  return {
+    precioVenta,
+    totalAbonado,
+    saldo: precioVenta === null ? null : precioVenta - totalAbonado,
+  };
+}
+
+export interface ObraClientes {
+  obraId: string;
+  obraName: string;
+  client: string | null;
+  isActive: boolean;
+  proyectoId: string | null;
+  precioVenta: number | null;
+  totalAbonado: number;
+  saldo: number | null;
+}
+
+export interface ProyectoClientes {
+  proyectoId: string;
+  proyectoName: string;
+  isActive: boolean;
+  obras: ObraClientes[];
+  precioVenta: number;
+  totalAbonado: number;
+}
+
+export interface ClientesReport {
+  proyectos: ProyectoClientes[];
+  obrasSinProyecto: ObraClientes[];
+  totalPrecioVenta: number;
+  totalAbonado: number;
+}
+
+export async function getClientesReport(): Promise<ClientesReport> {
+  const [obras, abonos] = await Promise.all([
+    prisma.obra.findMany({
+      include: { proyecto: { select: { id: true, name: true, isActive: true } } },
+      orderBy: { name: "asc" },
+    }),
+    prisma.abonoCliente.groupBy({ by: ["obraId"], _sum: { amount: true } }),
+  ]);
+
+  const abonadoByObra = new Map<string, number>();
+  for (const group of abonos) {
+    abonadoByObra.set(group.obraId, Number(group._sum.amount ?? 0));
+  }
+
+  const obraClientesList: ObraClientes[] = obras.map((obra) => {
+    const precioVenta = obra.precioVenta === null ? null : Number(obra.precioVenta);
+    const totalAbonado = abonadoByObra.get(obra.id) ?? 0;
+    return {
+      obraId: obra.id,
+      obraName: obra.name,
+      client: obra.client,
+      isActive: obra.isActive,
+      proyectoId: obra.proyectoId,
+      precioVenta,
+      totalAbonado,
+      saldo: precioVenta === null ? null : precioVenta - totalAbonado,
+    };
+  });
+
+  const proyectosMap = new Map<string, ProyectoClientes>();
+  const obrasSinProyecto: ObraClientes[] = [];
+
+  for (const obraCli of obraClientesList) {
+    if (!obraCli.proyectoId) {
+      obrasSinProyecto.push(obraCli);
+      continue;
+    }
+    const obraModel = obras.find((o) => o.id === obraCli.obraId)!;
+    if (!proyectosMap.has(obraCli.proyectoId)) {
+      proyectosMap.set(obraCli.proyectoId, {
+        proyectoId: obraCli.proyectoId,
+        proyectoName: obraModel.proyecto!.name,
+        isActive: obraModel.proyecto!.isActive,
+        obras: [],
+        precioVenta: 0,
+        totalAbonado: 0,
+      });
+    }
+    const proyecto = proyectosMap.get(obraCli.proyectoId)!;
+    proyecto.obras.push(obraCli);
+    proyecto.precioVenta += obraCli.precioVenta ?? 0;
+    proyecto.totalAbonado += obraCli.totalAbonado;
+  }
+
+  return {
+    proyectos: Array.from(proyectosMap.values()).sort((a, b) => a.proyectoName.localeCompare(b.proyectoName)),
+    obrasSinProyecto,
+    totalPrecioVenta: obraClientesList.reduce((sum, o) => sum + (o.precioVenta ?? 0), 0),
+    totalAbonado: obraClientesList.reduce((sum, o) => sum + o.totalAbonado, 0),
+  };
+}

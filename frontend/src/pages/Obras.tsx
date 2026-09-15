@@ -8,10 +8,18 @@ import type { ManagedUser } from "../types/user";
 import type { Proyecto } from "../types/proyecto";
 import { ObraFormModal } from "../components/obras/ObraFormModal";
 import { AssignUsersModal } from "../components/obras/AssignUsersModal";
+import { ObraAbonosClienteModal } from "../components/obras/ObraAbonosClienteModal";
 import { ObraContratistasModal } from "../components/contratistas/ObraContratistasModal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 
 const SIN_PROYECTO = "sin-proyecto";
+
+const currencyFormatter = new Intl.NumberFormat("es-CO", {
+  style: "currency",
+  currency: "COP",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
 
 export function Obras() {
   const { proyectoId } = useParams<{ proyectoId: string }>();
@@ -29,6 +37,7 @@ export function Obras() {
   const [editingObra, setEditingObra] = useState<Obra | null>(null);
   const [assigningObra, setAssigningObra] = useState<Obra | null>(null);
   const [contratistasObra, setContratistasObra] = useState<Obra | null>(null);
+  const [abonosClienteObra, setAbonosClienteObra] = useState<Obra | null>(null);
   const [deactivatingObra, setDeactivatingObra] = useState<Obra | null>(null);
 
   async function refresh() {
@@ -180,6 +189,11 @@ export function Obras() {
                 </p>
               )}
               {obra.client && <p className="font-label-sm text-on-surface-variant uppercase mb-1">Cliente: {obra.client}</p>}
+              {obra.precioVenta !== null && (
+                <p className="font-label-sm text-on-surface-variant uppercase mb-1">
+                  Precio de venta: {currencyFormatter.format(obra.precioVenta)}
+                </p>
+              )}
               {obra.address && <p className="font-body-md text-on-surface-variant mb-3">{obra.address}</p>}
 
               <div className="flex flex-wrap gap-2 mb-4">
@@ -226,6 +240,13 @@ export function Obras() {
                     <span className="material-symbols-outlined text-[18px]">inventory_2</span>
                     Inventario
                   </Link>
+                  <button
+                    onClick={() => setAbonosClienteObra(obra)}
+                    className="font-label-sm uppercase text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">payments</span>
+                    Abonos cliente
+                  </button>
                 </div>
                 <button
                   onClick={() => handleToggleActive(obra)}
@@ -271,6 +292,14 @@ export function Obras() {
 
       {contratistasObra && (
         <ObraContratistasModal obra={contratistasObra} onClose={() => setContratistasObra(null)} />
+      )}
+
+      {abonosClienteObra && (
+        <ObraAbonosClienteModal
+          obra={abonosClienteObra}
+          onClose={() => setAbonosClienteObra(null)}
+          onChanged={refresh}
+        />
       )}
 
       {deactivatingObra && (

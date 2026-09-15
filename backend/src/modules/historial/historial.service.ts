@@ -19,6 +19,7 @@ function serializeEvento(evento: HistorialEvento) {
     orderId: evento.orderId,
     asignacionId: evento.asignacionId,
     abonoId: evento.abonoId,
+    abonoClienteId: evento.abonoClienteId,
   };
 }
 
@@ -33,6 +34,7 @@ export interface RecordEventoInput {
   orderId?: string | null;
   asignacionId?: string | null;
   abonoId?: string | null;
+  abonoClienteId?: string | null;
 }
 
 // No lanza si falla: registrar el historial nunca debe tumbar la operacion principal.
@@ -64,6 +66,7 @@ export async function recordEvento(input: RecordEventoInput) {
         orderId: input.orderId ?? null,
         asignacionId: input.asignacionId ?? null,
         abonoId: input.abonoId ?? null,
+        abonoClienteId: input.abonoClienteId ?? null,
       },
     });
   } catch (error) {

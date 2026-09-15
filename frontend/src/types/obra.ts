@@ -10,6 +10,7 @@ export interface Obra {
   address: string | null;
   client: string | null;
   notes: string | null;
+  precioVenta: number | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -23,5 +24,6 @@ export interface ObraInput {
   address?: string | null;
   client?: string | null;
   notes?: string | null;
+  precioVenta?: number | null;
   proyectoId?: string | null;
 }

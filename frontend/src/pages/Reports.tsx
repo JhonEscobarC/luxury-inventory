@@ -6,14 +6,21 @@ import { listOrders } from "../lib/orders";
 import { listObras } from "../lib/obras";
 import { listProyectos } from "../lib/proyectos";
 import { listProveedores } from "../lib/proveedores";
-import { getFinancieroReport, getProveedoresDeudaReport } from "../lib/reports";
-import { exportInventoryExcel, exportInventoryPdf, exportOrdersExcel, exportOrdersPdf } from "../lib/exporters";
+import { getClientesReport, getFinancieroReport, getProveedoresDeudaReport } from "../lib/reports";
+import {
+  exportClientesExcel,
+  exportClientesPdf,
+  exportInventoryExcel,
+  exportInventoryPdf,
+  exportOrdersExcel,
+  exportOrdersPdf,
+} from "../lib/exporters";
 import type { Order, OrderStatus } from "../types/order";
 import type { Obra } from "../types/obra";
 import type { Proveedor } from "../types/proveedor";
 import type { Categoria } from "../types/categoria";
 import type { Proyecto } from "../types/proyecto";
-import type { FinancieroReport, ObraFinanciero, ProveedorDeuda } from "../types/report";
+import type { ClientesReport, FinancieroReport, ObraClientes, ObraFinanciero, ProveedorDeuda } from "../types/report";
 import { ProveedorAbonosModal } from "../components/proveedores/ProveedorAbonosModal";
 
 const ORDER_STATUS_OPTIONS: { value: OrderStatus | ""; label: string }[] = [
@@ -127,6 +134,11 @@ export function Reports() {
   const [deudaSort, setDeudaSort] = useState<"desc" | "asc">("desc");
   const [abonosProveedor, setAbonosProveedor] = useState<Proveedor | null>(null);
 
+  const [clientes, setClientes] = useState<ClientesReport | null>(null);
+  const [isLoadingClientes, setIsLoadingClientes] = useState(true);
+  const [isExportingClientes, setIsExportingClientes] = useState<"pdf" | "excel" | null>(null);
+  const [clientesStatus, setClientesStatus] = useState<string | null>(null);
+
   useEffect(() => {
     listCategorias({ isActive: true }).then(setCategorias).catch(() => setCategorias([]));
     listObras({ isActive: true })
@@ -151,7 +163,16 @@ export function Reports() {
       .catch(() => setProveedores([]));
     refreshFinanciero();
     refreshDeudas();
+    refreshClientes();
   }, []);
+
+  function refreshClientes() {
+    setIsLoadingClientes(true);
+    getClientesReport()
+      .then(setClientes)
+      .catch(() => setClientes(null))
+      .finally(() => setIsLoadingClientes(false));
+  }
 
   function refreshFinanciero() {
     setIsLoadingFinanciero(true);
@@ -337,6 +358,27 @@ export function Reports() {
       }
     } finally {
       setIsExportingProveedor(null);
+    }
+  }
+
+  async function handleClientesExport(format: "pdf" | "excel") {
+    if (!clientes) return;
+    const allObras = [...clientes.proyectos.flatMap((p) => p.obras), ...clientes.obrasSinProyecto];
+    if (allObras.length === 0) {
+      setClientesStatus("No hay obras para exportar.");
+      return;
+    }
+    setIsExportingClientes(format);
+    setClientesStatus(null);
+    try {
+      if (format === "pdf") {
+        exportClientesPdf(allObras);
+      } else {
+        await exportClientesExcel(allObras);
+      }
+      setClientesStatus(`Exportadas ${allObras.length} obra(s).`);
+    } finally {
+      setIsExportingClientes(null);
     }
   }
 
@@ -686,6 +728,100 @@ export function Reports() {
         )}
       </section>
 
+      <section className="bg-surface-container lux-card-border p-6 md:p-8 mb-10">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6 border-b border-outline-variant pb-4 sm:justify-between">
+          <div className="flex items-center gap-3">
+            <span className="material-symbols-outlined text-primary">payments</span>
+            <h3 className="text-headline-md-mobile text-on-surface uppercase">Pagos de clientes</h3>
+          </div>
+        </div>
+        <p className="font-body-md text-on-surface-variant mb-6">
+          Lo que han abonado los compradores de cada obra frente a su precio de venta. Para registrar un abono, entra
+          a la obra desde Proyectos.
+        </p>
+
+        {isLoadingClientes && <p className="font-label-sm uppercase text-on-surface-variant mb-6">Cargando...</p>}
+
+        {!isLoadingClientes && clientes && (
+          <div className="flex flex-col gap-6">
+            {clientes.proyectos.map((proyecto) => (
+              <div key={proyecto.proyectoId} className="border border-outline-variant">
+                <div className="bg-surface px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 border-b border-outline-variant">
+                  <span className="font-body-md font-semibold text-primary uppercase">{proyecto.proyectoName}</span>
+                  <MoneyStats
+                    items={[
+                      { label: "Precio venta", value: currencyFormatter.format(proyecto.precioVenta) },
+                      { label: "Abonado", value: currencyFormatter.format(proyecto.totalAbonado) },
+                      {
+                        label: "Saldo",
+                        value: currencyFormatter.format(proyecto.precioVenta - proyecto.totalAbonado),
+                        emphasize: true,
+                      },
+                    ]}
+                  />
+                </div>
+                <div className="flex flex-col">
+                  {proyecto.obras.map((obra) => (
+                    <ObraClientesRow key={obra.obraId} obra={obra} />
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {clientes.obrasSinProyecto.length > 0 && (
+              <div className="border border-outline-variant">
+                <div className="bg-surface px-4 py-3 border-b border-outline-variant">
+                  <span className="font-body-md font-semibold text-on-surface-variant uppercase">Obras sin proyecto</span>
+                </div>
+                <div className="flex flex-col">
+                  {clientes.obrasSinProyecto.map((obra) => (
+                    <ObraClientesRow key={obra.obraId} obra={obra} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="border border-primary p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+              <span className="font-label-sm uppercase text-on-surface-variant">Total general</span>
+              <MoneyStats
+                items={[
+                  { label: "Precio venta", value: currencyFormatter.format(clientes.totalPrecioVenta) },
+                  { label: "Abonado", value: currencyFormatter.format(clientes.totalAbonado) },
+                  {
+                    label: "Saldo",
+                    value: currencyFormatter.format(clientes.totalPrecioVenta - clientes.totalAbonado),
+                    emphasize: true,
+                  },
+                ]}
+              />
+            </div>
+          </div>
+        )}
+
+        {clientesStatus && (
+          <p className="font-label-sm uppercase text-on-surface-variant mt-6">{clientesStatus}</p>
+        )}
+
+        <div className="flex flex-col sm:flex-row gap-4 mt-6">
+          <button
+            onClick={() => handleClientesExport("pdf")}
+            disabled={isExportingClientes !== null}
+            className={exportButtonClass}
+          >
+            <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+            {isExportingClientes === "pdf" ? "Generando..." : "Exportar PDF"}
+          </button>
+          <button
+            onClick={() => handleClientesExport("excel")}
+            disabled={isExportingClientes !== null}
+            className={exportButtonClass}
+          >
+            <span className="material-symbols-outlined text-[18px]">table_chart</span>
+            {isExportingClientes === "excel" ? "Generando..." : "Exportar Excel"}
+          </button>
+        </div>
+      </section>
+
       <section className="bg-surface-container lux-card-border p-6 md:p-8">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6 border-b border-outline-variant pb-4 sm:justify-between">
           <div className="flex items-center gap-3">
@@ -801,6 +937,32 @@ function ObraFinancieroRow({ obra, checked, onToggle }: ObraFinancieroRowProps) 
           { label: "Material", value: currencyFormatter.format(obra.gastoMaterial) },
           { label: "Operacion", value: currencyFormatter.format(obra.gastoOperacion) },
           { label: "Total", value: currencyFormatter.format(obra.total) },
+        ]}
+      />
+    </div>
+  );
+}
+
+function ObraClientesRow({ obra }: { obra: ObraClientes }) {
+  return (
+    <div className="px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 border-b border-outline-variant last:border-b-0">
+      <div className="font-body-md text-on-surface">
+        <span>{obra.obraName}</span>
+        {obra.client && <span className="font-label-sm text-on-surface-variant uppercase ml-2">({obra.client})</span>}
+        {!obra.isActive && <span className="font-label-sm text-error uppercase ml-2">(inactiva)</span>}
+      </div>
+      <MoneyStats
+        items={[
+          {
+            label: "Precio venta",
+            value: obra.precioVenta !== null ? currencyFormatter.format(obra.precioVenta) : "Sin definir",
+          },
+          { label: "Abonado", value: currencyFormatter.format(obra.totalAbonado) },
+          {
+            label: "Saldo",
+            value: obra.saldo !== null ? currencyFormatter.format(obra.saldo) : "-",
+            emphasize: obra.saldo !== null && obra.saldo > 0,
+          },
         ]}
       />
     </div>

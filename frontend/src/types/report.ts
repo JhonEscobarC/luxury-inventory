@@ -31,3 +31,30 @@ export interface ProveedorDeuda {
   totalAbonado: number;
   saldo: number;
 }
+
+export interface ObraClientes {
+  obraId: string;
+  obraName: string;
+  client: string | null;
+  isActive: boolean;
+  proyectoId: string | null;
+  precioVenta: number | null;
+  totalAbonado: number;
+  saldo: number | null;
+}
+
+export interface ProyectoClientes {
+  proyectoId: string;
+  proyectoName: string;
+  isActive: boolean;
+  obras: ObraClientes[];
+  precioVenta: number;
+  totalAbonado: number;
+}
+
+export interface ClientesReport {
+  proyectos: ProyectoClientes[];
+  obrasSinProyecto: ObraClientes[];
+  totalPrecioVenta: number;
+  totalAbonado: number;
+}
