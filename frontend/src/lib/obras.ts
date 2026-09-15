@@ -4,6 +4,8 @@ import type { Obra, ObraInput } from "../types/obra";
 export interface ListObrasFilters {
   search?: string;
   isActive?: boolean;
+  /** Pasa "none" para obtener solo las obras sin proyecto asignado. */
+  proyectoId?: string;
 }
 
 export async function listObras(filters: ListObrasFilters = {}): Promise<Obra[]> {
@@ -11,6 +13,7 @@ export async function listObras(filters: ListObrasFilters = {}): Promise<Obra[]>
     params: {
       search: filters.search || undefined,
       isActive: filters.isActive === undefined ? undefined : String(filters.isActive),
+      proyectoId: filters.proyectoId || undefined,
     },
   });
   return data.items;

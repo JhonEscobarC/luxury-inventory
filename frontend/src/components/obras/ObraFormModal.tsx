@@ -5,16 +5,18 @@ import type { Proyecto } from "../../types/proyecto";
 interface ObraFormModalProps {
   obra: Obra | null;
   proyectos: Proyecto[];
+  /** Proyecto preseleccionado al crear una obra desde la vista de un proyecto especifico. */
+  defaultProyectoId?: string | null;
   onClose: () => void;
   onSubmit: (input: ObraInput) => Promise<void>;
 }
 
-export function ObraFormModal({ obra, proyectos, onClose, onSubmit }: ObraFormModalProps) {
+export function ObraFormModal({ obra, proyectos, defaultProyectoId, onClose, onSubmit }: ObraFormModalProps) {
   const [name, setName] = useState(obra?.name ?? "");
   const [address, setAddress] = useState(obra?.address ?? "");
   const [client, setClient] = useState(obra?.client ?? "");
   const [notes, setNotes] = useState(obra?.notes ?? "");
-  const [proyectoId, setProyectoId] = useState(obra?.proyectoId ?? "");
+  const [proyectoId, setProyectoId] = useState(obra?.proyectoId ?? defaultProyectoId ?? "");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 

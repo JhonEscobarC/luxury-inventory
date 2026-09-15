@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { createProyecto, listProyectos, setProyectoActive, updateProyecto } from "../lib/proyectos";
+import { listObras } from "../lib/obras";
 import type { Proyecto, ProyectoInput } from "../types/proyecto";
 import { ProyectoFormModal } from "../components/proyectos/ProyectoFormModal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 
 export function Proyectos() {
   const [proyectos, setProyectos] = useState<Proyecto[]>([]);
+  const [obrasSinProyectoCount, setObrasSinProyectoCount] = useState(0);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -18,7 +21,12 @@ export function Proyectos() {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      setProyectos(await listProyectos({ search: search || undefined }));
+      const [proyectosResult, obrasSinProyecto] = await Promise.all([
+        listProyectos({ search: search || undefined }),
+        listObras({ proyectoId: "none" }),
+      ]);
+      setProyectos(proyectosResult);
+      setObrasSinProyectoCount(obrasSinProyecto.length);
     } catch {
       setErrorMessage("No se pudieron cargar los proyectos.");
     } finally {
@@ -117,23 +125,20 @@ export function Proyectos() {
                 <p className="font-label-sm text-on-surface-variant uppercase mb-3">Cliente: {proyecto.client}</p>
               )}
 
-              <div className="flex flex-wrap gap-2 mb-4">
-                {(proyecto.obras ?? []).length === 0 && (
-                  <span className="font-label-sm text-on-surface-variant/60 uppercase">Sin obras asignadas</span>
-                )}
-                {(proyecto.obras ?? []).map((o) => (
-                  <span
-                    key={o.id}
-                    className={`font-label-sm uppercase px-2 py-1 border ${
-                      o.isActive ? "border-outline-variant text-on-surface-variant" : "border-outline-variant opacity-50"
-                    }`}
-                  >
-                    {o.name}
-                  </span>
-                ))}
-              </div>
+              <Link
+                to={`/proyectos/${proyecto.id}/obras`}
+                className="flex items-center justify-between border border-outline-variant hover:border-primary transition-colors px-4 py-3 mb-4 group"
+              >
+                <span className="font-label-sm uppercase text-on-surface group-hover:text-primary transition-colors flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px]">construction</span>
+                  Ver obras ({(proyecto.obras ?? []).length})
+                </span>
+                <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">
+                  chevron_right
+                </span>
+              </Link>
 
-              <div className="flex gap-4 border-t border-outline-variant pt-4">
+              <div className="flex flex-wrap justify-between items-center gap-x-4 gap-y-2 border-t border-outline-variant pt-4">
                 <button
                   onClick={() => setEditingProyecto(proyecto)}
                   className="font-label-sm uppercase text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1"
@@ -143,7 +148,7 @@ export function Proyectos() {
                 </button>
                 <button
                   onClick={() => handleToggleActive(proyecto)}
-                  className="font-label-sm uppercase text-on-surface-variant hover:text-error transition-colors flex items-center gap-1 ml-auto"
+                  className="font-label-sm uppercase text-on-surface-variant hover:text-error transition-colors flex items-center gap-1"
                 >
                   <span className="material-symbols-outlined text-[18px]">
                     {proyecto.isActive ? "block" : "check_circle"}
@@ -153,6 +158,27 @@ export function Proyectos() {
               </div>
             </div>
           ))}
+
+        {!isLoading && (
+          <Link
+            to="/proyectos/sin-proyecto/obras"
+            className="border border-dashed border-outline-variant hover:border-primary transition-colors p-6 flex flex-col justify-center group"
+          >
+            <div className="flex justify-between items-start mb-3">
+              <h3 className="font-body-lg font-semibold text-on-surface-variant group-hover:text-primary transition-colors flex items-center gap-2">
+                <span className="material-symbols-outlined">category</span>
+                Obras sin proyecto
+              </h3>
+            </div>
+            <p className="font-label-sm text-on-surface-variant/70 uppercase mb-4">
+              Excepciones que no pertenecen a ningun proyecto.
+            </p>
+            <span className="font-label-sm uppercase text-on-surface-variant group-hover:text-primary transition-colors flex items-center gap-2">
+              Ver obras ({obrasSinProyectoCount})
+              <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+            </span>
+          </Link>
+        )}
       </div>
 
       {isCreating && <ProyectoFormModal proyecto={null} onClose={() => setIsCreating(false)} onSubmit={handleCreate} />}

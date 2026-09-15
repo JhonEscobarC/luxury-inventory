@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import { createObra, listObras, setObraActive, setObraUsers, updateObra } from "../lib/obras";
 import { listUsers } from "../lib/users";
 import { listProyectos } from "../lib/proyectos";
@@ -10,10 +11,16 @@ import { AssignUsersModal } from "../components/obras/AssignUsersModal";
 import { ObraContratistasModal } from "../components/contratistas/ObraContratistasModal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 
+const SIN_PROYECTO = "sin-proyecto";
+
 export function Obras() {
+  const { proyectoId } = useParams<{ proyectoId: string }>();
+  const isSinProyecto = proyectoId === SIN_PROYECTO;
+
   const [obras, setObras] = useState<Obra[]>([]);
   const [obraUsers, setObraUsersList] = useState<ManagedUser[]>([]);
   const [proyectos, setProyectos] = useState<Proyecto[]>([]);
+  const [proyectoActual, setProyectoActual] = useState<Proyecto | null>(null);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -29,13 +36,19 @@ export function Obras() {
     setErrorMessage(null);
     try {
       const [obrasResult, usersResult, proyectosResult] = await Promise.all([
-        listObras({ search: search || undefined }),
+        listObras({
+          search: search || undefined,
+          proyectoId: isSinProyecto ? "none" : proyectoId,
+        }),
         listUsers(),
         listProyectos(),
       ]);
       setObras(obrasResult);
       setObraUsersList(usersResult.filter((u) => u.role === "OBRA"));
       setProyectos(proyectosResult);
+      setProyectoActual(
+        !isSinProyecto ? proyectosResult.find((p) => p.id === proyectoId) ?? null : null,
+      );
     } catch {
       setErrorMessage("No se pudieron cargar las obras.");
     } finally {
@@ -47,7 +60,7 @@ export function Obras() {
     const timeout = setTimeout(refresh, 250);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]);
+  }, [search, proyectoId]);
 
   async function handleCreate(input: ObraInput) {
     await createObra(input);
@@ -82,13 +95,25 @@ export function Obras() {
     await refresh();
   }
 
+  const tituloProyecto = isSinProyecto ? "Obras sin proyecto" : proyectoActual?.name ?? "Obras";
+
   return (
     <div>
+      <Link
+        to="/proyectos"
+        className="font-label-sm uppercase text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1 mb-4"
+      >
+        <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+        Proyectos
+      </Link>
+
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
         <div>
-          <h2 className="text-display-lg-mobile md:text-display-lg text-primary uppercase">Obras</h2>
+          <h2 className="text-display-lg-mobile md:text-display-lg text-primary uppercase">{tituloProyecto}</h2>
           <p className="font-body-md text-on-surface-variant mt-2 max-w-xl">
-            Administra las obras activas y que usuarios tienen acceso a cada una.
+            {isSinProyecto
+              ? "Obras que no pertenecen a ningun proyecto."
+              : "Administra las obras de este proyecto y que usuarios tienen acceso a cada una."}
           </p>
         </div>
 
@@ -198,7 +223,13 @@ export function Obras() {
       </div>
 
       {isCreating && (
-        <ObraFormModal obra={null} proyectos={proyectos} onClose={() => setIsCreating(false)} onSubmit={handleCreate} />
+        <ObraFormModal
+          obra={null}
+          proyectos={proyectos}
+          defaultProyectoId={isSinProyecto ? null : proyectoId}
+          onClose={() => setIsCreating(false)}
+          onSubmit={handleCreate}
+        />
       )}
 
       {editingObra && (

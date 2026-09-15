@@ -61,21 +61,21 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/obras"
-        element={
-          <ProtectedRoute allowedRoles={[...ADMIN_CONTABILIDAD]}>
-            <AppLayout>
-              <Obras />
-            </AppLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
         path="/proyectos"
         element={
           <ProtectedRoute allowedRoles={[...ADMIN_CONTABILIDAD]}>
             <AppLayout>
               <Proyectos />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/proyectos/:proyectoId/obras"
+        element={
+          <ProtectedRoute allowedRoles={[...ADMIN_CONTABILIDAD]}>
+            <AppLayout>
+              <Obras />
             </AppLayout>
           </ProtectedRoute>
         }
