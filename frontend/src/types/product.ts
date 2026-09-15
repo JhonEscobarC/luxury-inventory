@@ -5,6 +5,8 @@ export interface Product {
   categoriaName: string | null;
   obraId: string | null;
   obraName: string | null;
+  proyectoId: string | null;
+  proyectoName: string | null;
   quantity: number;
   unit: string;
   price: number;

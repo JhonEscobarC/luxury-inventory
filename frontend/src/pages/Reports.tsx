@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { listAllProductsForReport } from "../lib/products";
 import { listCategorias } from "../lib/categorias";
 import { listOrders } from "../lib/orders";
 import { listObras } from "../lib/obras";
+import { listProyectos } from "../lib/proyectos";
 import { listProveedores } from "../lib/proveedores";
 import { getFinancieroReport, getProveedoresDeudaReport } from "../lib/reports";
 import { exportInventoryExcel, exportInventoryPdf, exportOrdersExcel, exportOrdersPdf } from "../lib/exporters";
@@ -10,6 +12,7 @@ import type { Order, OrderStatus } from "../types/order";
 import type { Obra } from "../types/obra";
 import type { Proveedor } from "../types/proveedor";
 import type { Categoria } from "../types/categoria";
+import type { Proyecto } from "../types/proyecto";
 import type { FinancieroReport, ObraFinanciero, ProveedorDeuda } from "../types/report";
 import { ProveedorAbonosModal } from "../components/proveedores/ProveedorAbonosModal";
 
@@ -83,11 +86,18 @@ function SummaryCards({ summary }: SummaryCardsProps) {
 }
 
 export function Reports() {
+  const [searchParams] = useSearchParams();
+
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
+  const [proyectos, setProyectos] = useState<Proyecto[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
 
   const [inventoryCategoriaId, setInventoryCategoriaId] = useState("");
+  const [inventoryObraId, setInventoryObraId] = useState(() => searchParams.get("obraId") ?? "");
+  const [inventoryProyectoId, setInventoryProyectoId] = useState(() =>
+    searchParams.get("obraId") ? "" : searchParams.get("proyectoId") ?? "",
+  );
   const [inventoryLowStockOnly, setInventoryLowStockOnly] = useState(false);
   const [inventoryStatus, setInventoryStatus] = useState<string | null>(null);
   const [isExportingInventory, setIsExportingInventory] = useState<"pdf" | "excel" | null>(null);
@@ -125,6 +135,7 @@ export function Reports() {
         if (items[0]) setSelectedObraId(items[0].id);
       })
       .catch(() => setObras([]));
+    listProyectos({ isActive: true }).then(setProyectos).catch(() => setProyectos([]));
     listProveedores({ isActive: true })
       .then((items) => {
         setProveedores(items);
@@ -214,6 +225,8 @@ export function Reports() {
     try {
       const allProducts = await listAllProductsForReport({
         categoriaId: inventoryCategoriaId || undefined,
+        obraId: inventoryObraId || undefined,
+        proyectoId: !inventoryObraId ? inventoryProyectoId || undefined : undefined,
         lowStock: inventoryLowStockOnly,
       });
       // Los materiales agotados (cantidad 0) ya no representan stock real disponible
@@ -223,10 +236,25 @@ export function Reports() {
         setInventoryStatus("No hay productos que coincidan con los filtros seleccionados.");
         return;
       }
+
+      let scopeName: string | undefined;
+      if (inventoryObraId === "none") {
+        scopeName = "General";
+      } else if (inventoryObraId) {
+        scopeName = obras.find((o) => o.id === inventoryObraId)?.name;
+      } else if (inventoryProyectoId === "none") {
+        scopeName = "Sin proyecto";
+      } else if (inventoryProyectoId) {
+        scopeName = proyectos.find((p) => p.id === inventoryProyectoId)?.name;
+      }
+      const options = scopeName
+        ? { title: `Reporte de Inventario - ${scopeName}`, filenamePrefix: scopeName }
+        : undefined;
+
       if (format === "pdf") {
-        exportInventoryPdf(products);
+        exportInventoryPdf(products, options);
       } else {
-        await exportInventoryExcel(products);
+        await exportInventoryExcel(products, options);
       }
       setInventoryStatus(`Exportados ${products.length} producto(s).`);
     } catch {
@@ -312,7 +340,7 @@ export function Reports() {
           <h3 className="text-headline-md-mobile text-on-surface uppercase">Inventario</h3>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           <div>
             <label className={labelClass}>Categoria</label>
             <select
@@ -324,6 +352,46 @@ export function Reports() {
               {categorias.map((categoria) => (
                 <option key={categoria.id} value={categoria.id}>
                   {categoria.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className={labelClass}>Obra</label>
+            <select
+              className={selectClass}
+              value={inventoryObraId}
+              onChange={(event) => {
+                setInventoryObraId(event.target.value);
+                setInventoryProyectoId("");
+              }}
+            >
+              <option value="">Todas</option>
+              <option value="none">General (sin obra)</option>
+              {obras.map((obra) => (
+                <option key={obra.id} value={obra.id}>
+                  {obra.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className={labelClass}>Proyecto</label>
+            <select
+              className={selectClass}
+              value={inventoryProyectoId}
+              onChange={(event) => {
+                setInventoryProyectoId(event.target.value);
+                setInventoryObraId("");
+              }}
+            >
+              <option value="">Todos</option>
+              <option value="none">Sin proyecto</option>
+              {proyectos.map((proyecto) => (
+                <option key={proyecto.id} value={proyecto.id}>
+                  {proyecto.name}
                 </option>
               ))}
             </select>

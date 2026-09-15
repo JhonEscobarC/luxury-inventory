@@ -19,6 +19,7 @@ const listQuerySchema = z.object({
   search: z.string().trim().optional(),
   categoriaId: z.string().uuid().optional(),
   obraId: z.string().optional(),
+  proyectoId: z.string().optional(),
   lowStock: z
     .string()
     .optional()
@@ -31,6 +32,12 @@ const listQuerySchema = z.object({
 function parseObraIdFilter(raw: string | undefined): string | null | undefined {
   if (raw === undefined) return undefined;
   if (raw === "" || raw === "none") return null;
+  return raw;
+}
+
+// proyectoId="" en la query significa "sin filtro"; "none" es el literal para "obras sin proyecto".
+function parseProyectoIdFilter(raw: string | undefined): string | undefined {
+  if (raw === undefined || raw === "") return undefined;
   return raw;
 }
 
@@ -50,6 +57,7 @@ export async function listHandler(req: Request, res: Response, next: NextFunctio
     const result = await productsService.listProducts({
       ...query,
       obraId: parseObraIdFilter(query.obraId),
+      proyectoId: parseProyectoIdFilter(query.proyectoId),
       ...scope,
     });
     res.json(result);
@@ -65,6 +73,7 @@ export async function exportHandler(req: Request, res: Response, next: NextFunct
     const items = await productsService.listAllProducts({
       ...query,
       obraId: parseObraIdFilter(query.obraId),
+      proyectoId: parseProyectoIdFilter(query.proyectoId),
       ...scope,
     });
     res.json({ items });

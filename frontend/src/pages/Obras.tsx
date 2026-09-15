@@ -219,6 +219,13 @@ export function Obras() {
                     <span className="material-symbols-outlined text-[18px]">engineering</span>
                     Contratistas
                   </button>
+                  <Link
+                    to={`/inventario?obraId=${obra.id}`}
+                    className="font-label-sm uppercase text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">inventory_2</span>
+                    Inventario
+                  </Link>
                 </div>
                 <button
                   onClick={() => handleToggleActive(obra)}

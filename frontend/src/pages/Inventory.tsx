@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { createProduct, deleteProduct, listProducts, updateProduct } from "../lib/products";
 import { listProveedores } from "../lib/proveedores";
@@ -22,6 +23,7 @@ const currencyFormatter = new Intl.NumberFormat("es-CO", {
 export function Inventory() {
   const { user } = useAuth();
   const canManage = user?.role === "ADMIN" || user?.role === "CONTABILIDAD";
+  const [searchParams] = useSearchParams();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
@@ -29,7 +31,7 @@ export function Inventory() {
   const [obras, setObras] = useState<Obra[]>([]);
   const [search, setSearch] = useState("");
   const [activeCategoriaId, setActiveCategoriaId] = useState<string | null>(null);
-  const [activeObraId, setActiveObraId] = useState<string>("");
+  const [activeObraId, setActiveObraId] = useState<string>(() => searchParams.get("obraId") ?? "");
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);

@@ -14,6 +14,8 @@ export interface ListProductsFilters {
   lowStock?: boolean;
   /** "" o "none" filtra por stock general (sin obra); omitir trae todas las obras permitidas. */
   obraId?: string;
+  /** Agrega todas las obras del proyecto; "none" son las obras sin proyecto. Ignorado si se pasa obraId. */
+  proyectoId?: string;
 }
 
 export async function listProducts(filters: ListProductsFilters = {}): Promise<ListProductsResult> {
@@ -22,6 +24,7 @@ export async function listProducts(filters: ListProductsFilters = {}): Promise<L
       search: filters.search || undefined,
       categoriaId: filters.categoriaId || undefined,
       obraId: filters.obraId !== undefined ? filters.obraId : undefined,
+      proyectoId: filters.proyectoId || undefined,
       lowStock: filters.lowStock ? "true" : undefined,
       pageSize: 100,
     },
@@ -35,6 +38,7 @@ export async function listAllProductsForReport(filters: ListProductsFilters = {}
       search: filters.search || undefined,
       categoriaId: filters.categoriaId || undefined,
       obraId: filters.obraId !== undefined ? filters.obraId : undefined,
+      proyectoId: filters.proyectoId || undefined,
       lowStock: filters.lowStock ? "true" : undefined,
     },
   });

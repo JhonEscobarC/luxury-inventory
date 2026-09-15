@@ -1,4 +1,4 @@
-import { Prisma, type Proveedor, type Categoria, type Obra } from "@prisma/client";
+import { Prisma, type Proveedor, type Categoria, type Obra, type Proyecto } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { HttpError } from "../../middleware/errorHandler";
 
@@ -10,6 +10,8 @@ export interface ListProductsParams {
   pageSize?: number;
   /** Filtro explicito por obra (incluye "sin obra" cuando se pasa null). */
   obraId?: string | null;
+  /** Filtro por proyecto (agrega todas las obras de ese proyecto); "sin obra" queda fuera. Ignorado si se pasa obraId. */
+  proyectoId?: string | null;
   /** Restringe la consulta a estas obras (usado para el rol OBRA, ignora obraId si no esta incluido). */
   restrictToObraIds?: string[];
 }
@@ -36,7 +38,7 @@ function serializeProduct(product: {
   categoriaId: string | null;
   categoria?: Categoria | null;
   obraId: string | null;
-  obra?: Obra | null;
+  obra?: (Obra & { proyecto?: Proyecto | null }) | null;
   minStock: Prisma.Decimal;
   createdAt: Date;
   updatedAt: Date;
@@ -50,6 +52,8 @@ function serializeProduct(product: {
     categoriaName: product.categoria?.name ?? null,
     obraId: product.obraId,
     obraName: product.obra?.name ?? null,
+    proyectoId: product.obra?.proyectoId ?? null,
+    proyectoName: product.obra?.proyecto?.name ?? null,
     quantity,
     unit: product.unit,
     price: Number(product.price),
@@ -62,7 +66,11 @@ function serializeProduct(product: {
   };
 }
 
-const productInclude = { proveedor: true, categoria: true, obra: true } satisfies Prisma.ProductInclude;
+const productInclude = {
+  proveedor: true,
+  categoria: true,
+  obra: { include: { proyecto: true } },
+} satisfies Prisma.ProductInclude;
 
 function buildWhere(params: ListProductsParams): Prisma.ProductWhereInput {
   const where: Prisma.ProductWhereInput = {};
@@ -86,6 +94,8 @@ function buildWhere(params: ListProductsParams): Prisma.ProductWhereInput {
     }
   } else if (params.obraId !== undefined) {
     where.obraId = params.obraId;
+  } else if (params.proyectoId !== undefined) {
+    where.obra = { proyectoId: params.proyectoId === "none" ? null : params.proyectoId };
   }
 
   return where;

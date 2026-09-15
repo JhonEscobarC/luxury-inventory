@@ -145,13 +145,22 @@ export function Proyectos() {
               </Link>
 
               <div className="flex flex-wrap justify-between items-center gap-x-4 gap-y-2 border-t border-outline-variant pt-4">
-                <button
-                  onClick={() => setEditingProyecto(proyecto)}
-                  className="font-label-sm uppercase text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1"
-                >
-                  <span className="material-symbols-outlined text-[18px]">edit</span>
-                  Editar
-                </button>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <button
+                    onClick={() => setEditingProyecto(proyecto)}
+                    className="font-label-sm uppercase text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">edit</span>
+                    Editar
+                  </button>
+                  <Link
+                    to={`/reportes?proyectoId=${proyecto.id}`}
+                    className="font-label-sm uppercase text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">inventory_2</span>
+                    Inventario
+                  </Link>
+                </div>
                 <button
                   onClick={() => handleToggleActive(proyecto)}
                   className="font-label-sm uppercase text-on-surface-variant hover:text-error transition-colors flex items-center gap-1"

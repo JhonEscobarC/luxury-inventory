@@ -50,17 +50,18 @@ function styleHeaderRow(row: ExcelJS.Row) {
   row.fill = { type: "pattern", pattern: "solid", fgColor: { argb: GOLD_ARGB } };
 }
 
-export function exportInventoryPdf(products: Product[]) {
+export function exportInventoryPdf(products: Product[], options: ExportOptions = {}) {
   const doc = new jsPDF();
-  addReportHeader(doc, "Reporte de Inventario");
+  addReportHeader(doc, options.title ?? "Reporte de Inventario");
 
   autoTable(doc, {
     startY: 36,
-    head: [["Nombre", "Categoria", "Obra", "Cantidad", "Unidad", "Precio (COP)", "Stock min.", "Estado"]],
+    head: [["Nombre", "Categoria", "Obra", "Proyecto", "Cantidad", "Unidad", "Precio (COP)", "Stock min.", "Estado"]],
     body: products.map((product) => [
       product.name,
       product.categoriaName ?? "-",
       product.obraName ?? "General",
+      product.proyectoName ?? "-",
       product.quantity.toString(),
       product.unit,
       product.price.toLocaleString("es-CO"),
@@ -70,17 +71,18 @@ export function exportInventoryPdf(products: Product[]) {
     headStyles: { fillColor: GOLD, textColor: [10, 10, 10] },
     styles: { fontSize: 8 },
     didParseCell: (data) => {
-      if (data.section === "body" && data.column.index === 7 && data.cell.raw === "Stock bajo") {
+      if (data.section === "body" && data.column.index === 8 && data.cell.raw === "Stock bajo") {
         data.cell.styles.textColor = [180, 40, 40];
         data.cell.styles.fontStyle = "bold";
       }
     },
   });
 
-  doc.save(`inventario_${Date.now()}.pdf`);
+  const prefix = options.filenamePrefix ? `inventario_${slugify(options.filenamePrefix)}` : "inventario";
+  doc.save(`${prefix}_${Date.now()}.pdf`);
 }
 
-export async function exportInventoryExcel(products: Product[]) {
+export async function exportInventoryExcel(products: Product[], options: ExportOptions = {}) {
   const workbook = newStyledWorkbook();
   const sheet = workbook.addWorksheet("Inventario");
 
@@ -88,6 +90,7 @@ export async function exportInventoryExcel(products: Product[]) {
     { header: "Nombre", key: "name", width: 30 },
     { header: "Categoria", key: "category", width: 18 },
     { header: "Obra", key: "obraName", width: 22 },
+    { header: "Proyecto", key: "proyectoName", width: 22 },
     { header: "Cantidad", key: "quantity", width: 12 },
     { header: "Unidad", key: "unit", width: 12 },
     { header: "Precio (COP)", key: "price", width: 16 },
@@ -102,6 +105,7 @@ export async function exportInventoryExcel(products: Product[]) {
       name: product.name,
       category: product.categoriaName ?? "-",
       obraName: product.obraName ?? "General",
+      proyectoName: product.proyectoName ?? "-",
       quantity: product.quantity,
       unit: product.unit,
       price: product.price,
@@ -114,14 +118,15 @@ export async function exportInventoryExcel(products: Product[]) {
     }
   });
 
+  const prefix = options.filenamePrefix ? `inventario_${slugify(options.filenamePrefix)}` : "inventario";
   const buffer = await workbook.xlsx.writeBuffer();
   downloadBlob(
     new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
-    `inventario_${Date.now()}.xlsx`,
+    `${prefix}_${Date.now()}.xlsx`,
   );
 }
 
-export interface OrdersExportOptions {
+export interface ExportOptions {
   title?: string;
   filenamePrefix?: string;
 }
@@ -135,7 +140,7 @@ function slugify(text: string) {
     .replace(/(^-|-$)/g, "");
 }
 
-export function exportOrdersPdf(orders: Order[], options: OrdersExportOptions = {}) {
+export function exportOrdersPdf(orders: Order[], options: ExportOptions = {}) {
   const doc = new jsPDF();
   addReportHeader(doc, options.title ?? "Reporte de Pedidos");
 
@@ -158,7 +163,7 @@ export function exportOrdersPdf(orders: Order[], options: OrdersExportOptions = 
   doc.save(`${prefix}_${Date.now()}.pdf`);
 }
 
-export async function exportOrdersExcel(orders: Order[], options: OrdersExportOptions = {}) {
+export async function exportOrdersExcel(orders: Order[], options: ExportOptions = {}) {
   const workbook = newStyledWorkbook();
 
   const summary = workbook.addWorksheet("Pedidos");
