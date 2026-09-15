@@ -12,6 +12,7 @@ import { Proyectos } from "./pages/Proyectos";
 import { Proveedores } from "./pages/Proveedores";
 import { Contratistas } from "./pages/Contratistas";
 import { Historial } from "./pages/Historial";
+import { Categorias } from "./pages/Categorias";
 import { Users } from "./pages/Users";
 
 // Cargado bajo demanda: exceljs y jspdf son pesados y solo se necesitan en /reportes.
@@ -96,6 +97,16 @@ function AppRoutes() {
           <ProtectedRoute allowedRoles={[...ADMIN_CONTABILIDAD]}>
             <AppLayout>
               <Contratistas />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/categorias"
+        element={
+          <ProtectedRoute allowedRoles={[...ADMIN_CONTABILIDAD]}>
+            <AppLayout>
+              <Categorias />
             </AppLayout>
           </ProtectedRoute>
         }

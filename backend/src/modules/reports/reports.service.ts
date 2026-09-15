@@ -1,4 +1,4 @@
-import { OrderStatus } from "@prisma/client";
+import { OrderStatus, FormaPago } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 
 export interface ObraFinanciero {
@@ -106,8 +106,10 @@ export async function getFinancieroReport(): Promise<FinancieroReport> {
 
 export async function getProveedorSaldo(proveedorId: string): Promise<number> {
   const [orders, abonoSum] = await Promise.all([
+    // Solo los pedidos a credito generan deuda: los de contado ya quedaron pagados
+    // al momento de la compra.
     prisma.order.findMany({
-      where: { status: OrderStatus.DESPACHADO, proveedorId },
+      where: { status: OrderStatus.DESPACHADO, proveedorId, formaPago: FormaPago.CREDITO },
       include: { items: true },
     }),
     prisma.abono.aggregate({ where: { proveedorId }, _sum: { amount: true } }),
@@ -136,7 +138,7 @@ export async function getProveedoresDeudaReport(): Promise<ProveedorDeuda[]> {
   const [proveedores, orders, abonos] = await Promise.all([
     prisma.proveedor.findMany({ orderBy: { name: "asc" } }),
     prisma.order.findMany({
-      where: { status: OrderStatus.DESPACHADO, proveedorId: { not: null } },
+      where: { status: OrderStatus.DESPACHADO, proveedorId: { not: null }, formaPago: FormaPago.CREDITO },
       include: { items: true },
     }),
     prisma.abono.groupBy({ by: ["proveedorId"], _sum: { amount: true } }),

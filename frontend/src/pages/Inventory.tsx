@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { createProduct, deleteProduct, listCategories, listProducts, updateProduct } from "../lib/products";
+import { createProduct, deleteProduct, listProducts, updateProduct } from "../lib/products";
 import { listProveedores } from "../lib/proveedores";
+import { listCategorias } from "../lib/categorias";
 import type { Product, ProductInput } from "../types/product";
 import type { Proveedor } from "../types/proveedor";
+import type { Categoria } from "../types/categoria";
 import { ProductFormModal } from "../components/inventory/ProductFormModal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 
@@ -19,10 +21,10 @@ export function Inventory() {
   const canManage = user?.role === "ADMIN" || user?.role === "CONTABILIDAD";
 
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [search, setSearch] = useState("");
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [activeCategoriaId, setActiveCategoriaId] = useState<string | null>(null);
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -35,16 +37,16 @@ export function Inventory() {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const [productsResult, categoriesResult] = await Promise.all([
+      const [productsResult, categoriasResult] = await Promise.all([
         listProducts({
           search: search || undefined,
-          category: activeCategory || undefined,
+          categoriaId: activeCategoriaId || undefined,
           lowStock: showLowStockOnly,
         }),
-        listCategories(),
+        listCategorias(),
       ]);
       setProducts(productsResult.items);
-      setCategories(categoriesResult);
+      setCategorias(categoriasResult);
     } catch {
       setErrorMessage("No se pudo cargar el inventario.");
     } finally {
@@ -62,7 +64,7 @@ export function Inventory() {
     const timeout = setTimeout(refresh, 250);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, activeCategory, showLowStockOnly]);
+  }, [search, activeCategoriaId, showLowStockOnly]);
 
   const lowStockCount = useMemo(() => products.filter((product) => product.isLowStock).length, [products]);
 
@@ -123,26 +125,26 @@ export function Inventory() {
 
       <div className="flex flex-wrap gap-3 mb-8">
         <button
-          onClick={() => setActiveCategory(null)}
+          onClick={() => setActiveCategoriaId(null)}
           className={`font-label-sm uppercase px-4 py-2 border transition-colors ${
-            activeCategory === null
+            activeCategoriaId === null
               ? "border-primary text-primary"
               : "border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary"
           }`}
         >
           Todos
         </button>
-        {categories.map((category) => (
+        {categorias.map((categoria) => (
           <button
-            key={category}
-            onClick={() => setActiveCategory(category)}
+            key={categoria.id}
+            onClick={() => setActiveCategoriaId(categoria.id)}
             className={`font-label-sm uppercase px-4 py-2 border transition-colors ${
-              activeCategory === category
+              activeCategoriaId === categoria.id
                 ? "border-primary text-primary"
                 : "border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary"
             }`}
           >
-            {category}
+            {categoria.name}
           </button>
         ))}
         <button
@@ -184,14 +186,16 @@ export function Inventory() {
             >
               <div className="md:col-span-4 w-full flex flex-col gap-1">
                 <span className="font-body-md font-semibold text-on-surface">{product.name}</span>
-                <span className="md:hidden font-label-sm text-on-surface-variant uppercase">{product.category}</span>
+                <span className="md:hidden font-label-sm text-on-surface-variant uppercase">
+                  {product.categoriaName}
+                </span>
                 {product.proveedorName && (
                   <span className="font-label-sm text-on-surface-variant/70 uppercase">{product.proveedorName}</span>
                 )}
               </div>
 
               <div className="hidden md:block md:col-span-2 font-label-sm text-on-surface-variant uppercase tracking-wider">
-                {product.category}
+                {product.categoriaName ?? "-"}
               </div>
 
               <div className="md:col-span-2 w-full flex justify-between md:justify-end items-center gap-2">
@@ -243,6 +247,7 @@ export function Inventory() {
         <ProductFormModal
           product={null}
           proveedores={proveedores}
+          categorias={categorias}
           onClose={() => setIsCreating(false)}
           onSubmit={handleCreate}
         />
@@ -252,6 +257,7 @@ export function Inventory() {
         <ProductFormModal
           product={editingProduct}
           proveedores={proveedores}
+          categorias={categorias}
           onClose={() => setEditingProduct(null)}
           onSubmit={handleUpdate}
         />

@@ -1,4 +1,5 @@
 export type OrderStatus = "PENDIENTE" | "CONFIRMADO" | "DESPACHADO" | "CANCELADO";
+export type FormaPago = "CONTADO" | "CREDITO";
 
 export interface OrderItem {
   id: string;
@@ -7,6 +8,8 @@ export interface OrderItem {
   unit: string;
   unitPrice: number | null;
   subtotal: number | null;
+  categoriaId: string | null;
+  categoriaName: string | null;
   productId: string | null;
   productName: string | null;
 }
@@ -15,6 +18,7 @@ export interface Order {
   id: string;
   status: OrderStatus;
   notes: string | null;
+  formaPago: FormaPago | null;
   obraId: string;
   obraName: string;
   proveedorId: string | null;
@@ -32,6 +36,7 @@ export interface OrderItemInput {
   description: string;
   quantity: number;
   unit: string;
+  categoriaId?: string | null;
 }
 
 export interface OrderInput {
@@ -43,5 +48,12 @@ export interface OrderInput {
 export interface AssignOrderInput {
   proveedorId: string;
   notes?: string | null;
-  items: { description: string; quantity: number; unit: string; unitPrice: number; productId?: string | null }[];
+  formaPago: FormaPago;
+  items: {
+    description: string;
+    quantity: number;
+    unit: string;
+    unitPrice: number;
+    categoriaId?: string | null;
+  }[];
 }

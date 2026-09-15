@@ -1,7 +1,8 @@
 export interface Product {
   id: string;
   name: string;
-  category: string;
+  categoriaId: string | null;
+  categoriaName: string | null;
   quantity: number;
   unit: string;
   price: number;
@@ -15,7 +16,7 @@ export interface Product {
 
 export interface ProductInput {
   name: string;
-  category: string;
+  categoriaId?: string | null;
   quantity: number;
   unit: string;
   price: number;

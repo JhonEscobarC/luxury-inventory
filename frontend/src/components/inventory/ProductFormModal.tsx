@@ -1,17 +1,19 @@
 import { type FocusEvent, type FormEvent, useState } from "react";
 import type { Product, ProductInput } from "../../types/product";
 import type { Proveedor } from "../../types/proveedor";
+import type { Categoria } from "../../types/categoria";
 
 interface ProductFormModalProps {
   product: Product | null;
   proveedores: Proveedor[];
+  categorias: Categoria[];
   onClose: () => void;
   onSubmit: (input: ProductInput) => Promise<void>;
 }
 
 const emptyForm: ProductInput = {
   name: "",
-  category: "",
+  categoriaId: "",
   quantity: 0,
   unit: "",
   price: 0,
@@ -19,12 +21,12 @@ const emptyForm: ProductInput = {
   minStock: 0,
 };
 
-export function ProductFormModal({ product, proveedores, onClose, onSubmit }: ProductFormModalProps) {
+export function ProductFormModal({ product, proveedores, categorias, onClose, onSubmit }: ProductFormModalProps) {
   const [form, setForm] = useState<ProductInput>(
     product
       ? {
           name: product.name,
-          category: product.category,
+          categoriaId: product.categoriaId ?? "",
           quantity: product.quantity,
           unit: product.unit,
           price: product.price,
@@ -55,7 +57,7 @@ export function ProductFormModal({ product, proveedores, onClose, onSubmit }: Pr
     setError(null);
     setIsSubmitting(true);
     try {
-      await onSubmit({ ...form, proveedorId: form.proveedorId || null });
+      await onSubmit({ ...form, proveedorId: form.proveedorId || null, categoriaId: form.categoriaId || null });
       onClose();
     } catch {
       setError("No se pudo guardar el producto. Verifica los datos e intenta de nuevo.");
@@ -98,12 +100,19 @@ export function ProductFormModal({ product, proveedores, onClose, onSubmit }: Pr
 
           <div>
             <label className={labelClass}>Categoria</label>
-            <input
+            <select
               required
               className={inputClass}
-              value={form.category}
-              onChange={(event) => updateField("category", event.target.value)}
-            />
+              value={form.categoriaId ?? ""}
+              onChange={(event) => updateField("categoriaId", event.target.value)}
+            >
+              <option value="">Selecciona una categoria</option>
+              {categorias.map((categoria) => (
+                <option key={categoria.id} value={categoria.id}>
+                  {categoria.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

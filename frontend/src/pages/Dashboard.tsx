@@ -60,7 +60,7 @@ export function Dashboard() {
               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                 <span className="material-symbols-outlined text-6xl text-primary">assignment</span>
               </div>
-              <p className="font-label-sm text-on-surface-variant uppercase mb-2">Pedidos pendientes</p>
+              <p className="font-label-sm text-on-surface-variant uppercase mb-2">Solicitudes pendientes</p>
               <h3 className="text-display-lg-mobile text-on-surface group-hover:text-primary transition-colors">
                 {pendingOrders ?? "..."}
               </h3>
@@ -105,7 +105,7 @@ export function Dashboard() {
               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                 <span className="material-symbols-outlined text-6xl text-primary">assignment</span>
               </div>
-              <p className="font-label-sm text-on-surface-variant uppercase mb-2">Pedidos por asignar</p>
+              <p className="font-label-sm text-on-surface-variant uppercase mb-2">Solicitudes por pasar a compra</p>
               <h3 className="text-display-lg-mobile text-on-surface group-hover:text-primary transition-colors">
                 {pendingOrders ?? "..."}
               </h3>

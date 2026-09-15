@@ -3,13 +3,14 @@ import { useAuth } from "../context/AuthContext";
 import { assignOrder, createOrder, listOrders, updateOrder, updateOrderStatus } from "../lib/orders";
 import { listMyObras, listObras } from "../lib/obras";
 import { listProveedores } from "../lib/proveedores";
-import { listAllProductsForReport } from "../lib/products";
+import { listCategorias } from "../lib/categorias";
 import type { AssignOrderInput, Order, OrderInput, OrderStatus } from "../types/order";
 import type { Obra } from "../types/obra";
 import type { Proveedor } from "../types/proveedor";
-import type { Product } from "../types/product";
+import type { Categoria } from "../types/categoria";
 import { OrderFormModal } from "../components/orders/OrderFormModal";
 import { AssignOrderModal } from "../components/orders/AssignOrderModal";
+import { ComprobanteModal } from "../components/orders/ComprobanteModal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 
 const currencyFormatter = new Intl.NumberFormat("es-CO", {
@@ -20,9 +21,9 @@ const currencyFormatter = new Intl.NumberFormat("es-CO", {
 });
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
-  PENDIENTE: "Pendiente",
-  CONFIRMADO: "Confirmado",
-  DESPACHADO: "Despachado",
+  PENDIENTE: "Solicitud",
+  CONFIRMADO: "Compra",
+  DESPACHADO: "Recibido",
   CANCELADO: "Cancelado",
 };
 
@@ -35,9 +36,9 @@ const STATUS_CLASS: Record<OrderStatus, string> = {
 
 const STATUS_FILTERS: { value: OrderStatus | ""; label: string }[] = [
   { value: "", label: "Todos" },
-  { value: "PENDIENTE", label: "Pendiente" },
-  { value: "CONFIRMADO", label: "Confirmado" },
-  { value: "DESPACHADO", label: "Despachado" },
+  { value: "PENDIENTE", label: "Solicitud" },
+  { value: "CONFIRMADO", label: "Compra" },
+  { value: "DESPACHADO", label: "Recibido" },
   { value: "CANCELADO", label: "Cancelado" },
 ];
 
@@ -49,7 +50,7 @@ export function Orders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "">("");
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -59,6 +60,7 @@ export function Orders() {
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [assigningOrder, setAssigningOrder] = useState<Order | null>(null);
   const [cancelingOrder, setCancelingOrder] = useState<Order | null>(null);
+  const [comprobanteOrder, setComprobanteOrder] = useState<Order | null>(null);
   const [transitionError, setTransitionError] = useState<string | null>(null);
   const [pendingTransitionId, setPendingTransitionId] = useState<string | null>(null);
 
@@ -66,16 +68,16 @@ export function Orders() {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const [ordersResult, obrasResult, proveedoresResult, productsResult] = await Promise.all([
+      const [ordersResult, obrasResult, proveedoresResult, categoriasResult] = await Promise.all([
         listOrders({ status: statusFilter || undefined }),
         isObra ? listMyObras() : listObras({ isActive: true }),
         canAssign ? listProveedores({ isActive: true }) : Promise.resolve([]),
-        canAssign ? listAllProductsForReport() : Promise.resolve([]),
+        listCategorias({ isActive: true }),
       ]);
       setOrders(ordersResult);
       setObras(obrasResult);
       setProveedores(proveedoresResult);
-      setProducts(productsResult);
+      setCategorias(categoriasResult);
     } catch {
       setErrorMessage("No se pudieron cargar los pedidos.");
     } finally {
@@ -101,8 +103,9 @@ export function Orders() {
 
   async function handleAssign(input: AssignOrderInput) {
     if (!assigningOrder) return;
-    await assignOrder(assigningOrder.id, input);
+    const updated = await assignOrder(assigningOrder.id, input);
     await refresh();
+    setComprobanteOrder(updated);
   }
 
   async function handleStatusChange(order: Order, nextStatus: OrderStatus) {
@@ -134,8 +137,8 @@ export function Orders() {
           <h2 className="text-display-lg-mobile md:text-display-lg text-primary uppercase">Pedidos</h2>
           <p className="font-body-md text-on-surface-variant mt-2 max-w-xl">
             {isObra
-              ? "Crea pedidos de materiales para tus obras asignadas."
-              : "Gestiona los pedidos entrantes: asigna proveedor, precios y actualiza su estado."}
+              ? "Crea solicitudes de materiales para tus obras asignadas."
+              : "Gestiona las solicitudes entrantes: pasalas a compra con proveedor, precios y forma de pago, y marca su recepcion."}
           </p>
         </div>
 
@@ -146,7 +149,7 @@ export function Orders() {
             className="bg-primary hover:bg-primary-fixed transition-colors text-on-primary font-label-sm uppercase tracking-widest px-6 py-3 flex items-center justify-center gap-2 self-start disabled:opacity-50"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
-            Nuevo pedido
+            Nueva solicitud
           </button>
         )}
       </div>
@@ -212,6 +215,11 @@ export function Orders() {
                           {order.proveedorName}
                         </span>
                       )}
+                      {order.formaPago && (
+                        <span className="font-label-sm uppercase px-2 py-1 border border-outline-variant text-on-surface-variant">
+                          {order.formaPago === "CONTADO" ? "Contado" : "Credito"}
+                        </span>
+                      )}
                     </div>
                     <p className="font-label-sm text-on-surface-variant/70 uppercase mt-1">
                       Pedido por {order.createdByName} - {new Date(order.createdAt).toLocaleString("es-CO")}
@@ -234,6 +242,11 @@ export function Orders() {
                         <div key={item.id} className="flex justify-between text-body-md text-on-surface-variant">
                           <span>
                             {item.description} - {item.quantity} {item.unit}
+                            {item.categoriaName && (
+                              <span className="font-label-sm text-on-surface-variant/70 uppercase ml-2">
+                                ({item.categoriaName})
+                              </span>
+                            )}
                             {item.productName && (
                               <span className="font-label-sm text-primary uppercase ml-2">
                                 (inventario: {item.productName})
@@ -263,7 +276,7 @@ export function Orders() {
                           onClick={() => setAssigningOrder(order)}
                           className="border border-primary text-primary font-label-sm uppercase px-4 py-2 hover:bg-primary hover:text-on-primary transition-colors"
                         >
-                          Editar y asignar proveedor
+                          Editar y pasar a compra
                         </button>
                       )}
                       {canAssign && order.status === "CONFIRMADO" && (
@@ -272,7 +285,15 @@ export function Orders() {
                           onClick={() => handleStatusChange(order, "DESPACHADO")}
                           className="border border-primary text-primary font-label-sm uppercase px-4 py-2 hover:bg-primary hover:text-on-primary transition-colors disabled:opacity-50"
                         >
-                          {isPending ? "Actualizando..." : "Marcar como despachado"}
+                          {isPending ? "Actualizando..." : "Marcar como recibido"}
+                        </button>
+                      )}
+                      {order.status === "DESPACHADO" && canAssign && (
+                        <button
+                          onClick={() => setComprobanteOrder(order)}
+                          className="border border-outline-variant text-on-surface-variant font-label-sm uppercase px-4 py-2 hover:border-primary hover:text-primary transition-colors"
+                        >
+                          Ver comprobante
                         </button>
                       )}
                       {canCancel && (
@@ -293,13 +314,20 @@ export function Orders() {
       </div>
 
       {isCreating && (
-        <OrderFormModal order={null} obras={obras} onClose={() => setIsCreating(false)} onSubmit={handleCreate} />
+        <OrderFormModal
+          order={null}
+          obras={obras}
+          categorias={categorias}
+          onClose={() => setIsCreating(false)}
+          onSubmit={handleCreate}
+        />
       )}
 
       {editingOrder && (
         <OrderFormModal
           order={editingOrder}
           obras={obras}
+          categorias={categorias}
           onClose={() => setEditingOrder(null)}
           onSubmit={handleUpdate}
         />
@@ -309,10 +337,14 @@ export function Orders() {
         <AssignOrderModal
           order={assigningOrder}
           proveedores={proveedores}
-          products={products}
+          categorias={categorias}
           onClose={() => setAssigningOrder(null)}
           onSubmit={handleAssign}
         />
+      )}
+
+      {comprobanteOrder && (
+        <ComprobanteModal order={comprobanteOrder} onClose={() => setComprobanteOrder(null)} />
       )}
 
       {cancelingOrder && (

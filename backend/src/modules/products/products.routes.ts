@@ -1,15 +1,6 @@
 import { Router } from "express";
 import { requireAuth, requireRole } from "../../middleware/auth";
-import {
-  categoriesHandler,
-  createHandler,
-  deleteHandler,
-  exportHandler,
-  getHandler,
-  listHandler,
-  lowStockCountHandler,
-  updateHandler,
-} from "./products.controller";
+import { createHandler, deleteHandler, exportHandler, getHandler, listHandler, lowStockCountHandler, updateHandler } from "./products.controller";
 
 export const productsRouter = Router();
 
@@ -18,7 +9,6 @@ productsRouter.use(requireAuth, requireRole("ADMIN", "CONTABILIDAD"));
 
 productsRouter.get("/", listHandler);
 productsRouter.get("/export", exportHandler);
-productsRouter.get("/categories", categoriesHandler);
 productsRouter.get("/low-stock-count", lowStockCountHandler);
 productsRouter.get("/:id", getHandler);
 

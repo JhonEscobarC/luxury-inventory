@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { listAllProductsForReport, listCategories } from "../lib/products";
+import { listAllProductsForReport } from "../lib/products";
+import { listCategorias } from "../lib/categorias";
 import { listOrders } from "../lib/orders";
 import { listObras } from "../lib/obras";
 import { listProveedores } from "../lib/proveedores";
@@ -8,21 +9,22 @@ import { exportInventoryExcel, exportInventoryPdf, exportOrdersExcel, exportOrde
 import type { Order, OrderStatus } from "../types/order";
 import type { Obra } from "../types/obra";
 import type { Proveedor } from "../types/proveedor";
+import type { Categoria } from "../types/categoria";
 import type { FinancieroReport, ObraFinanciero, ProveedorDeuda } from "../types/report";
 import { ProveedorAbonosModal } from "../components/proveedores/ProveedorAbonosModal";
 
 const ORDER_STATUS_OPTIONS: { value: OrderStatus | ""; label: string }[] = [
   { value: "", label: "Todos" },
-  { value: "PENDIENTE", label: "Pendiente" },
-  { value: "CONFIRMADO", label: "Confirmado" },
-  { value: "DESPACHADO", label: "Despachado" },
+  { value: "PENDIENTE", label: "Solicitud" },
+  { value: "CONFIRMADO", label: "Compra" },
+  { value: "DESPACHADO", label: "Recibido" },
   { value: "CANCELADO", label: "Cancelado" },
 ];
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
-  PENDIENTE: "Pendiente",
-  CONFIRMADO: "Confirmado",
-  DESPACHADO: "Despachado",
+  PENDIENTE: "Solicitud",
+  CONFIRMADO: "Compra",
+  DESPACHADO: "Recibido",
   CANCELADO: "Cancelado",
 };
 
@@ -81,11 +83,11 @@ function SummaryCards({ summary }: SummaryCardsProps) {
 }
 
 export function Reports() {
-  const [categories, setCategories] = useState<string[]>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
 
-  const [inventoryCategory, setInventoryCategory] = useState("");
+  const [inventoryCategoriaId, setInventoryCategoriaId] = useState("");
   const [inventoryLowStockOnly, setInventoryLowStockOnly] = useState(false);
   const [inventoryStatus, setInventoryStatus] = useState<string | null>(null);
   const [isExportingInventory, setIsExportingInventory] = useState<"pdf" | "excel" | null>(null);
@@ -116,7 +118,7 @@ export function Reports() {
   const [abonosProveedor, setAbonosProveedor] = useState<Proveedor | null>(null);
 
   useEffect(() => {
-    listCategories().then(setCategories).catch(() => setCategories([]));
+    listCategorias({ isActive: true }).then(setCategorias).catch(() => setCategorias([]));
     listObras({ isActive: true })
       .then((items) => {
         setObras(items);
@@ -211,7 +213,7 @@ export function Reports() {
     setInventoryStatus(null);
     try {
       const products = await listAllProductsForReport({
-        category: inventoryCategory || undefined,
+        categoriaId: inventoryCategoriaId || undefined,
         lowStock: inventoryLowStockOnly,
       });
       if (products.length === 0) {
@@ -312,13 +314,13 @@ export function Reports() {
             <label className={labelClass}>Categoria</label>
             <select
               className={selectClass}
-              value={inventoryCategory}
-              onChange={(event) => setInventoryCategory(event.target.value)}
+              value={inventoryCategoriaId}
+              onChange={(event) => setInventoryCategoriaId(event.target.value)}
             >
               <option value="">Todas</option>
-              {categories.map((category) => (
-                <option key={category} value={category}>
-                  {category}
+              {categorias.map((categoria) => (
+                <option key={categoria.id} value={categoria.id}>
+                  {categoria.name}
                 </option>
               ))}
             </select>

@@ -1,12 +1,12 @@
 import { type FormEvent, useState } from "react";
-import type { AssignOrderInput, Order } from "../../types/order";
+import type { AssignOrderInput, FormaPago, Order } from "../../types/order";
 import type { Proveedor } from "../../types/proveedor";
-import type { Product } from "../../types/product";
+import type { Categoria } from "../../types/categoria";
 
 interface AssignOrderModalProps {
   order: Order;
   proveedores: Proveedor[];
-  products: Product[];
+  categorias: Categoria[];
   onClose: () => void;
   onSubmit: (input: AssignOrderInput) => Promise<void>;
 }
@@ -17,7 +17,7 @@ interface DraftItem {
   quantity: number;
   unit: string;
   unitPrice: number;
-  productId: string;
+  categoriaId: string;
 }
 
 const currencyFormatter = new Intl.NumberFormat("es-CO", {
@@ -34,12 +34,13 @@ function draftItemsFromOrder(order: Order): DraftItem[] {
     quantity: item.quantity,
     unit: item.unit,
     unitPrice: item.unitPrice ?? 0,
-    productId: item.productId ?? "",
+    categoriaId: item.categoriaId ?? "",
   }));
 }
 
-export function AssignOrderModal({ order, proveedores, products, onClose, onSubmit }: AssignOrderModalProps) {
+export function AssignOrderModal({ order, proveedores, categorias, onClose, onSubmit }: AssignOrderModalProps) {
   const [proveedorId, setProveedorId] = useState(order.proveedorId ?? proveedores[0]?.id ?? "");
+  const [formaPago, setFormaPago] = useState<FormaPago>(order.formaPago ?? "CONTADO");
   const [notes, setNotes] = useState(order.notes ?? "");
   const [items, setItems] = useState<DraftItem[]>(draftItemsFromOrder(order));
   const [error, setError] = useState<string | null>(null);
@@ -58,23 +59,12 @@ export function AssignOrderModal({ order, proveedores, products, onClose, onSubm
   function addItem() {
     setItems((prev) => [
       ...prev,
-      { key: crypto.randomUUID(), description: "", quantity: 1, unit: "", unitPrice: 0, productId: "" },
+      { key: crypto.randomUUID(), description: "", quantity: 1, unit: "", unitPrice: 0, categoriaId: "" },
     ]);
   }
 
   function removeItem(key: string) {
     setItems((prev) => (prev.length > 1 ? prev.filter((item) => item.key !== key) : prev));
-  }
-
-  function handleProductLink(key: string, productId: string) {
-    const product = products.find((p) => p.id === productId);
-    setItems((prev) =>
-      prev.map((item) =>
-        item.key === key
-          ? { ...item, productId, unitPrice: item.unitPrice === 0 && product ? product.price : item.unitPrice }
-          : item,
-      ),
-    );
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -96,12 +86,13 @@ export function AssignOrderModal({ order, proveedores, products, onClose, onSubm
       await onSubmit({
         proveedorId,
         notes: notes || null,
-        items: validItems.map(({ description, quantity, unit, unitPrice, productId }) => ({
+        formaPago,
+        items: validItems.map(({ description, quantity, unit, unitPrice, categoriaId }) => ({
           description,
           quantity,
           unit,
           unitPrice,
-          productId: productId || null,
+          categoriaId: categoriaId || null,
         })),
       });
       onClose();
@@ -124,13 +115,13 @@ export function AssignOrderModal({ order, proveedores, products, onClose, onSubm
         className="relative w-full max-w-3xl bg-surface-container border border-outline-variant p-6 md:p-8 max-h-[90vh] overflow-y-auto"
       >
         <div className="flex justify-between items-center mb-8">
-          <h3 className="text-headline-md-mobile text-primary uppercase">Editar y asignar proveedor</h3>
+          <h3 className="text-headline-md-mobile text-primary uppercase">Editar y pasar a compra</h3>
           <button type="button" onClick={onClose} className="text-on-surface-variant hover:text-primary">
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
           <div>
             <label className={labelClass}>Obra</label>
             <p className="font-body-md text-on-surface py-3">{order.obraName}</p>
@@ -141,16 +132,34 @@ export function AssignOrderModal({ order, proveedores, products, onClose, onSubm
           </div>
         </div>
 
-        <div className="mb-6">
-          <label className={labelClass}>Proveedor</label>
-          <select className={inputClass} value={proveedorId} onChange={(e) => setProveedorId(e.target.value)}>
-            {proveedores.length === 0 && <option value="">No hay proveedores activos</option>}
-            {proveedores.map((proveedor) => (
-              <option key={proveedor.id} value={proveedor.id}>
-                {proveedor.name}
-              </option>
-            ))}
-          </select>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+          <div>
+            <label className={labelClass}>Proveedor</label>
+            <select className={inputClass} value={proveedorId} onChange={(e) => setProveedorId(e.target.value)}>
+              {proveedores.length === 0 && <option value="">No hay proveedores activos</option>}
+              {proveedores.map((proveedor) => (
+                <option key={proveedor.id} value={proveedor.id}>
+                  {proveedor.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={labelClass}>Forma de pago</label>
+            <select
+              className={inputClass}
+              value={formaPago}
+              onChange={(e) => setFormaPago(e.target.value as FormaPago)}
+            >
+              <option value="CONTADO">Contado</option>
+              <option value="CREDITO">Credito</option>
+            </select>
+            <p className="font-label-sm text-on-surface-variant/70 uppercase mt-2">
+              {formaPago === "CONTADO"
+                ? "Se paga de una vez: no queda registrado como deuda al proveedor."
+                : "Queda registrado como deuda al proveedor hasta su posterior pago (abono)."}
+            </p>
+          </div>
         </div>
 
         <div className="mb-4 flex items-center justify-between border-b border-outline-variant pb-3">
@@ -166,110 +175,102 @@ export function AssignOrderModal({ order, proveedores, products, onClose, onSubm
         </div>
 
         <div className="flex flex-col gap-4 mb-6">
-          {items.map((item) => {
-            const linkedProduct = products.find((p) => p.id === item.productId);
-            const insufficient = linkedProduct && linkedProduct.quantity < item.quantity;
-            return (
-              <div key={item.key} className="border border-outline-variant p-4">
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end mb-3">
-                  <div className="sm:col-span-5">
-                    <label className={labelClass}>Descripcion</label>
-                    <input
-                      className={inputClass}
-                      placeholder="Ej. Cemento gris tipo I"
-                      value={item.description}
-                      onChange={(e) => updateItem(item.key, { description: e.target.value })}
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className={labelClass}>Cantidad</label>
-                    <input
-                      type="number"
-                      min={0.01}
-                      step="0.01"
-                      className={inputClass}
-                      value={item.quantity}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => {
-                        const raw = e.target.value.replace(/^0+(?=\d)/, "");
-                        const parsed = raw === "" ? 0 : Number(raw);
-                        updateItem(item.key, { quantity: Number.isNaN(parsed) ? 0 : parsed });
-                      }}
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className={labelClass}>Unidad</label>
-                    <input
-                      className={inputClass}
-                      placeholder="sacos, m3..."
-                      value={item.unit}
-                      onChange={(e) => updateItem(item.key, { unit: e.target.value })}
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className={labelClass}>Precio unitario</label>
-                    <input
-                      type="number"
-                      min={0}
-                      step="1"
-                      className={inputClass}
-                      value={item.unitPrice}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => {
-                        const raw = e.target.value.replace(/^0+(?=\d)/, "");
-                        const parsed = raw === "" ? 0 : Number(raw);
-                        updateItem(item.key, { unitPrice: Number.isNaN(parsed) ? 0 : parsed });
-                      }}
-                    />
-                  </div>
-                  <div className="sm:col-span-1 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => removeItem(item.key)}
-                      className="text-on-surface-variant hover:text-error transition-colors"
-                      title="Quitar"
-                    >
-                      <span className="material-symbols-outlined text-[20px]">delete</span>
-                    </button>
-                  </div>
+          {items.map((item) => (
+            <div key={item.key} className="border border-outline-variant p-4">
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end mb-3">
+                <div className="sm:col-span-4">
+                  <label className={labelClass}>Descripcion</label>
+                  <input
+                    className={inputClass}
+                    placeholder="Ej. Cemento gris tipo I"
+                    value={item.description}
+                    onChange={(e) => updateItem(item.key, { description: e.target.value })}
+                  />
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-                  <div className="sm:col-span-9">
-                    <label className={labelClass}>Vincular a inventario (opcional)</label>
-                    <select
-                      className={inputClass}
-                      value={item.productId}
-                      onChange={(e) => handleProductLink(item.key, e.target.value)}
-                    >
-                      <option value="">Sin vincular</option>
-                      {products.map((product) => (
-                        <option key={product.id} value={product.id}>
-                          {product.name} ({product.quantity} {product.unit} disp.)
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="sm:col-span-3">
-                    <label className={labelClass}>Subtotal</label>
-                    <p className="font-body-md text-on-surface py-3">
-                      {currencyFormatter.format(item.unitPrice * item.quantity)}
-                    </p>
-                  </div>
+                <div className="sm:col-span-2">
+                  <label className={labelClass}>Cantidad</label>
+                  <input
+                    type="number"
+                    min={0.01}
+                    step="0.01"
+                    className={inputClass}
+                    value={item.quantity}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/^0+(?=\d)/, "");
+                      const parsed = raw === "" ? 0 : Number(raw);
+                      updateItem(item.key, { quantity: Number.isNaN(parsed) ? 0 : parsed });
+                    }}
+                  />
                 </div>
-
-                {linkedProduct && (
-                  <p
-                    className={`font-label-sm uppercase mt-2 ${insufficient ? "text-error" : "text-on-surface-variant/70"}`}
+                <div className="sm:col-span-2">
+                  <label className={labelClass}>Unidad</label>
+                  <input
+                    className={inputClass}
+                    placeholder="sacos, m3..."
+                    value={item.unit}
+                    onChange={(e) => updateItem(item.key, { unit: e.target.value })}
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className={labelClass}>Precio unitario</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step="1"
+                    className={inputClass}
+                    value={item.unitPrice}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/^0+(?=\d)/, "");
+                      const parsed = raw === "" ? 0 : Number(raw);
+                      updateItem(item.key, { unitPrice: Number.isNaN(parsed) ? 0 : parsed });
+                    }}
+                  />
+                </div>
+                <div className="sm:col-span-1 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => removeItem(item.key)}
+                    className="text-on-surface-variant hover:text-error transition-colors"
+                    title="Quitar"
                   >
-                    {insufficient
-                      ? `Stock insuficiente en inventario (disponible: ${linkedProduct.quantity} ${linkedProduct.unit})`
-                      : "Al despachar, se descontara del inventario"}
-                  </p>
-                )}
+                    <span className="material-symbols-outlined text-[20px]">delete</span>
+                  </button>
+                </div>
               </div>
-            );
-          })}
+
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                <div className="sm:col-span-9">
+                  <label className={labelClass}>Categoria (para almacenar en inventario al recibir)</label>
+                  <select
+                    className={inputClass}
+                    value={item.categoriaId}
+                    onChange={(e) => updateItem(item.key, { categoriaId: e.target.value })}
+                  >
+                    <option value="">Sin categoria (no se inventaria)</option>
+                    {categorias.map((categoria) => (
+                      <option key={categoria.id} value={categoria.id}>
+                        {categoria.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="sm:col-span-3">
+                  <label className={labelClass}>Subtotal</label>
+                  <p className="font-body-md text-on-surface py-3">
+                    {currencyFormatter.format(item.unitPrice * item.quantity)}
+                  </p>
+                </div>
+              </div>
+
+              {item.categoriaId && (
+                <p className="font-label-sm text-on-surface-variant/70 uppercase mt-2">
+                  Al marcar el pedido como recibido, este material se sumara automaticamente al inventario.
+                </p>
+              )}
+            </div>
+          ))}
         </div>
 
         <div className="flex justify-end items-center gap-4 mb-8 border-t border-outline-variant pt-4">
@@ -292,7 +293,7 @@ export function AssignOrderModal({ order, proveedores, products, onClose, onSubm
             disabled={isSubmitting}
             className="flex-1 bg-primary-container text-on-primary font-label-sm uppercase py-3 hover:bg-primary-fixed transition-colors disabled:opacity-60"
           >
-            {isSubmitting ? "Guardando..." : "Confirmar pedido"}
+            {isSubmitting ? "Guardando..." : "Confirmar compra"}
           </button>
         </div>
       </form>

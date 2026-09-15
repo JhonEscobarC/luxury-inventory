@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
-import { OrderStatus } from "@prisma/client";
+import { OrderStatus, FormaPago } from "@prisma/client";
 import * as ordersService from "./orders.service";
 import * as obrasService from "../obras/obras.service";
 import { HttpError } from "../../middleware/errorHandler";
@@ -9,6 +9,7 @@ const orderItemSchema = z.object({
   description: z.string().trim().min(1, "Describe el material"),
   quantity: z.number().positive("La cantidad debe ser mayor a cero"),
   unit: z.string().trim().min(1, "La unidad es requerida"),
+  categoriaId: z.string().uuid().optional().nullable(),
 });
 
 const createOrderSchema = z.object({
@@ -25,6 +26,7 @@ const updateOrderSchema = z.object({
 const assignOrderSchema = z.object({
   proveedorId: z.string().uuid("Proveedor invalido"),
   notes: z.string().trim().min(1).optional().nullable(),
+  formaPago: z.nativeEnum(FormaPago, { required_error: "Selecciona la forma de pago" }),
   items: z
     .array(
       z.object({
@@ -32,7 +34,7 @@ const assignOrderSchema = z.object({
         quantity: z.number().positive("La cantidad debe ser mayor a cero"),
         unit: z.string().trim().min(1, "La unidad es requerida"),
         unitPrice: z.number().min(0),
-        productId: z.string().uuid().optional().nullable(),
+        categoriaId: z.string().uuid().optional().nullable(),
       }),
     )
     .min(1, "El pedido debe tener al menos un material"),

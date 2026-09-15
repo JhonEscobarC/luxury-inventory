@@ -1,12 +1,14 @@
 import {
   Prisma,
   OrderStatus,
+  FormaPago,
   HistorialTipo,
   type Order,
   type OrderItem,
   type Obra,
   type Proveedor,
   type Product,
+  type Categoria,
   type User,
 } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
@@ -14,10 +16,15 @@ import { HttpError } from "../../middleware/errorHandler";
 import { recordEvento } from "../historial/historial.service";
 import { endOfDay } from "../../utils/dates";
 
+// Los estados internos (PENDIENTE/CONFIRMADO/DESPACHADO) no cambiaron de nombre para
+// evitar una migracion de datos riesgosa; en toda la interfaz se muestran como
+// Solicitud / Compra / Recibido.
+
 export interface OrderItemInput {
   description: string;
   quantity: number;
   unit: string;
+  categoriaId?: string | null;
 }
 
 export interface CreateOrderInput {
@@ -33,19 +40,20 @@ export interface AssignmentItemInput {
   quantity: number;
   unit: string;
   unitPrice: number;
-  productId?: string | null;
+  categoriaId?: string | null;
 }
 
 export interface AssignOrderInput {
   proveedorId: string;
   notes?: string | null;
+  formaPago: FormaPago;
   items: AssignmentItemInput[];
 }
 
-type OrderItemWithProduct = OrderItem & { product: Product | null };
+type OrderItemWithRelations = OrderItem & { product: Product | null; categoria: Categoria | null };
 
 type OrderWithRelations = Order & {
-  items: OrderItemWithProduct[];
+  items: OrderItemWithRelations[];
   obra: Obra;
   proveedor: Proveedor | null;
   createdBy: User;
@@ -70,6 +78,8 @@ function serializeOrder(order: OrderWithRelations) {
       unit: item.unit,
       unitPrice,
       subtotal: unitPrice === null ? null : quantity * unitPrice,
+      categoriaId: item.categoriaId,
+      categoriaName: item.categoria?.name ?? null,
       productId: item.productId,
       productName: item.product?.name ?? null,
     };
@@ -83,6 +93,7 @@ function serializeOrder(order: OrderWithRelations) {
     id: order.id,
     status: order.status,
     notes: order.notes,
+    formaPago: order.formaPago,
     obraId: order.obraId,
     obraName: order.obra.name,
     proveedorId: order.proveedorId,
@@ -98,7 +109,7 @@ function serializeOrder(order: OrderWithRelations) {
 }
 
 const orderInclude = {
-  items: { include: { product: true } },
+  items: { include: { product: true, categoria: true } },
   obra: true,
   proveedor: true,
   createdBy: true,
@@ -175,6 +186,7 @@ export async function createOrder(input: CreateOrderInput, createdById: string) 
           description: item.description,
           quantity: item.quantity,
           unit: item.unit,
+          categoriaId: item.categoriaId ?? null,
         })),
       },
     },
@@ -184,7 +196,7 @@ export async function createOrder(input: CreateOrderInput, createdById: string) 
   const serialized = serializeOrder(order);
   await recordEvento({
     tipo: HistorialTipo.PEDIDO_CREADO,
-    descripcion: `Pedido creado para "${serialized.obraName}"`,
+    descripcion: `Solicitud creada para "${serialized.obraName}"`,
     userId: createdById,
     obraId: serialized.obraId,
     orderId: serialized.id,
@@ -199,7 +211,7 @@ export async function updateOrder(id: string, input: UpdateOrderInput) {
     throw new HttpError(404, "Pedido no encontrado");
   }
   if (existing.status !== OrderStatus.PENDIENTE) {
-    throw new HttpError(400, "Solo se pueden editar pedidos en estado pendiente");
+    throw new HttpError(400, "Solo se pueden editar solicitudes en estado pendiente");
   }
 
   if (input.items) {
@@ -220,6 +232,7 @@ export async function updateOrder(id: string, input: UpdateOrderInput) {
               description: item.description,
               quantity: item.quantity,
               unit: item.unit,
+              categoriaId: item.categoriaId ?? null,
             })),
           },
         }),
@@ -237,7 +250,7 @@ export async function assignOrder(id: string, input: AssignOrderInput, assignedB
     throw new HttpError(404, "Pedido no encontrado");
   }
   if (existing.status !== OrderStatus.PENDIENTE) {
-    throw new HttpError(400, "Solo se puede asignar proveedor a un pedido pendiente");
+    throw new HttpError(400, "Solo se puede pasar a compra una solicitud pendiente");
   }
 
   for (const item of input.items) {
@@ -249,14 +262,6 @@ export async function assignOrder(id: string, input: AssignOrderInput, assignedB
     }
   }
 
-  if (input.items.some((item) => item.productId)) {
-    const productIds = input.items.map((item) => item.productId).filter((v): v is string => Boolean(v));
-    const foundCount = await prisma.product.count({ where: { id: { in: productIds } } });
-    if (foundCount !== new Set(productIds).size) {
-      throw new HttpError(400, "Uno de los productos de inventario vinculados no existe");
-    }
-  }
-
   const order = await prisma.$transaction(async (tx) => {
     await tx.orderItem.deleteMany({ where: { orderId: id } });
     return tx.order.update({
@@ -265,6 +270,7 @@ export async function assignOrder(id: string, input: AssignOrderInput, assignedB
         proveedorId: input.proveedorId,
         assignedById,
         status: OrderStatus.CONFIRMADO,
+        formaPago: input.formaPago,
         ...(input.notes !== undefined && { notes: input.notes || null }),
         items: {
           create: input.items.map((item) => ({
@@ -272,7 +278,7 @@ export async function assignOrder(id: string, input: AssignOrderInput, assignedB
             quantity: item.quantity,
             unit: item.unit,
             unitPrice: item.unitPrice,
-            productId: item.productId ?? null,
+            categoriaId: item.categoriaId ?? null,
           })),
         },
       },
@@ -283,7 +289,9 @@ export async function assignOrder(id: string, input: AssignOrderInput, assignedB
   const serialized = serializeOrder(order);
   await recordEvento({
     tipo: HistorialTipo.PEDIDO_CONFIRMADO,
-    descripcion: `Pedido de "${serialized.obraName}" confirmado con proveedor "${serialized.proveedorName}"`,
+    descripcion: `Pedido de "${serialized.obraName}" pasado a compra con proveedor "${serialized.proveedorName}" (${
+      input.formaPago === FormaPago.CONTADO ? "contado" : "credito"
+    })`,
     monto: serialized.total,
     userId: assignedById,
     obraId: serialized.obraId,
@@ -292,6 +300,42 @@ export async function assignOrder(id: string, input: AssignOrderInput, assignedB
   });
 
   return serialized;
+}
+
+// Al recibir un pedido, cada material con categoria asignada se suma automaticamente al
+// inventario: si ya existe un producto con la misma categoria y nombre se le incrementa
+// la cantidad, si no existe se crea. Los materiales sin categoria no se inventarian.
+async function receiveItemsIntoInventory(
+  tx: Prisma.TransactionClient,
+  items: { id: string; description: string; quantity: Prisma.Decimal; unit: string; unitPrice: Prisma.Decimal | null; categoriaId: string | null }[],
+) {
+  for (const item of items) {
+    if (!item.categoriaId) continue;
+
+    const existingProduct = await tx.product.findFirst({
+      where: { categoriaId: item.categoriaId, name: { equals: item.description, mode: "insensitive" } },
+    });
+
+    if (existingProduct) {
+      await tx.product.update({
+        where: { id: existingProduct.id },
+        data: { quantity: { increment: item.quantity } },
+      });
+      await tx.orderItem.update({ where: { id: item.id }, data: { productId: existingProduct.id } });
+    } else {
+      const newProduct = await tx.product.create({
+        data: {
+          name: item.description,
+          categoriaId: item.categoriaId,
+          quantity: item.quantity,
+          unit: item.unit,
+          price: item.unitPrice ?? 0,
+          minStock: 0,
+        },
+      });
+      await tx.orderItem.update({ where: { id: item.id }, data: { productId: newProduct.id } });
+    }
+  }
 }
 
 export async function updateOrderStatus(id: string, nextStatus: OrderStatus, userId?: string) {
@@ -306,29 +350,8 @@ export async function updateOrderStatus(id: string, nextStatus: OrderStatus, use
   }
 
   if (nextStatus === OrderStatus.DESPACHADO) {
-    const linkedItems = existing.items.filter((item) => item.productId);
-
     const order = await prisma.$transaction(async (tx) => {
-      for (const item of linkedItems) {
-        const product = await tx.product.findUnique({ where: { id: item.productId! } });
-        if (!product) continue;
-        const available = Number(product.quantity);
-        const requested = Number(item.quantity);
-        if (available < requested) {
-          throw new HttpError(
-            400,
-            `Stock insuficiente para despachar "${product.name}" (disponible: ${available}, requerido: ${requested})`,
-          );
-        }
-      }
-
-      for (const item of linkedItems) {
-        await tx.product.update({
-          where: { id: item.productId! },
-          data: { quantity: { decrement: item.quantity } },
-        });
-      }
-
+      await receiveItemsIntoInventory(tx, existing.items);
       return tx.order.update({
         where: { id },
         data: { status: nextStatus },
@@ -339,7 +362,7 @@ export async function updateOrderStatus(id: string, nextStatus: OrderStatus, use
     const serialized = serializeOrder(order);
     await recordEvento({
       tipo: HistorialTipo.PEDIDO_DESPACHADO,
-      descripcion: `Pedido de "${serialized.obraName}" despachado`,
+      descripcion: `Pedido de "${serialized.obraName}" recibido (materiales almacenados en inventario)`,
       monto: serialized.total,
       userId,
       obraId: serialized.obraId,

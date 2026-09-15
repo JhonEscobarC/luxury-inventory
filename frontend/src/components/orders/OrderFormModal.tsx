@@ -1,10 +1,12 @@
 import { type FormEvent, useState } from "react";
 import type { Order, OrderInput, OrderItemInput } from "../../types/order";
 import type { Obra } from "../../types/obra";
+import type { Categoria } from "../../types/categoria";
 
 interface OrderFormModalProps {
   order: Order | null;
   obras: Obra[];
+  categorias: Categoria[];
   onClose: () => void;
   onSubmit: (input: OrderInput) => Promise<void>;
 }
@@ -15,17 +17,18 @@ interface DraftItem extends OrderItemInput {
 
 function draftItemsFromOrder(order: Order | null): DraftItem[] {
   if (!order) {
-    return [{ key: crypto.randomUUID(), description: "", quantity: 1, unit: "" }];
+    return [{ key: crypto.randomUUID(), description: "", quantity: 1, unit: "", categoriaId: "" }];
   }
   return order.items.map((item) => ({
     key: item.id,
     description: item.description,
     quantity: item.quantity,
     unit: item.unit,
+    categoriaId: item.categoriaId ?? "",
   }));
 }
 
-export function OrderFormModal({ order, obras, onClose, onSubmit }: OrderFormModalProps) {
+export function OrderFormModal({ order, obras, categorias, onClose, onSubmit }: OrderFormModalProps) {
   const [obraId, setObraId] = useState(order?.obraId ?? obras[0]?.id ?? "");
   const [notes, setNotes] = useState(order?.notes ?? "");
   const [items, setItems] = useState<DraftItem[]>(draftItemsFromOrder(order));
@@ -37,7 +40,10 @@ export function OrderFormModal({ order, obras, onClose, onSubmit }: OrderFormMod
   }
 
   function addItem() {
-    setItems((prev) => [...prev, { key: crypto.randomUUID(), description: "", quantity: 1, unit: "" }]);
+    setItems((prev) => [
+      ...prev,
+      { key: crypto.randomUUID(), description: "", quantity: 1, unit: "", categoriaId: "" },
+    ]);
   }
 
   function removeItem(key: string) {
@@ -63,7 +69,12 @@ export function OrderFormModal({ order, obras, onClose, onSubmit }: OrderFormMod
       await onSubmit({
         obraId,
         notes: notes || null,
-        items: validItems.map(({ description, quantity, unit }) => ({ description, quantity, unit })),
+        items: validItems.map(({ description, quantity, unit, categoriaId }) => ({
+          description,
+          quantity,
+          unit,
+          categoriaId: categoriaId || null,
+        })),
       });
       onClose();
     } catch (submitError: unknown) {
@@ -89,7 +100,9 @@ export function OrderFormModal({ order, obras, onClose, onSubmit }: OrderFormMod
         className="relative w-full max-w-3xl bg-surface-container border border-outline-variant p-6 md:p-8 max-h-[90vh] overflow-y-auto"
       >
         <div className="flex justify-between items-center mb-8">
-          <h3 className="text-headline-md-mobile text-primary uppercase">{order ? "Editar pedido" : "Nuevo pedido"}</h3>
+          <h3 className="text-headline-md-mobile text-primary uppercase">
+            {order ? "Editar solicitud" : "Nueva solicitud"}
+          </h3>
           <button type="button" onClick={onClose} className="text-on-surface-variant hover:text-primary">
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -133,7 +146,7 @@ export function OrderFormModal({ order, obras, onClose, onSubmit }: OrderFormMod
         <div className="flex flex-col gap-4 mb-6">
           {items.map((item) => (
             <div key={item.key} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-              <div className="sm:col-span-6">
+              <div className="sm:col-span-4">
                 <label className={labelClass}>Descripcion</label>
                 <input
                   className={inputClass}
@@ -142,7 +155,7 @@ export function OrderFormModal({ order, obras, onClose, onSubmit }: OrderFormMod
                   onChange={(e) => updateItem(item.key, { description: e.target.value })}
                 />
               </div>
-              <div className="sm:col-span-3">
+              <div className="sm:col-span-2">
                 <label className={labelClass}>Cantidad</label>
                 <input
                   type="number"
@@ -166,6 +179,21 @@ export function OrderFormModal({ order, obras, onClose, onSubmit }: OrderFormMod
                   value={item.unit}
                   onChange={(e) => updateItem(item.key, { unit: e.target.value })}
                 />
+              </div>
+              <div className="sm:col-span-3">
+                <label className={labelClass}>Categoria</label>
+                <select
+                  className={inputClass}
+                  value={item.categoriaId ?? ""}
+                  onChange={(e) => updateItem(item.key, { categoriaId: e.target.value })}
+                >
+                  <option value="">Sin categoria</option>
+                  {categorias.map((categoria) => (
+                    <option key={categoria.id} value={categoria.id}>
+                      {categoria.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="sm:col-span-1 flex justify-end">
                 <button

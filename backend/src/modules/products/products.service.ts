@@ -1,10 +1,10 @@
-import { Prisma, type Proveedor } from "@prisma/client";
+import { Prisma, type Proveedor, type Categoria } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { HttpError } from "../../middleware/errorHandler";
 
 export interface ListProductsParams {
   search?: string;
-  category?: string;
+  categoriaId?: string;
   lowStock?: boolean;
   page?: number;
   pageSize?: number;
@@ -12,7 +12,7 @@ export interface ListProductsParams {
 
 export interface ProductInput {
   name: string;
-  category: string;
+  categoriaId?: string | null;
   quantity: number;
   unit: string;
   price: number;
@@ -23,12 +23,13 @@ export interface ProductInput {
 function serializeProduct(product: {
   id: string;
   name: string;
-  category: string;
   quantity: Prisma.Decimal;
   unit: string;
   price: Prisma.Decimal;
   proveedorId: string | null;
   proveedor?: Proveedor | null;
+  categoriaId: string | null;
+  categoria?: Categoria | null;
   minStock: Prisma.Decimal;
   createdAt: Date;
   updatedAt: Date;
@@ -38,7 +39,8 @@ function serializeProduct(product: {
   return {
     id: product.id,
     name: product.name,
-    category: product.category,
+    categoriaId: product.categoriaId,
+    categoriaName: product.categoria?.name ?? null,
     quantity,
     unit: product.unit,
     price: Number(product.price),
@@ -51,7 +53,7 @@ function serializeProduct(product: {
   };
 }
 
-const productInclude = { proveedor: true } satisfies Prisma.ProductInclude;
+const productInclude = { proveedor: true, categoria: true } satisfies Prisma.ProductInclude;
 
 export async function listProducts(params: ListProductsParams) {
   const page = params.page && params.page > 0 ? params.page : 1;
@@ -66,8 +68,8 @@ export async function listProducts(params: ListProductsParams) {
     ];
   }
 
-  if (params.category) {
-    where.category = params.category;
+  if (params.categoriaId) {
+    where.categoriaId = params.categoriaId;
   }
 
   const [rows, total] = await Promise.all([
@@ -103,14 +105,14 @@ export async function listAllProducts(params: Omit<ListProductsParams, "page" | 
     ];
   }
 
-  if (params.category) {
-    where.category = params.category;
+  if (params.categoriaId) {
+    where.categoriaId = params.categoriaId;
   }
 
   const rows = await prisma.product.findMany({
     where,
     include: productInclude,
-    orderBy: [{ category: "asc" }, { name: "asc" }],
+    orderBy: [{ name: "asc" }],
   });
 
   let items = rows.map(serializeProduct);
@@ -120,15 +122,6 @@ export async function listAllProducts(params: Omit<ListProductsParams, "page" | 
   }
 
   return items;
-}
-
-export async function getCategories(): Promise<string[]> {
-  const rows = await prisma.product.findMany({
-    select: { category: true },
-    distinct: ["category"],
-    orderBy: { category: "asc" },
-  });
-  return rows.map((row) => row.category);
 }
 
 export async function getProductById(id: string) {
@@ -143,7 +136,7 @@ export async function createProduct(input: ProductInput) {
   const product = await prisma.product.create({
     data: {
       name: input.name,
-      category: input.category,
+      categoriaId: input.categoriaId ?? null,
       quantity: input.quantity,
       unit: input.unit,
       price: input.price,
@@ -162,7 +155,7 @@ export async function updateProduct(id: string, input: Partial<ProductInput>) {
     where: { id },
     data: {
       ...(input.name !== undefined && { name: input.name }),
-      ...(input.category !== undefined && { category: input.category }),
+      ...(input.categoriaId !== undefined && { categoriaId: input.categoriaId }),
       ...(input.quantity !== undefined && { quantity: input.quantity }),
       ...(input.unit !== undefined && { unit: input.unit }),
       ...(input.price !== undefined && { price: input.price }),

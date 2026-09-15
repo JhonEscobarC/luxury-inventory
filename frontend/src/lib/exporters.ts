@@ -9,9 +9,9 @@ const GOLD_ARGB = "FFC6A15B";
 const ERROR_ARGB = "FFB4231F";
 
 const STATUS_LABEL: Record<string, string> = {
-  PENDIENTE: "Pendiente",
-  CONFIRMADO: "Confirmado",
-  DESPACHADO: "Despachado",
+  PENDIENTE: "Solicitud",
+  CONFIRMADO: "Compra",
+  DESPACHADO: "Recibido",
   CANCELADO: "Cancelado",
 };
 
@@ -59,7 +59,7 @@ export function exportInventoryPdf(products: Product[]) {
     head: [["Nombre", "Categoria", "Cantidad", "Unidad", "Precio (COP)", "Stock min.", "Estado"]],
     body: products.map((product) => [
       product.name,
-      product.category,
+      product.categoriaName ?? "-",
       product.quantity.toString(),
       product.unit,
       product.price.toLocaleString("es-CO"),
@@ -98,7 +98,7 @@ export async function exportInventoryExcel(products: Product[]) {
   products.forEach((product) => {
     const row = sheet.addRow({
       name: product.name,
-      category: product.category,
+      category: product.categoriaName ?? "-",
       quantity: product.quantity,
       unit: product.unit,
       price: product.price,

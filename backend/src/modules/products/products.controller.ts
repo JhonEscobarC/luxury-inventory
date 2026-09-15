@@ -4,7 +4,7 @@ import * as productsService from "./products.service";
 
 const productInputSchema = z.object({
   name: z.string().trim().min(1, "El nombre es requerido"),
-  category: z.string().trim().min(1, "La categoria es requerida"),
+  categoriaId: z.string().uuid("Categoria invalida").optional().nullable(),
   quantity: z.number().min(0, "La cantidad no puede ser negativa"),
   unit: z.string().trim().min(1, "La unidad es requerida"),
   price: z.number().min(0, "El precio no puede ser negativo"),
@@ -16,7 +16,7 @@ const productUpdateSchema = productInputSchema.partial();
 
 const listQuerySchema = z.object({
   search: z.string().trim().optional(),
-  category: z.string().trim().optional(),
+  categoriaId: z.string().uuid().optional(),
   lowStock: z
     .string()
     .optional()
@@ -40,15 +40,6 @@ export async function exportHandler(req: Request, res: Response, next: NextFunct
     const query = listQuerySchema.parse(req.query);
     const items = await productsService.listAllProducts(query);
     res.json({ items });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function categoriesHandler(req: Request, res: Response, next: NextFunction) {
-  try {
-    const categories = await productsService.getCategories();
-    res.json({ categories });
   } catch (error) {
     next(error);
   }

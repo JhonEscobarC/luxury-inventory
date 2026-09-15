@@ -15,9 +15,9 @@ const currencyFormatter = new Intl.NumberFormat("es-CO", {
 
 const TIPO_OPTIONS: { value: HistorialTipo | ""; label: string }[] = [
   { value: "", label: "Todos" },
-  { value: "PEDIDO_CREADO", label: "Pedido creado" },
-  { value: "PEDIDO_CONFIRMADO", label: "Pedido confirmado" },
-  { value: "PEDIDO_DESPACHADO", label: "Pedido despachado" },
+  { value: "PEDIDO_CREADO", label: "Solicitud creada" },
+  { value: "PEDIDO_CONFIRMADO", label: "Pedido en compra" },
+  { value: "PEDIDO_DESPACHADO", label: "Pedido recibido" },
   { value: "PEDIDO_CANCELADO", label: "Pedido cancelado" },
   { value: "ASIGNACION_CREADA", label: "Contratista asignado" },
   { value: "ETAPA_COMPLETADA", label: "Etapa completada" },
@@ -26,9 +26,9 @@ const TIPO_OPTIONS: { value: HistorialTipo | ""; label: string }[] = [
 ];
 
 const TIPO_META: Record<HistorialTipo, { label: string; icon: string; color: string }> = {
-  PEDIDO_CREADO: { label: "Pedido creado", icon: "assignment", color: "text-on-surface-variant" },
-  PEDIDO_CONFIRMADO: { label: "Pedido confirmado", icon: "fact_check", color: "text-tertiary" },
-  PEDIDO_DESPACHADO: { label: "Pedido despachado", icon: "local_shipping", color: "text-secondary" },
+  PEDIDO_CREADO: { label: "Solicitud creada", icon: "assignment", color: "text-on-surface-variant" },
+  PEDIDO_CONFIRMADO: { label: "Pedido en compra", icon: "fact_check", color: "text-tertiary" },
+  PEDIDO_DESPACHADO: { label: "Pedido recibido", icon: "local_shipping", color: "text-secondary" },
   PEDIDO_CANCELADO: { label: "Pedido cancelado", icon: "cancel", color: "text-error" },
   ASIGNACION_CREADA: { label: "Contratista asignado", icon: "engineering", color: "text-on-surface-variant" },
   ETAPA_COMPLETADA: { label: "Etapa completada", icon: "task_alt", color: "text-tertiary" },
