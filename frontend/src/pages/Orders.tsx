@@ -288,7 +288,7 @@ export function Orders() {
                           {isPending ? "Actualizando..." : "Marcar como recibido"}
                         </button>
                       )}
-                      {order.status === "DESPACHADO" && canAssign && (
+                      {canAssign && (order.status === "CONFIRMADO" || order.status === "DESPACHADO") && (
                         <button
                           onClick={() => setComprobanteOrder(order)}
                           className="border border-outline-variant text-on-surface-variant font-label-sm uppercase px-4 py-2 hover:border-primary hover:text-primary transition-colors"

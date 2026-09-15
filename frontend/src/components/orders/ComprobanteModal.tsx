@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import type { Order } from "../../types/order";
 
 interface ComprobanteModalProps {
@@ -18,24 +19,48 @@ export function ComprobanteModal({ order, onClose }: ComprobanteModalProps) {
   const numero = order.id.slice(0, 8).toUpperCase();
   const fecha = new Date(order.updatedAt);
 
-  return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center p-margin-mobile">
+  return createPortal(
+    <div className="comprobante-overlay fixed inset-0 z-[90] flex items-center justify-center p-margin-mobile">
       <style>{`
         @media print {
-          body * { visibility: hidden; }
-          #comprobante-print-area, #comprobante-print-area * { visibility: visible; }
-          #comprobante-print-area {
-            position: absolute; inset: 0; width: 100%; margin: 0; padding: 24px;
-            background: #ffffff !important; color: #111111 !important; box-shadow: none !important; border: none !important;
+          body > *:not(.comprobante-overlay) { display: none !important; }
+          body { background: #ffffff !important; }
+
+          .comprobante-overlay {
+            position: static !important;
+            height: auto !important;
+            padding: 0 !important;
+            display: block !important;
           }
+          .comprobante-shell {
+            position: static !important;
+            max-height: none !important;
+            overflow: visible !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            border: none !important;
+            box-shadow: none !important;
+          }
+          #comprobante-print-area {
+            position: static !important;
+            width: 100% !important;
+            margin: 0; padding: 24px;
+            background: #ffffff !important; box-shadow: none !important; border: none !important;
+          }
+          #comprobante-print-area * {
+            color: #1a1a1a !important;
+            border-color: #999999 !important;
+            background-color: transparent !important;
+          }
+          #comprobante-print-area .text-primary { color: #8a6d1f !important; }
           #comprobante-print-area .overflow-x-auto { overflow: visible !important; }
           #comprobante-print-area table { min-width: 0 !important; width: 100% !important; }
         }
       `}</style>
 
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm print:hidden" onClick={onClose} />
 
-      <div className="relative w-full max-w-3xl bg-surface-container border border-outline-variant max-h-[92vh] overflow-y-auto">
+      <div className="comprobante-shell relative w-full max-w-3xl bg-surface-container border border-outline-variant max-h-[92vh] overflow-y-auto">
         <div className="flex justify-between items-center p-6 md:p-8 pb-0 print:hidden">
           <h3 className="text-headline-md-mobile text-primary uppercase">{tipoComprobante}</h3>
           <button type="button" onClick={onClose} className="text-on-surface-variant hover:text-primary">
@@ -165,6 +190,7 @@ export function ComprobanteModal({ order, onClose }: ComprobanteModalProps) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
