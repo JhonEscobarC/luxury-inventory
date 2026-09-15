@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { createProduct, deleteProduct, listProducts, updateProduct } from "../lib/products";
 import { listProveedores } from "../lib/proveedores";
@@ -70,7 +70,13 @@ export function Inventory() {
       .catch(() => setObras([]));
   }, []);
 
+  const isFirstRender = useRef(true);
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      refresh();
+      return;
+    }
     const timeout = setTimeout(refresh, 250);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps

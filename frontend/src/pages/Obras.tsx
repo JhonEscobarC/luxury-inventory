@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { createObra, listObras, setObraActive, setObraUsers, updateObra } from "../lib/obras";
 import { listUsers } from "../lib/users";
@@ -56,11 +56,23 @@ export function Obras() {
     }
   }
 
+  // Cambiar de obra/proyecto es una navegacion, no una busqueda: se carga de inmediato.
   useEffect(() => {
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [proyectoId]);
+
+  // Solo la escritura en el buscador se debounce, y sin disparar un fetch duplicado al montar.
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     const timeout = setTimeout(refresh, 250);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, proyectoId]);
+  }, [search]);
 
   async function handleCreate(input: ObraInput) {
     await createObra(input);

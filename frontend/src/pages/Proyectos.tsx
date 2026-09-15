@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { createProyecto, listProyectos, setProyectoActive, updateProyecto } from "../lib/proyectos";
 import { listObras } from "../lib/obras";
@@ -34,7 +34,13 @@ export function Proyectos() {
     }
   }
 
+  const isFirstRender = useRef(true);
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      refresh();
+      return;
+    }
     const timeout = setTimeout(refresh, 250);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps

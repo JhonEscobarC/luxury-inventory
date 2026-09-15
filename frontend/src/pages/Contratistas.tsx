@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createContratista, listContratistas, setContratistaActive, updateContratista } from "../lib/contratistas";
 import type { Contratista, ContratistaInput } from "../types/contratista";
 import { ContratistaFormModal } from "../components/contratistas/ContratistaFormModal";
@@ -26,7 +26,13 @@ export function Contratistas() {
     }
   }
 
+  const isFirstRender = useRef(true);
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      refresh();
+      return;
+    }
     const timeout = setTimeout(refresh, 250);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps

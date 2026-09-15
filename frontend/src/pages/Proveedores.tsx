@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createProveedor, listProveedores, setProveedorActive, updateProveedor } from "../lib/proveedores";
 import { getProveedoresDeudaReport } from "../lib/reports";
 import type { Proveedor, ProveedorInput } from "../types/proveedor";
@@ -43,7 +43,13 @@ export function Proveedores() {
     }
   }
 
+  const isFirstRender = useRef(true);
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      refresh();
+      return;
+    }
     const timeout = setTimeout(refresh, 250);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
