@@ -69,3 +69,13 @@ export async function setCategoriaActive(id: string, isActive: boolean) {
   const categoria = await prisma.categoria.update({ where: { id }, data: { isActive } });
   return serializeCategoria(categoria);
 }
+
+export async function deleteCategoria(id: string) {
+  const existing = await prisma.categoria.findUnique({ where: { id } });
+  if (!existing) {
+    throw new HttpError(404, "Categoria no encontrada");
+  }
+  // Los productos y materiales de pedidos que la tenian asignada quedan sin
+  // categoria (onDelete: SetNull), no se bloquea ni se arrastra la eliminacion.
+  await prisma.categoria.delete({ where: { id } });
+}

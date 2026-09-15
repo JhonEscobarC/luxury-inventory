@@ -7,6 +7,7 @@ import type { Product, ProductInput } from "../types/product";
 import type { Proveedor } from "../types/proveedor";
 import type { Categoria } from "../types/categoria";
 import { ProductFormModal } from "../components/inventory/ProductFormModal";
+import { CategoriasModal } from "../components/inventory/CategoriasModal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 
 const currencyFormatter = new Intl.NumberFormat("es-CO", {
@@ -32,6 +33,7 @@ export function Inventory() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
+  const [isManagingCategorias, setIsManagingCategorias] = useState(false);
 
   async function refresh() {
     setIsLoading(true);
@@ -123,33 +125,39 @@ export function Inventory() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3 mb-8">
-        <button
-          onClick={() => setActiveCategoriaId(null)}
-          className={`font-label-sm uppercase px-4 py-2 border transition-colors ${
-            activeCategoriaId === null
-              ? "border-primary text-primary"
-              : "border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary"
-          }`}
-        >
-          Todos
-        </button>
-        {categorias.map((categoria) => (
-          <button
-            key={categoria.id}
-            onClick={() => setActiveCategoriaId(categoria.id)}
-            className={`font-label-sm uppercase px-4 py-2 border transition-colors ${
-              activeCategoriaId === categoria.id
-                ? "border-primary text-primary"
-                : "border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary"
-            }`}
+      <div className="flex flex-wrap items-end gap-4 mb-8">
+        <div className="w-48">
+          <label className="font-label-sm text-on-surface-variant uppercase tracking-widest block mb-2">
+            Categoria
+          </label>
+          <select
+            value={activeCategoriaId ?? ""}
+            onChange={(event) => setActiveCategoriaId(event.target.value || null)}
+            className="w-full bg-surface border border-outline-variant focus:outline-none focus:border-primary text-on-surface font-body-md px-3 py-3"
           >
-            {categoria.name}
+            <option value="">Todos</option>
+            {categorias.map((categoria) => (
+              <option key={categoria.id} value={categoria.id}>
+                {categoria.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {canManage && (
+          <button
+            onClick={() => setIsManagingCategorias(true)}
+            className="font-label-sm uppercase px-4 py-3 border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary transition-colors flex items-center gap-2"
+            title="Crear, editar o eliminar categorias"
+          >
+            <span className="material-symbols-outlined text-[18px]">category</span>
+            Categorias
           </button>
-        ))}
+        )}
+
         <button
           onClick={() => setShowLowStockOnly((prev) => !prev)}
-          className={`font-label-sm uppercase px-4 py-2 border transition-colors ${
+          className={`font-label-sm uppercase px-4 py-3 border transition-colors ${
             showLowStockOnly
               ? "border-error text-error"
               : "border-outline-variant text-on-surface-variant hover:border-error hover:text-error"
@@ -271,6 +279,10 @@ export function Inventory() {
           onConfirm={handleDelete}
           onCancel={() => setDeletingProduct(null)}
         />
+      )}
+
+      {isManagingCategorias && (
+        <CategoriasModal onClose={() => setIsManagingCategorias(false)} onChanged={refresh} />
       )}
     </div>
   );

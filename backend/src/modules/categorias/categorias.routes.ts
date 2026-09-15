@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { requireAuth, requireRole } from "../../middleware/auth";
-import { createHandler, listHandler, setActiveHandler, updateHandler } from "./categorias.controller";
+import { createHandler, deleteHandler, listHandler, setActiveHandler, updateHandler } from "./categorias.controller";
 
 export const categoriasRouter = Router();
 
@@ -12,3 +12,4 @@ categoriasRouter.get("/", listHandler);
 categoriasRouter.post("/", requireRole("ADMIN", "CONTABILIDAD"), createHandler);
 categoriasRouter.put("/:id", requireRole("ADMIN", "CONTABILIDAD"), updateHandler);
 categoriasRouter.patch("/:id/active", requireRole("ADMIN", "CONTABILIDAD"), setActiveHandler);
+categoriasRouter.delete("/:id", requireRole("ADMIN", "CONTABILIDAD"), deleteHandler);
