@@ -189,7 +189,7 @@ export function Orders() {
           orders.map((order) => {
             const isExpanded = expandedId === order.id;
             const isOwner = order.createdById === user?.id;
-            const canEdit = isObra && isOwner && order.status === "PENDIENTE";
+            const canEdit = (isObra ? isOwner : canAssign) && order.status === "PENDIENTE";
             const canCancel =
               (isObra && isOwner && order.status === "PENDIENTE") ||
               (canAssign && (order.status === "PENDIENTE" || order.status === "CONFIRMADO"));

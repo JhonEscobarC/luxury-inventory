@@ -17,6 +17,6 @@ ordersRouter.get("/", listHandler);
 ordersRouter.get("/:id", getHandler);
 
 ordersRouter.post("/", requireRole("OBRA"), createHandler);
-ordersRouter.put("/:id", requireRole("OBRA"), updateHandler);
+ordersRouter.put("/:id", requireRole("ADMIN", "CONTABILIDAD", "OBRA"), updateHandler);
 ordersRouter.patch("/:id/assign", requireRole("ADMIN", "CONTABILIDAD"), assignHandler);
 ordersRouter.patch("/:id/status", updateStatusHandler);
