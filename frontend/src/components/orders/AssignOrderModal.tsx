@@ -11,6 +11,8 @@ interface AssignOrderModalProps {
   onSubmit: (input: AssignOrderInput) => Promise<void>;
 }
 
+type ProveedorMode = "single" | "per-item";
+
 interface DraftItem {
   key: string;
   description: string;
@@ -18,6 +20,7 @@ interface DraftItem {
   unit: string;
   unitPrice: number;
   categoriaId: string;
+  proveedorId: string;
 }
 
 const currencyFormatter = new Intl.NumberFormat("es-CO", {
@@ -35,14 +38,19 @@ function draftItemsFromOrder(order: Order): DraftItem[] {
     unit: item.unit,
     unitPrice: item.unitPrice ?? 0,
     categoriaId: item.categoriaId ?? "",
+    proveedorId: item.proveedorId ?? "",
   }));
 }
 
 export function AssignOrderModal({ order, proveedores, categorias, onClose, onSubmit }: AssignOrderModalProps) {
+  const initialItems = draftItemsFromOrder(order);
+  const [mode, setMode] = useState<ProveedorMode>(
+    !order.proveedorId && initialItems.some((item) => item.proveedorId) ? "per-item" : "single",
+  );
   const [proveedorId, setProveedorId] = useState(order.proveedorId ?? proveedores[0]?.id ?? "");
   const [formaPago, setFormaPago] = useState<FormaPago>(order.formaPago ?? "CONTADO");
   const [notes, setNotes] = useState(order.notes ?? "");
-  const [items, setItems] = useState<DraftItem[]>(draftItemsFromOrder(order));
+  const [items, setItems] = useState<DraftItem[]>(initialItems);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -52,6 +60,16 @@ export function AssignOrderModal({ order, proveedores, categorias, onClose, onSu
 
   const total = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
 
+  function switchMode(nextMode: ProveedorMode) {
+    if (nextMode === mode) return;
+    setMode(nextMode);
+    if (nextMode === "per-item") {
+      // Al pasar a proveedor-por-item, precargamos el proveedor unico como punto de
+      // partida en los items que aun no tengan uno propio: evita dejar todo en blanco.
+      setItems((prev) => prev.map((item) => (item.proveedorId ? item : { ...item, proveedorId })));
+    }
+  }
+
   function updateItem(key: string, patch: Partial<DraftItem>) {
     setItems((prev) => prev.map((item) => (item.key === key ? { ...item, ...patch } : item)));
   }
@@ -59,7 +77,15 @@ export function AssignOrderModal({ order, proveedores, categorias, onClose, onSu
   function addItem() {
     setItems((prev) => [
       ...prev,
-      { key: crypto.randomUUID(), description: "", quantity: 1, unit: "", unitPrice: 0, categoriaId: "" },
+      {
+        key: crypto.randomUUID(),
+        description: "",
+        quantity: 1,
+        unit: "",
+        unitPrice: 0,
+        categoriaId: "",
+        proveedorId: mode === "per-item" ? proveedorId : "",
+      },
     ]);
   }
 
@@ -71,28 +97,38 @@ export function AssignOrderModal({ order, proveedores, categorias, onClose, onSu
     event.preventDefault();
     setError(null);
 
-    if (!proveedorId) {
-      setError("Selecciona un proveedor.");
-      return;
-    }
     const validItems = items.filter((item) => item.description.trim() && item.unit.trim() && item.quantity > 0);
     if (validItems.length === 0) {
       setError("Agrega al menos un material con descripcion, unidad y cantidad validas.");
       return;
     }
 
+    if (mode === "single") {
+      if (!proveedorId) {
+        setError("Selecciona un proveedor.");
+        return;
+      }
+    } else {
+      const missing = validItems.find((item) => !item.proveedorId);
+      if (missing) {
+        setError(`Selecciona un proveedor para "${missing.description || "un material"}".`);
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
       await onSubmit({
-        proveedorId,
+        proveedorId: mode === "single" ? proveedorId : null,
         notes: notes || null,
         formaPago,
-        items: validItems.map(({ description, quantity, unit, unitPrice, categoriaId }) => ({
+        items: validItems.map(({ description, quantity, unit, unitPrice, categoriaId, proveedorId: itemProveedorId }) => ({
           description,
           quantity,
           unit,
           unitPrice,
           categoriaId: categoriaId || null,
+          proveedorId: mode === "per-item" ? itemProveedorId || null : null,
         })),
       });
       onClose();
@@ -132,19 +168,57 @@ export function AssignOrderModal({ order, proveedores, categorias, onClose, onSu
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
-          <div>
-            <label className={labelClass}>Proveedor</label>
-            <select className={inputClass} value={proveedorId} onChange={(e) => setProveedorId(e.target.value)}>
-              {proveedores.length === 0 && <option value="">No hay proveedores activos</option>}
-              {proveedores.map((proveedor) => (
-                <option key={proveedor.id} value={proveedor.id}>
-                  {proveedor.name}
-                </option>
-              ))}
-            </select>
+        <div className="mb-6">
+          <label className={labelClass}>Proveedores</label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => switchMode("single")}
+              className={`text-left border px-4 py-3 transition-colors ${
+                mode === "single"
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-outline-variant text-on-surface-variant hover:border-primary"
+              }`}
+            >
+              <span className="font-label-sm uppercase tracking-widest flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px]">local_shipping</span>
+                Un solo proveedor
+              </span>
+              <span className="font-body-md text-on-surface-variant/80 block mt-1">Para todo el pedido</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode("per-item")}
+              className={`text-left border px-4 py-3 transition-colors ${
+                mode === "per-item"
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-outline-variant text-on-surface-variant hover:border-primary"
+              }`}
+            >
+              <span className="font-label-sm uppercase tracking-widest flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px]">splitscreen</span>
+                Proveedor por material
+              </span>
+              <span className="font-body-md text-on-surface-variant/80 block mt-1">Uno distinto por cada item</span>
+            </button>
           </div>
-          <div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+          {mode === "single" && (
+            <div>
+              <label className={labelClass}>Proveedor</label>
+              <select className={inputClass} value={proveedorId} onChange={(e) => setProveedorId(e.target.value)}>
+                {proveedores.length === 0 && <option value="">No hay proveedores activos</option>}
+                {proveedores.map((proveedor) => (
+                  <option key={proveedor.id} value={proveedor.id}>
+                    {proveedor.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className={mode === "single" ? "" : "sm:col-span-2"}>
             <label className={labelClass}>Forma de pago</label>
             <select
               className={inputClass}
@@ -158,6 +232,7 @@ export function AssignOrderModal({ order, proveedores, categorias, onClose, onSu
               {formaPago === "CONTADO"
                 ? "Se paga de una vez: no queda registrado como deuda al proveedor."
                 : "Queda registrado como deuda al proveedor hasta su posterior pago (abono)."}
+              {mode === "per-item" && " Aplica igual para todos los proveedores del pedido."}
             </p>
           </div>
         </div>
@@ -241,7 +316,7 @@ export function AssignOrderModal({ order, proveedores, categorias, onClose, onSu
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-                <div className="sm:col-span-9">
+                <div className={mode === "per-item" ? "sm:col-span-5" : "sm:col-span-9"}>
                   <label className={labelClass}>Categoria (para almacenar en inventario al recibir)</label>
                   <select
                     className={inputClass}
@@ -256,6 +331,23 @@ export function AssignOrderModal({ order, proveedores, categorias, onClose, onSu
                     ))}
                   </select>
                 </div>
+                {mode === "per-item" && (
+                  <div className="sm:col-span-4">
+                    <label className={labelClass}>Proveedor</label>
+                    <select
+                      className={inputClass}
+                      value={item.proveedorId}
+                      onChange={(e) => updateItem(item.key, { proveedorId: e.target.value })}
+                    >
+                      <option value="">Selecciona...</option>
+                      {proveedores.map((proveedor) => (
+                        <option key={proveedor.id} value={proveedor.id}>
+                          {proveedor.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div className="sm:col-span-3">
                   <label className={labelClass}>Subtotal</label>
                   <p className="font-body-md text-on-surface py-3">

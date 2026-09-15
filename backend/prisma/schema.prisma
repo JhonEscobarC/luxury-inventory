@@ -227,9 +227,10 @@ model Proveedor {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  orders   Order[]
-  products Product[]
-  abonos   Abono[]
+  orders     Order[]
+  orderItems OrderItem[]
+  products   Product[]
+  abonos     Abono[]
 
   @@map("proveedores")
 }
@@ -317,6 +318,11 @@ model OrderItem {
 
   productId String?
   product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  // Solo se usa cuando el pedido asigna un proveedor distinto por material; si el
+  // pedido usa un unico proveedor, este queda null y se usa Order.proveedorId.
+  proveedorId String?
+  proveedor   Proveedor? @relation(fields: [proveedorId], references: [id], onDelete: SetNull)
 
   @@map("order_items")
 }

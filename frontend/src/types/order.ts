@@ -12,6 +12,8 @@ export interface OrderItem {
   categoriaName: string | null;
   productId: string | null;
   productName: string | null;
+  proveedorId: string | null;
+  proveedorName: string | null;
 }
 
 export interface Order {
@@ -23,6 +25,8 @@ export interface Order {
   obraName: string;
   proveedorId: string | null;
   proveedorName: string | null;
+  /** true si el pedido usa un proveedor distinto por material y no coinciden entre si. */
+  hasMultipleProveedores: boolean;
   createdById: string;
   createdByName: string;
   assignedByName: string | null;
@@ -46,7 +50,8 @@ export interface OrderInput {
 }
 
 export interface AssignOrderInput {
-  proveedorId: string;
+  /** null = proveedor distinto por material (cada item trae el suyo). */
+  proveedorId: string | null;
   notes?: string | null;
   formaPago: FormaPago;
   items: {
@@ -55,5 +60,6 @@ export interface AssignOrderInput {
     unit: string;
     unitPrice: number;
     categoriaId?: string | null;
+    proveedorId?: string | null;
   }[];
 }

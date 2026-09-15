@@ -24,7 +24,8 @@ const updateOrderSchema = z.object({
 });
 
 const assignOrderSchema = z.object({
-  proveedorId: z.string().uuid("Proveedor invalido"),
+  // null/undefined = proveedor distinto por material (cada item trae el suyo).
+  proveedorId: z.string().uuid("Proveedor invalido").optional().nullable(),
   notes: z.string().trim().min(1).optional().nullable(),
   formaPago: z.nativeEnum(FormaPago, { required_error: "Selecciona la forma de pago" }),
   items: z
@@ -35,6 +36,7 @@ const assignOrderSchema = z.object({
         unit: z.string().trim().min(1, "La unidad es requerida"),
         unitPrice: z.number().min(0),
         categoriaId: z.string().uuid().optional().nullable(),
+        proveedorId: z.string().uuid().optional().nullable(),
       }),
     )
     .min(1, "El pedido debe tener al menos un material"),

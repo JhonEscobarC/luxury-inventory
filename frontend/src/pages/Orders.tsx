@@ -215,6 +215,12 @@ export function Orders() {
                           {order.proveedorName}
                         </span>
                       )}
+                      {!order.proveedorName && order.hasMultipleProveedores && (
+                        <span className="font-label-sm uppercase px-2 py-1 border border-outline-variant text-on-surface-variant flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[14px]">splitscreen</span>
+                          Varios proveedores
+                        </span>
+                      )}
                       {order.formaPago && (
                         <span className="font-label-sm uppercase px-2 py-1 border border-outline-variant text-on-surface-variant">
                           {order.formaPago === "CONTADO" ? "Contado" : "Credito"}
@@ -250,6 +256,11 @@ export function Orders() {
                             {item.productName && (
                               <span className="font-label-sm text-primary uppercase ml-2">
                                 (inventario: {item.productName})
+                              </span>
+                            )}
+                            {item.proveedorName && (
+                              <span className="font-label-sm text-on-surface-variant/70 uppercase ml-2">
+                                (proveedor: {item.proveedorName})
                               </span>
                             )}
                           </span>

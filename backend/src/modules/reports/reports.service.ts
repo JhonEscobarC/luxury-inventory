@@ -107,18 +107,24 @@ export async function getFinancieroReport(): Promise<FinancieroReport> {
 export async function getProveedorSaldo(proveedorId: string): Promise<number> {
   const [orders, abonoSum] = await Promise.all([
     // Solo los pedidos a credito generan deuda: los de contado ya quedaron pagados
-    // al momento de la compra.
+    // al momento de la compra. Se consultan todos (no solo los de este proveedor)
+    // porque con proveedor-por-item el proveedor efectivo se decide item a item.
     prisma.order.findMany({
-      where: { status: OrderStatus.DESPACHADO, proveedorId, formaPago: FormaPago.CREDITO },
+      where: { status: OrderStatus.DESPACHADO, formaPago: FormaPago.CREDITO },
       include: { items: true },
     }),
     prisma.abono.aggregate({ where: { proveedorId }, _sum: { amount: true } }),
   ]);
 
   const totalDespachado = orders.reduce((sum, order) => {
-    const hasAllPrices = order.items.every((item) => item.unitPrice !== null);
-    if (!hasAllPrices) return sum;
-    return sum + order.items.reduce((s, item) => s + Number(item.quantity) * Number(item.unitPrice), 0);
+    return (
+      sum +
+      order.items.reduce((s, item) => {
+        const effectiveProveedorId = item.proveedorId ?? order.proveedorId;
+        if (effectiveProveedorId !== proveedorId || item.unitPrice === null) return s;
+        return s + Number(item.quantity) * Number(item.unitPrice);
+      }, 0)
+    );
   }, 0);
   const totalAbonado = Number(abonoSum._sum.amount ?? 0);
 
@@ -138,19 +144,22 @@ export async function getProveedoresDeudaReport(): Promise<ProveedorDeuda[]> {
   const [proveedores, orders, abonos] = await Promise.all([
     prisma.proveedor.findMany({ orderBy: { name: "asc" } }),
     prisma.order.findMany({
-      where: { status: OrderStatus.DESPACHADO, proveedorId: { not: null }, formaPago: FormaPago.CREDITO },
+      where: { status: OrderStatus.DESPACHADO, formaPago: FormaPago.CREDITO },
       include: { items: true },
     }),
     prisma.abono.groupBy({ by: ["proveedorId"], _sum: { amount: true } }),
   ]);
 
+  // Se agrega por item (no por pedido) porque con proveedor-por-item cada material
+  // puede pertenecer a un proveedor distinto dentro del mismo pedido.
   const despachadoByProveedor = new Map<string, number>();
   for (const order of orders) {
-    if (!order.proveedorId) continue;
-    const hasAllPrices = order.items.every((item) => item.unitPrice !== null);
-    if (!hasAllPrices) continue;
-    const total = order.items.reduce((sum, item) => sum + Number(item.quantity) * Number(item.unitPrice), 0);
-    despachadoByProveedor.set(order.proveedorId, (despachadoByProveedor.get(order.proveedorId) ?? 0) + total);
+    for (const item of order.items) {
+      const effectiveProveedorId = item.proveedorId ?? order.proveedorId;
+      if (!effectiveProveedorId || item.unitPrice === null) continue;
+      const subtotal = Number(item.quantity) * Number(item.unitPrice);
+      despachadoByProveedor.set(effectiveProveedorId, (despachadoByProveedor.get(effectiveProveedorId) ?? 0) + subtotal);
+    }
   }
 
   const abonadoByProveedor = new Map<string, number>();

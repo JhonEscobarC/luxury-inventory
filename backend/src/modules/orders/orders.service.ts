@@ -41,16 +41,22 @@ export interface AssignmentItemInput {
   unit: string;
   unitPrice: number;
   categoriaId?: string | null;
+  proveedorId?: string | null;
 }
 
 export interface AssignOrderInput {
-  proveedorId: string;
+  // null/undefined = el pedido usa un proveedor distinto por material (cada item trae el suyo).
+  proveedorId?: string | null;
   notes?: string | null;
   formaPago: FormaPago;
   items: AssignmentItemInput[];
 }
 
-type OrderItemWithRelations = OrderItem & { product: Product | null; categoria: Categoria | null };
+type OrderItemWithRelations = OrderItem & {
+  product: Product | null;
+  categoria: Categoria | null;
+  proveedor: Proveedor | null;
+};
 
 type OrderWithRelations = Order & {
   items: OrderItemWithRelations[];
@@ -82,12 +88,20 @@ function serializeOrder(order: OrderWithRelations) {
       categoriaName: item.categoria?.name ?? null,
       productId: item.productId,
       productName: item.product?.name ?? null,
+      proveedorId: item.proveedorId,
+      proveedorName: item.proveedor?.name ?? null,
     };
   });
 
   const total = items.every((item) => item.subtotal !== null)
     ? items.reduce((sum, item) => sum + (item.subtotal ?? 0), 0)
     : null;
+
+  // Con proveedor unico, todos los items comparten order.proveedorId (item.proveedorId
+  // queda null). Con proveedor por item, order.proveedorId queda null y cada item trae
+  // el suyo; si son todos iguales lo mostramos igual, si no, hayMultiplesProveedores.
+  const itemProveedorIds = new Set(items.map((item) => item.proveedorId).filter((id): id is string => !!id));
+  const hasMultipleProveedores = !order.proveedorId && itemProveedorIds.size > 1;
 
   return {
     id: order.id,
@@ -98,6 +112,7 @@ function serializeOrder(order: OrderWithRelations) {
     obraName: order.obra.name,
     proveedorId: order.proveedorId,
     proveedorName: order.proveedor?.name ?? null,
+    hasMultipleProveedores,
     createdById: order.createdById,
     createdByName: order.createdBy.name,
     assignedByName: order.assignedBy?.name ?? null,
@@ -109,7 +124,7 @@ function serializeOrder(order: OrderWithRelations) {
 }
 
 const orderInclude = {
-  items: { include: { product: true, categoria: true } },
+  items: { include: { product: true, categoria: true, proveedor: true } },
   obra: true,
   proveedor: true,
   createdBy: true,
@@ -262,12 +277,22 @@ export async function assignOrder(id: string, input: AssignOrderInput, assignedB
     }
   }
 
+  // Dos modos, mutuamente excluyentes: un solo proveedor para todo el pedido
+  // (input.proveedorId) o uno distinto por material (cada item trae el suyo).
+  const usesSingleProveedor = !!input.proveedorId;
+  if (!usesSingleProveedor) {
+    const missing = input.items.find((item) => !item.proveedorId);
+    if (missing) {
+      throw new HttpError(400, `Selecciona un proveedor para "${missing.description}"`);
+    }
+  }
+
   const order = await prisma.$transaction(async (tx) => {
     await tx.orderItem.deleteMany({ where: { orderId: id } });
     return tx.order.update({
       where: { id },
       data: {
-        proveedorId: input.proveedorId,
+        proveedorId: usesSingleProveedor ? input.proveedorId : null,
         assignedById,
         status: OrderStatus.CONFIRMADO,
         formaPago: input.formaPago,
@@ -279,6 +304,7 @@ export async function assignOrder(id: string, input: AssignOrderInput, assignedB
             unit: item.unit,
             unitPrice: item.unitPrice,
             categoriaId: item.categoriaId ?? null,
+            proveedorId: usesSingleProveedor ? null : item.proveedorId,
           })),
         },
       },
@@ -287,9 +313,10 @@ export async function assignOrder(id: string, input: AssignOrderInput, assignedB
   });
 
   const serialized = serializeOrder(order);
+  const proveedorLabel = serialized.proveedorName ?? "varios proveedores (uno por material)";
   await recordEvento({
     tipo: HistorialTipo.PEDIDO_CONFIRMADO,
-    descripcion: `Pedido de "${serialized.obraName}" pasado a compra con proveedor "${serialized.proveedorName}" (${
+    descripcion: `Pedido de "${serialized.obraName}" pasado a compra con proveedor "${proveedorLabel}" (${
       input.formaPago === FormaPago.CONTADO ? "contado" : "credito"
     })`,
     monto: serialized.total,

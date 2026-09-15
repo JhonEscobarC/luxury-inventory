@@ -88,7 +88,7 @@ export function ComprobanteModal({ order, onClose }: ComprobanteModalProps) {
             </div>
             <div>
               <p className="font-label-sm text-on-surface-variant uppercase">Proveedor</p>
-              <p>{order.proveedorName ?? "-"}</p>
+              <p>{order.proveedorName ?? (order.hasMultipleProveedores ? "Varios (ver detalle)" : "-")}</p>
             </div>
             <div>
               <p className="font-label-sm text-on-surface-variant uppercase">Forma de pago</p>
@@ -106,6 +106,7 @@ export function ComprobanteModal({ order, onClose }: ComprobanteModalProps) {
                 <tr className="border-b border-outline-variant font-label-sm text-on-surface-variant uppercase">
                   <th className="text-left py-2">Descripcion</th>
                   <th className="text-left py-2">Categoria</th>
+                  {order.hasMultipleProveedores && <th className="text-left py-2">Proveedor</th>}
                   <th className="text-right py-2">Cantidad</th>
                   <th className="text-right py-2">Precio unit.</th>
                   <th className="text-right py-2">Subtotal</th>
@@ -116,6 +117,7 @@ export function ComprobanteModal({ order, onClose }: ComprobanteModalProps) {
                   <tr key={item.id} className="border-b border-outline-variant/50">
                     <td className="py-2">{item.description}</td>
                     <td className="py-2">{item.categoriaName ?? "-"}</td>
+                    {order.hasMultipleProveedores && <td className="py-2">{item.proveedorName ?? "-"}</td>}
                     <td className="py-2 text-right whitespace-nowrap">
                       {item.quantity} {item.unit}
                     </td>
