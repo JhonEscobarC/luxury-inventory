@@ -153,15 +153,10 @@ export function ComprobanteModal({ order, onClose }: ComprobanteModalProps) {
               : "Este comprobante certifica una compra a credito; el saldo queda registrado como deuda con el proveedor hasta su pago."}
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-center">
             <div>
               <div className="border-t border-on-surface-variant pt-2">
                 <p className="font-label-sm text-on-surface-variant uppercase">Elaborado por</p>
-              </div>
-            </div>
-            <div>
-              <div className="border-t border-on-surface-variant pt-2">
-                <p className="font-label-sm text-on-surface-variant uppercase">Recibido por</p>
               </div>
             </div>
             <div>
