@@ -2,18 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { createProveedor, listProveedores, setProveedorActive, updateProveedor } from "../lib/proveedores";
 import { getProveedoresDeudaReport } from "../lib/reports";
+import { displayCurrency } from "../lib/currency";
 import type { Proveedor, ProveedorInput } from "../types/proveedor";
 import type { ProveedorDeuda } from "../types/report";
 import { ProveedorFormModal } from "../components/proveedores/ProveedorFormModal";
 import { ProveedorAbonosModal } from "../components/proveedores/ProveedorAbonosModal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
-
-const currencyFormatter = new Intl.NumberFormat("es-CO", {
-  style: "currency",
-  currency: "COP",
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
-});
 
 export function Proveedores() {
   const { user } = useAuth();
@@ -150,9 +144,7 @@ export function Proveedores() {
                 {proveedor.contactName || "-"} {proveedor.phone && `- ${proveedor.phone}`}
               </div>
               <div className="md:col-span-2 font-body-md font-semibold">
-                <span className={saldo > 0 ? "text-error" : "text-on-surface-variant"}>
-                  {currencyFormatter.format(saldo)}
-                </span>
+                <span className={saldo > 0 ? "text-error" : "text-on-surface-variant"}>{displayCurrency(saldo)}</span>
               </div>
               <div className="md:col-span-1">
                 <span

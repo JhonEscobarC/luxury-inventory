@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { createAbono, listAbonos } from "../../lib/abonos";
+import { currencyFormatter, displayCurrency } from "../../lib/currency";
 import type { Abono } from "../../types/abono";
 import type { Proveedor } from "../../types/proveedor";
 
@@ -9,13 +10,6 @@ interface ProveedorAbonosModalProps {
   onClose: () => void;
   onChanged?: () => void;
 }
-
-const currencyFormatter = new Intl.NumberFormat("es-CO", {
-  style: "currency",
-  currency: "COP",
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
-});
 
 export function ProveedorAbonosModal({ proveedor, saldoPendiente, onClose, onChanged }: ProveedorAbonosModalProps) {
   const [abonos, setAbonos] = useState<Abono[]>([]);
@@ -89,13 +83,13 @@ export function ProveedorAbonosModal({ proveedor, saldoPendiente, onClose, onCha
           </button>
         </div>
         <p className="font-label-sm text-on-surface-variant uppercase mb-8">
-          Total abonado: <span className="text-primary">{currencyFormatter.format(totalAbonado)}</span>
+          Total abonado: <span className="text-primary">{displayCurrency(totalAbonado)}</span>
           {saldoPendiente !== undefined && (
             <>
               {" "}
               &middot; Saldo pendiente:{" "}
               <span className={saldoPendiente > 0 ? "text-error" : "text-on-surface-variant"}>
-                {currencyFormatter.format(saldoPendiente)}
+                {displayCurrency(saldoPendiente)}
               </span>
             </>
           )}
@@ -152,7 +146,7 @@ export function ProveedorAbonosModal({ proveedor, saldoPendiente, onClose, onCha
                   {new Date(abono.createdAt).toLocaleDateString("es-CO")}
                 </div>
                 <div className="md:col-span-3 font-body-md font-semibold text-primary">
-                  {currencyFormatter.format(abono.amount)}
+                  {displayCurrency(abono.amount)}
                 </div>
                 <div className="md:col-span-4 font-body-md text-on-surface-variant">{abono.notes || "-"}</div>
                 <div className="md:col-span-2 font-label-sm uppercase text-on-surface-variant">

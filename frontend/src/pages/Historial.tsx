@@ -5,13 +5,7 @@ import { listProveedores } from "../lib/proveedores";
 import type { HistorialEvento, HistorialTipo } from "../types/historial";
 import type { Obra } from "../types/obra";
 import type { Proveedor } from "../types/proveedor";
-
-const currencyFormatter = new Intl.NumberFormat("es-CO", {
-  style: "currency",
-  currency: "COP",
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
-});
+import { displayCurrency } from "../lib/currency";
 
 const TIPO_OPTIONS: { value: HistorialTipo | ""; label: string }[] = [
   { value: "", label: "Todos" },
@@ -193,7 +187,7 @@ export function Historial() {
 
                 {evento.monto !== null && (
                   <div className="font-body-md font-semibold text-primary sm:text-right shrink-0">
-                    {currencyFormatter.format(evento.monto)}
+                    {displayCurrency(evento.monto)}
                   </div>
                 )}
               </div>

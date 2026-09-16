@@ -12,15 +12,9 @@ import { AssignUsersModal } from "../components/obras/AssignUsersModal";
 import { ObraAbonosClienteModal } from "../components/obras/ObraAbonosClienteModal";
 import { ObraContratistasModal } from "../components/contratistas/ObraContratistasModal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { displayCurrency } from "../lib/currency";
 
 const SIN_PROYECTO = "sin-proyecto";
-
-const currencyFormatter = new Intl.NumberFormat("es-CO", {
-  style: "currency",
-  currency: "COP",
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
-});
 
 export function Obras() {
   const { user } = useAuth();
@@ -194,7 +188,7 @@ export function Obras() {
               {obra.client && <p className="font-label-sm text-on-surface-variant uppercase mb-1">Cliente: {obra.client}</p>}
               {obra.precioVenta !== null && (
                 <p className="font-label-sm text-on-surface-variant uppercase mb-1">
-                  Precio de venta: {currencyFormatter.format(obra.precioVenta)}
+                  Precio de venta: {displayCurrency(obra.precioVenta)}
                 </p>
               )}
               {obra.address && <p className="font-body-md text-on-surface-variant mb-3">{obra.address}</p>}

@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { createAbonoCliente, listAbonosCliente } from "../../lib/abonosCliente";
+import { currencyFormatter, displayCurrency } from "../../lib/currency";
 import type { AbonoCliente } from "../../types/abonoCliente";
 import type { Obra } from "../../types/obra";
 import { ReciboCajaModal } from "./ReciboCajaModal";
@@ -9,13 +10,6 @@ interface ObraAbonosClienteModalProps {
   onClose: () => void;
   onChanged?: () => void;
 }
-
-const currencyFormatter = new Intl.NumberFormat("es-CO", {
-  style: "currency",
-  currency: "COP",
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
-});
 
 export function ObraAbonosClienteModal({ obra, onClose, onChanged }: ObraAbonosClienteModalProps) {
   const [abonos, setAbonos] = useState<AbonoCliente[]>([]);
@@ -91,14 +85,13 @@ export function ObraAbonosClienteModal({ obra, onClose, onChanged }: ObraAbonosC
           {obra.client ? `Comprador: ${obra.client}` : "Sin comprador asignado en la obra"}
         </p>
         <p className="font-label-sm text-on-surface-variant uppercase mb-8">
-          Total abonado: <span className="text-primary">{currencyFormatter.format(totalAbonado)}</span>
+          Total abonado: <span className="text-primary">{displayCurrency(totalAbonado)}</span>
           {obra.precioVenta !== null && (
             <>
               {" "}
-              &middot; Precio de venta: <span>{currencyFormatter.format(obra.precioVenta)}</span> &middot; Saldo
-              pendiente:{" "}
+              &middot; Precio de venta: <span>{displayCurrency(obra.precioVenta)}</span> &middot; Saldo pendiente:{" "}
               <span className={(saldoPendiente ?? 0) > 0 ? "text-error" : "text-on-surface-variant"}>
-                {currencyFormatter.format(saldoPendiente ?? 0)}
+                {displayCurrency(saldoPendiente ?? 0)}
               </span>
             </>
           )}
@@ -157,7 +150,7 @@ export function ObraAbonosClienteModal({ obra, onClose, onChanged }: ObraAbonosC
                   {new Date(abono.createdAt).toLocaleDateString("es-CO")}
                 </div>
                 <div className="md:col-span-2 font-body-md font-semibold text-primary">
-                  {currencyFormatter.format(abono.amount)}
+                  {displayCurrency(abono.amount)}
                 </div>
                 <div className="md:col-span-4 font-body-md text-on-surface-variant">{abono.notes || "-"}</div>
                 <div className="md:col-span-2 font-label-sm uppercase text-on-surface-variant">

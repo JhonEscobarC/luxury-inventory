@@ -5,18 +5,12 @@ import type { Asignacion, AsignacionInput, EtapaStatus } from "../../types/asign
 import type { Contratista } from "../../types/contratista";
 import type { Obra } from "../../types/obra";
 import { AsignacionFormModal } from "./AsignacionFormModal";
+import { displayCurrency } from "../../lib/currency";
 
 interface ObraContratistasModalProps {
   obra: Obra;
   onClose: () => void;
 }
-
-const currencyFormatter = new Intl.NumberFormat("es-CO", {
-  style: "currency",
-  currency: "COP",
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
-});
 
 const ETAPA_STATUS_LABEL: Record<EtapaStatus, string> = {
   PENDIENTE: "Pendiente",
@@ -146,7 +140,7 @@ export function ObraContratistasModal({ obra, onClose }: ObraContratistasModalPr
                     <div className="text-right">
                       <p className="font-label-sm text-on-surface-variant uppercase">Total</p>
                       <p className="font-body-md text-primary font-semibold">
-                        {currencyFormatter.format(asignacion.totalAmount)}
+                        {displayCurrency(asignacion.totalAmount)}
                       </p>
                     </div>
                     <button
@@ -179,7 +173,7 @@ export function ObraContratistasModal({ obra, onClose }: ObraContratistasModalPr
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="font-body-md text-on-surface-variant">
-                            {currencyFormatter.format(etapa.amount)}
+                            {displayCurrency(etapa.amount)}
                           </span>
                           {next && (
                             <button
@@ -198,11 +192,11 @@ export function ObraContratistasModal({ obra, onClose }: ObraContratistasModalPr
 
                 <div className="flex justify-end gap-6 mt-3 pt-3 border-t border-outline-variant">
                   <span className="font-label-sm text-on-surface-variant uppercase">
-                    Pagado: <span className="text-primary">{currencyFormatter.format(asignacion.paidAmount)}</span>
+                    Pagado: <span className="text-primary">{displayCurrency(asignacion.paidAmount)}</span>
                   </span>
                   <span className="font-label-sm text-on-surface-variant uppercase">
                     Pendiente:{" "}
-                    <span className="text-secondary">{currencyFormatter.format(asignacion.pendingAmount)}</span>
+                    <span className="text-secondary">{displayCurrency(asignacion.pendingAmount)}</span>
                   </span>
                 </div>
               </div>

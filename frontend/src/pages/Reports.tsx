@@ -7,6 +7,7 @@ import { listObras } from "../lib/obras";
 import { listProyectos } from "../lib/proyectos";
 import { listProveedores } from "../lib/proveedores";
 import { getClientesReport, getFinancieroReport, getProveedoresDeudaReport } from "../lib/reports";
+import { displayCurrency } from "../lib/currency";
 import {
   exportClientesExcel,
   exportClientesPdf,
@@ -38,13 +39,6 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   CANCELADO: "Cancelado",
 };
 
-const currencyFormatter = new Intl.NumberFormat("es-CO", {
-  style: "currency",
-  currency: "COP",
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
-});
-
 const selectClass =
   "w-full bg-surface border border-outline-variant focus:outline-none focus:border-primary text-on-surface font-body-md px-3 py-3";
 const labelClass = "font-label-sm text-on-surface-variant uppercase tracking-widest block mb-2";
@@ -73,7 +67,7 @@ function SummaryCards({ summary }: SummaryCardsProps) {
       </div>
       <div className="border border-outline-variant p-4">
         <p className="font-label-sm text-on-surface-variant uppercase mb-1">Total gastado</p>
-        <p className="text-headline-md-mobile text-primary">{currencyFormatter.format(summary.total)}</p>
+        <p className="text-headline-md-mobile text-primary">{displayCurrency(summary.total)}</p>
       </div>
       <div className="border border-outline-variant p-4 col-span-2 sm:col-span-1">
         <p className="font-label-sm text-on-surface-variant uppercase mb-2">Por estado</p>
@@ -676,9 +670,9 @@ export function Reports() {
                     <span className="font-body-md font-semibold text-primary uppercase">{proyecto.proyectoName}</span>
                     <MoneyStats
                       items={[
-                        { label: "Material", value: currencyFormatter.format(subtotal.gastoMaterial) },
-                        { label: "Operacion", value: currencyFormatter.format(subtotal.gastoOperacion) },
-                        { label: "Total", value: currencyFormatter.format(subtotal.total), emphasize: true },
+                        { label: "Material", value: displayCurrency(subtotal.gastoMaterial) },
+                        { label: "Operacion", value: displayCurrency(subtotal.gastoOperacion) },
+                        { label: "Total", value: displayCurrency(subtotal.total), emphasize: true },
                       ]}
                     />
                   </div>
@@ -718,9 +712,9 @@ export function Reports() {
               <span className="font-label-sm uppercase text-on-surface-variant">Total general (obras seleccionadas)</span>
               <MoneyStats
                 items={[
-                  { label: "Material", value: currencyFormatter.format(grandTotal.gastoMaterial) },
-                  { label: "Operacion", value: currencyFormatter.format(grandTotal.gastoOperacion) },
-                  { label: "Total", value: currencyFormatter.format(grandTotal.total), emphasize: true },
+                  { label: "Material", value: displayCurrency(grandTotal.gastoMaterial) },
+                  { label: "Operacion", value: displayCurrency(grandTotal.gastoOperacion) },
+                  { label: "Total", value: displayCurrency(grandTotal.total), emphasize: true },
                 ]}
               />
             </div>
@@ -750,11 +744,11 @@ export function Reports() {
                   <span className="font-body-md font-semibold text-primary uppercase">{proyecto.proyectoName}</span>
                   <MoneyStats
                     items={[
-                      { label: "Precio venta", value: currencyFormatter.format(proyecto.precioVenta) },
-                      { label: "Abonado", value: currencyFormatter.format(proyecto.totalAbonado) },
+                      { label: "Precio venta", value: displayCurrency(proyecto.precioVenta) },
+                      { label: "Abonado", value: displayCurrency(proyecto.totalAbonado) },
                       {
                         label: "Saldo",
-                        value: currencyFormatter.format(proyecto.precioVenta - proyecto.totalAbonado),
+                        value: displayCurrency(proyecto.precioVenta - proyecto.totalAbonado),
                         emphasize: true,
                       },
                     ]}
@@ -785,11 +779,11 @@ export function Reports() {
               <span className="font-label-sm uppercase text-on-surface-variant">Total general</span>
               <MoneyStats
                 items={[
-                  { label: "Precio venta", value: currencyFormatter.format(clientes.totalPrecioVenta) },
-                  { label: "Abonado", value: currencyFormatter.format(clientes.totalAbonado) },
+                  { label: "Precio venta", value: displayCurrency(clientes.totalPrecioVenta) },
+                  { label: "Abonado", value: displayCurrency(clientes.totalAbonado) },
                   {
                     label: "Saldo",
-                    value: currencyFormatter.format(clientes.totalPrecioVenta - clientes.totalAbonado),
+                    value: displayCurrency(clientes.totalPrecioVenta - clientes.totalAbonado),
                     emphasize: true,
                   },
                 ]}
@@ -861,18 +855,18 @@ export function Reports() {
                 <div className="md:col-span-4 font-body-md font-semibold text-on-surface">{deuda.proveedorName}</div>
                 <div className="md:col-span-2 font-body-md text-on-surface-variant">
                   <span className="md:hidden font-label-sm uppercase text-on-surface-variant/70 mr-1">Despachado:</span>
-                  {currencyFormatter.format(deuda.totalDespachado)}
+                  {displayCurrency(deuda.totalDespachado)}
                 </div>
                 <div className="md:col-span-2 font-body-md text-on-surface-variant">
                   <span className="md:hidden font-label-sm uppercase text-on-surface-variant/70 mr-1">Abonado:</span>
-                  {currencyFormatter.format(deuda.totalAbonado)}
+                  {displayCurrency(deuda.totalAbonado)}
                 </div>
                 <div className="md:col-span-2 font-body-md font-semibold">
                   <span className="md:hidden font-label-sm uppercase text-on-surface-variant/70 mr-1 font-normal">
                     Saldo:
                   </span>
                   <span className={deuda.saldo > 0 ? "text-error" : "text-on-surface-variant"}>
-                    {currencyFormatter.format(deuda.saldo)}
+                    {displayCurrency(deuda.saldo)}
                   </span>
                 </div>
                 <div className="md:col-span-2 flex justify-start md:justify-end">
@@ -934,9 +928,9 @@ function ObraFinancieroRow({ obra, checked, onToggle }: ObraFinancieroRowProps) 
       </label>
       <MoneyStats
         items={[
-          { label: "Material", value: currencyFormatter.format(obra.gastoMaterial) },
-          { label: "Operacion", value: currencyFormatter.format(obra.gastoOperacion) },
-          { label: "Total", value: currencyFormatter.format(obra.total) },
+          { label: "Material", value: displayCurrency(obra.gastoMaterial) },
+          { label: "Operacion", value: displayCurrency(obra.gastoOperacion) },
+          { label: "Total", value: displayCurrency(obra.total) },
         ]}
       />
     </div>
@@ -955,12 +949,12 @@ function ObraClientesRow({ obra }: { obra: ObraClientes }) {
         items={[
           {
             label: "Precio venta",
-            value: obra.precioVenta !== null ? currencyFormatter.format(obra.precioVenta) : "Sin definir",
+            value: obra.precioVenta !== null ? displayCurrency(obra.precioVenta) : "Sin definir",
           },
-          { label: "Abonado", value: currencyFormatter.format(obra.totalAbonado) },
+          { label: "Abonado", value: displayCurrency(obra.totalAbonado) },
           {
             label: "Saldo",
-            value: obra.saldo !== null ? currencyFormatter.format(obra.saldo) : "-",
+            value: obra.saldo !== null ? displayCurrency(obra.saldo) : "-",
             emphasize: obra.saldo !== null && obra.saldo > 0,
           },
         ]}

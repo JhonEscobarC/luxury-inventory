@@ -12,13 +12,7 @@ import { OrderFormModal } from "../components/orders/OrderFormModal";
 import { AssignOrderModal } from "../components/orders/AssignOrderModal";
 import { ComprobanteModal } from "../components/orders/ComprobanteModal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
-
-const currencyFormatter = new Intl.NumberFormat("es-CO", {
-  style: "currency",
-  currency: "COP",
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
-});
+import { displayCurrency } from "../lib/currency";
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
   PENDIENTE: "Solicitud",
@@ -233,7 +227,7 @@ export function Orders() {
                   </div>
 
                   <div className="font-body-md text-on-surface font-semibold">
-                    {order.total !== null ? currencyFormatter.format(order.total) : "Sin precio"}
+                    {order.total !== null ? displayCurrency(order.total) : "Sin precio"}
                   </div>
 
                   <span className="material-symbols-outlined text-on-surface-variant">
@@ -264,7 +258,7 @@ export function Orders() {
                               </span>
                             )}
                           </span>
-                          <span>{item.subtotal !== null ? currencyFormatter.format(item.subtotal) : "Sin precio"}</span>
+                          <span>{item.subtotal !== null ? displayCurrency(item.subtotal) : "Sin precio"}</span>
                         </div>
                       ))}
                     </div>

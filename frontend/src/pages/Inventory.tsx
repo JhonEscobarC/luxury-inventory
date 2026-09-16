@@ -12,13 +12,7 @@ import type { Obra } from "../types/obra";
 import { ProductFormModal } from "../components/inventory/ProductFormModal";
 import { CategoriasModal } from "../components/inventory/CategoriasModal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
-
-const currencyFormatter = new Intl.NumberFormat("es-CO", {
-  style: "currency",
-  currency: "COP",
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
-});
+import { displayCurrency } from "../lib/currency";
 
 export function Inventory() {
   const { user } = useAuth();
@@ -264,7 +258,7 @@ export function Inventory() {
 
               <div className="md:col-span-2 w-full flex justify-between md:justify-end items-center font-body-md text-on-surface">
                 <span className="md:hidden font-label-sm text-on-surface-variant uppercase">Precio:</span>
-                <span>{currencyFormatter.format(product.price)}</span>
+                <span>{displayCurrency(product.price)}</span>
               </div>
 
               <div className="md:col-span-2 w-full flex justify-end items-center gap-4">
