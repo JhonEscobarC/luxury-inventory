@@ -4,7 +4,7 @@ import { HttpError } from "../../middleware/errorHandler";
 import { recordEvento } from "../historial/historial.service";
 
 function serializeMaterialUso(
-  uso: MaterialUso & { product: Pick<Product, "id" | "name" | "unit">; obra: Pick<Obra, "id" | "name">; user: Pick<User, "id" | "name"> },
+  uso: MaterialUso & { product: Pick<Product, "id" | "name" | "unit">; obra: Pick<Obra, "id" | "name">; user: Pick<User, "id" | "name"> | null },
 ) {
   return {
     id: uso.id,
@@ -17,7 +17,7 @@ function serializeMaterialUso(
     obraId: uso.obraId,
     obraName: uso.obra.name,
     userId: uso.userId,
-    userName: uso.user.name,
+    userName: uso.user?.name ?? null,
   };
 }
 

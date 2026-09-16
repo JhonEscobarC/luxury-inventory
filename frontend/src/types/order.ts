@@ -27,8 +27,8 @@ export interface Order {
   proveedorName: string | null;
   /** true si el pedido usa un proveedor distinto por material y no coinciden entre si. */
   hasMultipleProveedores: boolean;
-  createdById: string;
-  createdByName: string;
+  createdById: string | null;
+  createdByName: string | null;
   assignedByName: string | null;
   createdAt: string;
   updatedAt: string;

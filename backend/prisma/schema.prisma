@@ -160,8 +160,8 @@ model MaterialUso {
   obraId String
   obra   Obra   @relation(fields: [obraId], references: [id], onDelete: Cascade)
 
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([obraId])
   @@index([productId])
@@ -249,7 +249,7 @@ model Abono {
   proveedor   Proveedor @relation(fields: [proveedorId], references: [id])
 
   createdById String?
-  createdBy   User?   @relation("AbonoCreatedBy", fields: [createdById], references: [id])
+  createdBy   User?   @relation("AbonoCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@map("abonos")
 }
@@ -266,7 +266,7 @@ model AbonoCliente {
   obra   Obra   @relation(fields: [obraId], references: [id])
 
   createdById String?
-  createdBy   User?   @relation("AbonoClienteCreatedBy", fields: [createdById], references: [id])
+  createdBy   User?   @relation("AbonoClienteCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@map("abonos_cliente")
 }
@@ -283,11 +283,11 @@ model Order {
   proveedorId String?
   proveedor   Proveedor? @relation(fields: [proveedorId], references: [id])
 
-  createdById String
-  createdBy   User   @relation("OrderCreatedBy", fields: [createdById], references: [id])
+  createdById String?
+  createdBy   User?   @relation("OrderCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
   assignedById String?
-  assignedBy   User?   @relation("OrderAssignedBy", fields: [assignedById], references: [id])
+  assignedBy   User?   @relation("OrderAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
 
   items OrderItem[]
 

@@ -62,7 +62,7 @@ type OrderWithRelations = Order & {
   items: OrderItemWithRelations[];
   obra: Obra;
   proveedor: Proveedor | null;
-  createdBy: User;
+  createdBy: User | null;
   assignedBy: User | null;
 };
 
@@ -114,7 +114,7 @@ function serializeOrder(order: OrderWithRelations) {
     proveedorName: order.proveedor?.name ?? null,
     hasMultipleProveedores,
     createdById: order.createdById,
-    createdByName: order.createdBy.name,
+    createdByName: order.createdBy?.name ?? null,
     assignedByName: order.assignedBy?.name ?? null,
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,

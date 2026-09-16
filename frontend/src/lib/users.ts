@@ -24,3 +24,7 @@ export async function setUserActive(id: string, isActive: boolean): Promise<Mana
 export async function resetUserPassword(id: string, password: string): Promise<void> {
   await api.patch(`/users/${id}/password`, { password });
 }
+
+export async function deleteUser(id: string): Promise<void> {
+  await api.delete(`/users/${id}`);
+}

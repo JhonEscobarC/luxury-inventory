@@ -8,8 +8,8 @@ export interface MaterialUso {
   unit: string;
   obraId: string;
   obraName: string;
-  userId: string;
-  userName: string;
+  userId: string | null;
+  userName: string | null;
 }
 
 export interface MaterialUsoInput {

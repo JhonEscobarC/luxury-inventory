@@ -222,7 +222,7 @@ export function Orders() {
                       )}
                     </div>
                     <p className="font-label-sm text-on-surface-variant/70 uppercase mt-1">
-                      Pedido por {order.createdByName} - {new Date(order.createdAt).toLocaleString("es-CO")}
+                      Pedido por {order.createdByName ?? "-"} - {new Date(order.createdAt).toLocaleString("es-CO")}
                     </p>
                   </div>
 

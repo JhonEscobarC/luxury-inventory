@@ -87,6 +87,23 @@ export async function setUserActive(id: string, isActive: boolean, actingUserId:
   return serializeUser(user);
 }
 
+export async function deleteUser(id: string, actingUserId: string) {
+  if (id === actingUserId) {
+    throw new HttpError(400, "No puedes eliminar tu propia cuenta");
+  }
+
+  const target = await prisma.user.findUnique({ where: { id } });
+  if (!target) {
+    throw new HttpError(404, "Usuario no encontrado");
+  }
+
+  if (target.isActive) {
+    throw new HttpError(400, "Solo se pueden eliminar usuarios inactivos. Desactivalo primero.");
+  }
+
+  await prisma.user.delete({ where: { id } });
+}
+
 export async function resetPassword(id: string, newPassword: string) {
   const target = await prisma.user.findUnique({ where: { id } });
   if (!target) {

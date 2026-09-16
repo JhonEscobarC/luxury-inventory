@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { createUser, listUsers, resetUserPassword, setUserActive, updateUser } from "../lib/users";
+import { createUser, deleteUser, listUsers, resetUserPassword, setUserActive, updateUser } from "../lib/users";
 import type { ManagedUser, CreateUserInput, UpdateUserInput } from "../types/user";
 import { UserFormModal } from "../components/users/UserFormModal";
 import { ResetPasswordModal } from "../components/users/ResetPasswordModal";
@@ -14,6 +14,7 @@ const ROLE_LABEL: Record<string, string> = {
 
 export function Users() {
   const { user: currentUser } = useAuth();
+  const isAdmin = currentUser?.role === "ADMIN";
 
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -23,6 +24,7 @@ export function Users() {
   const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
   const [resettingUser, setResettingUser] = useState<ManagedUser | null>(null);
   const [deactivatingUser, setDeactivatingUser] = useState<ManagedUser | null>(null);
+  const [deletingUser, setDeletingUser] = useState<ManagedUser | null>(null);
 
   async function refresh() {
     setIsLoading(true);
@@ -77,6 +79,20 @@ export function Users() {
         "No se pudo desactivar el usuario.";
       setErrorMessage(message);
       setDeactivatingUser(null);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deletingUser) return;
+    setDeletingUser(null);
+    try {
+      await deleteUser(deletingUser.id);
+      await refresh();
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "No se pudo eliminar el usuario.";
+      setErrorMessage(message);
     }
   }
 
@@ -163,6 +179,15 @@ export function Users() {
                       {user.isActive ? "block" : "check_circle"}
                     </span>
                   </button>
+                  {isAdmin && !user.isActive && !isSelf && (
+                    <button
+                      onClick={() => setDeletingUser(user)}
+                      className="text-error/80 hover:text-error transition-colors"
+                      title="Eliminar definitivamente"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">delete_forever</span>
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -190,6 +215,16 @@ export function Users() {
           confirmLabel="Desactivar"
           onConfirm={confirmDeactivate}
           onCancel={() => setDeactivatingUser(null)}
+        />
+      )}
+
+      {deletingUser && (
+        <ConfirmDialog
+          title="Eliminar usuario definitivamente"
+          message={`Esto borra la cuenta de "${deletingUser.name}" de forma permanente y no se puede deshacer. Sus pedidos, abonos y usos de material ya registrados se conservan, pero quedaran sin el nombre del usuario que los creo. Los registros de Historial no se ven afectados. ¿Continuar?`}
+          confirmLabel="Eliminar definitivamente"
+          onConfirm={confirmDelete}
+          onCancel={() => setDeletingUser(null)}
         />
       )}
     </div>

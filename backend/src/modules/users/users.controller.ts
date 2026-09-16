@@ -63,6 +63,15 @@ export async function setActiveHandler(req: Request, res: Response, next: NextFu
   }
 }
 
+export async function deleteHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    await usersService.deleteUser(req.params.id, req.user!.sub);
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function resetPasswordHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const { password } = resetPasswordSchema.parse(req.body);

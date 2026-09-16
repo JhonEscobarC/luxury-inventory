@@ -163,7 +163,7 @@ export function Materiales() {
               </span>
             </div>
             <p className="font-label-sm text-on-surface-variant/70 uppercase">
-              {uso.obraName} - {uso.userName}
+              {uso.obraName} - {uso.userName ?? "-"}
             </p>
             <p className="font-body-md text-on-surface-variant">{uso.reason}</p>
           </div>
