@@ -24,8 +24,34 @@ import type { Obra } from "../types/obra";
 import type { Proveedor } from "../types/proveedor";
 import type { Categoria } from "../types/categoria";
 import type { Proyecto } from "../types/proyecto";
+import type { Product } from "../types/product";
 import type { ClientesReport, FinancieroReport, ObraClientes, ObraFinanciero, ProveedorDeuda } from "../types/report";
 import { ProveedorAbonosModal } from "../components/proveedores/ProveedorAbonosModal";
+
+type InventorySortField = "name" | "categoriaName" | "obraName" | "quantity" | "price";
+
+const INVENTORY_SORT_OPTIONS: { value: InventorySortField; label: string }[] = [
+  { value: "name", label: "Nombre" },
+  { value: "categoriaName", label: "Categoria" },
+  { value: "obraName", label: "Obra" },
+  { value: "quantity", label: "Cantidad" },
+  { value: "price", label: "Precio" },
+];
+
+function sortProducts(products: Product[], sortBy: InventorySortField, direction: "asc" | "desc") {
+  const factor = direction === "asc" ? 1 : -1;
+  return [...products].sort((a, b) => {
+    let comparison = 0;
+    if (sortBy === "quantity" || sortBy === "price") {
+      comparison = a[sortBy] - b[sortBy];
+    } else {
+      const aValue = sortBy === "obraName" ? a.obraName ?? "General" : a[sortBy] ?? "";
+      const bValue = sortBy === "obraName" ? b.obraName ?? "General" : b[sortBy] ?? "";
+      comparison = aValue.localeCompare(bValue, "es");
+    }
+    return comparison * factor;
+  });
+}
 
 const ORDER_STATUS_OPTIONS: { value: OrderStatus | ""; label: string }[] = [
   { value: "", label: "Todos" },
@@ -104,6 +130,8 @@ export function Reports() {
   );
   const [inventoryStatus, setInventoryStatus] = useState<string | null>(null);
   const [isExportingInventory, setIsExportingInventory] = useState<"pdf" | "excel" | null>(null);
+  const [inventorySortBy, setInventorySortBy] = useState<InventorySortField>("name");
+  const [inventorySortDir, setInventorySortDir] = useState<"asc" | "desc">("asc");
 
   const [orderStatus, setOrderStatus] = useState<OrderStatus | "">("");
   const [orderFrom, setOrderFrom] = useState("");
@@ -284,7 +312,11 @@ export function Reports() {
       });
       // Los materiales agotados (cantidad 0) ya no representan stock real disponible
       // en la obra, asi que no se cuentan en este reporte.
-      const products = allProducts.filter((product) => product.quantity > 0);
+      const products = sortProducts(
+        allProducts.filter((product) => product.quantity > 0),
+        inventorySortBy,
+        inventorySortDir,
+      );
       if (products.length === 0) {
         setInventoryStatus("No hay productos que coincidan con los filtros seleccionados.");
         return;
@@ -510,6 +542,33 @@ export function Reports() {
                 Elige un proyecto para filtrar por obra
               </p>
             )}
+          </div>
+
+          <div>
+            <label className={labelClass}>Ordenar por</label>
+            <div className="flex gap-2">
+              <select
+                className={selectClass}
+                value={inventorySortBy}
+                onChange={(event) => setInventorySortBy(event.target.value as InventorySortField)}
+              >
+                {INVENTORY_SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setInventorySortDir((prev) => (prev === "asc" ? "desc" : "asc"))}
+                title={inventorySortDir === "asc" ? "Ascendente" : "Descendente"}
+                className="shrink-0 border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary transition-colors px-3"
+              >
+                <span className="material-symbols-outlined text-[20px]">
+                  {inventorySortDir === "asc" ? "arrow_upward" : "arrow_downward"}
+                </span>
+              </button>
+            </div>
           </div>
         </div>
 
