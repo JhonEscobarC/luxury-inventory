@@ -5,6 +5,14 @@ import type { Product } from "../types/product";
 import type { Order } from "../types/order";
 import type { ObraClientes } from "../types/report";
 
+export interface FinancieroExportRow {
+  proyectoName: string;
+  obraName: string;
+  gastoMaterial: number;
+  gastoOperacion: number;
+  total: number;
+}
+
 const GOLD: [number, number, number] = [198, 161, 91];
 const GOLD_ARGB = "FFC6A15B";
 const ERROR_ARGB = "FFB4231F";
@@ -202,6 +210,99 @@ export async function exportOrdersExcel(orders: Order[], options: ExportOptions 
 
   const buffer = await workbook.xlsx.writeBuffer();
   const prefix = options.filenamePrefix ? `pedidos_${slugify(options.filenamePrefix)}` : "pedidos";
+  downloadBlob(
+    new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
+    `${prefix}_${Date.now()}.xlsx`,
+  );
+}
+
+export function exportFinancieroPdf(rows: FinancieroExportRow[], options: ExportOptions = {}) {
+  const doc = new jsPDF();
+  addReportHeader(doc, options.title ?? "Reporte de Gastos por Obra");
+
+  const totals = rows.reduce(
+    (acc, row) => ({
+      gastoMaterial: acc.gastoMaterial + row.gastoMaterial,
+      gastoOperacion: acc.gastoOperacion + row.gastoOperacion,
+      total: acc.total + row.total,
+    }),
+    { gastoMaterial: 0, gastoOperacion: 0, total: 0 },
+  );
+
+  autoTable(doc, {
+    startY: 36,
+    head: [["Proyecto", "Obra", "Material", "Operacion", "Total"]],
+    body: [
+      ...rows.map((row) => [
+        row.proyectoName,
+        row.obraName,
+        row.gastoMaterial.toLocaleString("es-CO"),
+        row.gastoOperacion.toLocaleString("es-CO"),
+        row.total.toLocaleString("es-CO"),
+      ]),
+      [
+        "",
+        "Total general",
+        totals.gastoMaterial.toLocaleString("es-CO"),
+        totals.gastoOperacion.toLocaleString("es-CO"),
+        totals.total.toLocaleString("es-CO"),
+      ],
+    ],
+    headStyles: { fillColor: GOLD, textColor: [10, 10, 10] },
+    styles: { fontSize: 8 },
+    didParseCell: (data) => {
+      if (data.row.index === rows.length && data.section === "body") {
+        data.cell.styles.fontStyle = "bold";
+      }
+    },
+  });
+
+  const prefix = options.filenamePrefix ? `gastos_obra_${slugify(options.filenamePrefix)}` : "gastos_obra";
+  doc.save(`${prefix}_${Date.now()}.pdf`);
+}
+
+export async function exportFinancieroExcel(rows: FinancieroExportRow[], options: ExportOptions = {}) {
+  const workbook = newStyledWorkbook();
+  const sheet = workbook.addWorksheet("Gastos por obra");
+
+  sheet.columns = [
+    { header: "Proyecto", key: "proyectoName", width: 24 },
+    { header: "Obra", key: "obraName", width: 26 },
+    { header: "Material (COP)", key: "gastoMaterial", width: 18 },
+    { header: "Operacion (COP)", key: "gastoOperacion", width: 18 },
+    { header: "Total (COP)", key: "total", width: 18 },
+  ];
+  styleHeaderRow(sheet.getRow(1));
+
+  rows.forEach((row) => {
+    sheet.addRow({
+      proyectoName: row.proyectoName,
+      obraName: row.obraName,
+      gastoMaterial: row.gastoMaterial,
+      gastoOperacion: row.gastoOperacion,
+      total: row.total,
+    });
+  });
+
+  const totals = rows.reduce(
+    (acc, row) => ({
+      gastoMaterial: acc.gastoMaterial + row.gastoMaterial,
+      gastoOperacion: acc.gastoOperacion + row.gastoOperacion,
+      total: acc.total + row.total,
+    }),
+    { gastoMaterial: 0, gastoOperacion: 0, total: 0 },
+  );
+  const totalRow = sheet.addRow({
+    proyectoName: "",
+    obraName: "Total general",
+    gastoMaterial: totals.gastoMaterial,
+    gastoOperacion: totals.gastoOperacion,
+    total: totals.total,
+  });
+  totalRow.font = { bold: true };
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const prefix = options.filenamePrefix ? `gastos_obra_${slugify(options.filenamePrefix)}` : "gastos_obra";
   downloadBlob(
     new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
     `${prefix}_${Date.now()}.xlsx`,

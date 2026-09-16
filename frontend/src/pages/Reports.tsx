@@ -11,11 +11,14 @@ import { displayCurrency } from "../lib/currency";
 import {
   exportClientesExcel,
   exportClientesPdf,
+  exportFinancieroExcel,
+  exportFinancieroPdf,
   exportInventoryExcel,
   exportInventoryPdf,
   exportOrdersExcel,
   exportOrdersPdf,
 } from "../lib/exporters";
+import type { FinancieroExportRow } from "../lib/exporters";
 import type { Order, OrderStatus } from "../types/order";
 import type { Obra } from "../types/obra";
 import type { Proveedor } from "../types/proveedor";
@@ -108,11 +111,6 @@ export function Reports() {
   const [ordersStatus, setOrdersStatus] = useState<string | null>(null);
   const [isExportingOrders, setIsExportingOrders] = useState<"pdf" | "excel" | null>(null);
 
-  const [selectedObraId, setSelectedObraId] = useState("");
-  const [obraOrders, setObraOrders] = useState<Order[]>([]);
-  const [isLoadingObraOrders, setIsLoadingObraOrders] = useState(false);
-  const [isExportingObra, setIsExportingObra] = useState<"pdf" | "excel" | null>(null);
-
   const [selectedProveedorId, setSelectedProveedorId] = useState("");
   const [proveedorOrders, setProveedorOrders] = useState<Order[]>([]);
   const [isLoadingProveedorOrders, setIsLoadingProveedorOrders] = useState(false);
@@ -121,6 +119,11 @@ export function Reports() {
   const [financiero, setFinanciero] = useState<FinancieroReport | null>(null);
   const [isLoadingFinanciero, setIsLoadingFinanciero] = useState(true);
   const [excludedObraIds, setExcludedObraIds] = useState<Set<string>>(new Set());
+  const [financieroProyectoId, setFinancieroProyectoId] = useState("");
+  const [financieroObraId, setFinancieroObraId] = useState("");
+  const [financieroIncludeInactive, setFinancieroIncludeInactive] = useState(true);
+  const [isExportingFinanciero, setIsExportingFinanciero] = useState<"pdf" | "excel" | null>(null);
+  const [financieroStatus, setFinancieroStatus] = useState<string | null>(null);
 
   const [deudas, setDeudas] = useState<ProveedorDeuda[]>([]);
   const [isLoadingDeudas, setIsLoadingDeudas] = useState(true);
@@ -137,7 +140,6 @@ export function Reports() {
     listObras({ isActive: true })
       .then((items) => {
         setObras(items);
-        if (items[0]) setSelectedObraId(items[0].id);
         // Si se llego con ?obraId= desde una card de Obra, precargar tambien su
         // proyecto para que el select de Obra quede consistente con el de Proyecto.
         const obraIdParam = searchParams.get("obraId");
@@ -205,9 +207,41 @@ export function Reports() {
       );
   }
 
+  // Filtra el reporte financiero por proyecto/obra elegidos y si se incluyen obras
+  // inactivas; las casillas por obra siguen permitiendo afinar el total dentro de lo filtrado.
+  const filteredFinanciero = useMemo(() => {
+    if (!financiero) return null;
+    const matchesObra = (obra: ObraFinanciero) => {
+      if (!financieroIncludeInactive && !obra.isActive) return false;
+      if (financieroObraId) return obra.obraId === financieroObraId;
+      return true;
+    };
+    const proyectos = financiero.proyectos
+      .filter((p) => !financieroProyectoId || financieroProyectoId === p.proyectoId)
+      .map((p) => ({ ...p, obras: p.obras.filter(matchesObra) }))
+      .filter((p) => p.obras.length > 0);
+    const obrasSinProyecto =
+      !financieroProyectoId || financieroProyectoId === "none"
+        ? financiero.obrasSinProyecto.filter(matchesObra)
+        : [];
+    return { proyectos, obrasSinProyecto };
+  }, [financiero, financieroProyectoId, financieroObraId, financieroIncludeInactive]);
+
+  const financieroObraOptions = useMemo(() => {
+    if (!financiero) return [];
+    if (financieroProyectoId === "none") return financiero.obrasSinProyecto;
+    if (financieroProyectoId) {
+      return financiero.proyectos.find((p) => p.proyectoId === financieroProyectoId)?.obras ?? [];
+    }
+    return [...financiero.proyectos.flatMap((p) => p.obras), ...financiero.obrasSinProyecto];
+  }, [financiero, financieroProyectoId]);
+
   const allObrasFlat = useMemo(
-    () => (financiero ? [...financiero.proyectos.flatMap((p) => p.obras), ...financiero.obrasSinProyecto] : []),
-    [financiero],
+    () =>
+      filteredFinanciero
+        ? [...filteredFinanciero.proyectos.flatMap((p) => p.obras), ...filteredFinanciero.obrasSinProyecto]
+        : [],
+    [filteredFinanciero],
   );
 
   // El select de Obra del reporte de Inventario queda bloqueado hasta elegir un
@@ -225,18 +259,6 @@ export function Reports() {
     () => [...deudas].sort((a, b) => (deudaSort === "desc" ? b.saldo - a.saldo : a.saldo - b.saldo)),
     [deudas, deudaSort],
   );
-
-  useEffect(() => {
-    if (!selectedObraId) {
-      setObraOrders([]);
-      return;
-    }
-    setIsLoadingObraOrders(true);
-    listOrders({ obraId: selectedObraId })
-      .then(setObraOrders)
-      .catch(() => setObraOrders([]))
-      .finally(() => setIsLoadingObraOrders(false));
-  }, [selectedObraId]);
 
   useEffect(() => {
     if (!selectedProveedorId) {
@@ -321,22 +343,6 @@ export function Reports() {
     }
   }
 
-  async function handleObraExport(format: "pdf" | "excel") {
-    if (obraOrders.length === 0) return;
-    const obraName = obras.find((o) => o.id === selectedObraId)?.name ?? "obra";
-    const options = { title: `Reporte de Pedidos - ${obraName}`, filenamePrefix: obraName };
-    setIsExportingObra(format);
-    try {
-      if (format === "pdf") {
-        exportOrdersPdf(obraOrders, options);
-      } else {
-        await exportOrdersExcel(obraOrders, options);
-      }
-    } finally {
-      setIsExportingObra(null);
-    }
-  }
-
   async function handleProveedorExport(format: "pdf" | "excel") {
     if (proveedorOrders.length === 0) return;
     const proveedorName = proveedores.find((p) => p.id === selectedProveedorId)?.name ?? "proveedor";
@@ -350,6 +356,61 @@ export function Reports() {
       }
     } finally {
       setIsExportingProveedor(null);
+    }
+  }
+
+  async function handleFinancieroExport(format: "pdf" | "excel") {
+    if (!filteredFinanciero) return;
+    const rows: FinancieroExportRow[] = [
+      ...filteredFinanciero.proyectos.flatMap((p) =>
+        p.obras
+          .filter((o) => !excludedObraIds.has(o.obraId))
+          .map((o) => ({
+            proyectoName: p.proyectoName,
+            obraName: o.obraName,
+            gastoMaterial: o.gastoMaterial,
+            gastoOperacion: o.gastoOperacion,
+            total: o.total,
+          })),
+      ),
+      ...filteredFinanciero.obrasSinProyecto
+        .filter((o) => !excludedObraIds.has(o.obraId))
+        .map((o) => ({
+          proyectoName: "Sin proyecto",
+          obraName: o.obraName,
+          gastoMaterial: o.gastoMaterial,
+          gastoOperacion: o.gastoOperacion,
+          total: o.total,
+        })),
+    ];
+    if (rows.length === 0) {
+      setFinancieroStatus("No hay obras que coincidan con los filtros seleccionados.");
+      return;
+    }
+
+    let scopeName: string | undefined;
+    if (financieroObraId) {
+      scopeName = financieroObraOptions.find((o) => o.obraId === financieroObraId)?.obraName;
+    } else if (financieroProyectoId === "none") {
+      scopeName = "Sin proyecto";
+    } else if (financieroProyectoId) {
+      scopeName = proyectos.find((p) => p.id === financieroProyectoId)?.name;
+    }
+    const options = scopeName
+      ? { title: `Reporte de Gastos por Obra - ${scopeName}`, filenamePrefix: scopeName }
+      : undefined;
+
+    setIsExportingFinanciero(format);
+    setFinancieroStatus(null);
+    try {
+      if (format === "pdf") {
+        exportFinancieroPdf(rows, options);
+      } else {
+        await exportFinancieroExcel(rows, options);
+      }
+      setFinancieroStatus(`Exportadas ${rows.length} obra(s).`);
+    } finally {
+      setIsExportingFinanciero(null);
     }
   }
 
@@ -374,7 +435,6 @@ export function Reports() {
     }
   }
 
-  const obraSummary = summarize(obraOrders);
   const proveedorSummary = summarize(proveedorOrders);
 
   return (
@@ -546,48 +606,6 @@ export function Reports() {
 
       <section className="bg-surface-container lux-card-border p-6 md:p-8 mb-10">
         <div className="flex items-center gap-3 mb-6 border-b border-outline-variant pb-4">
-          <span className="material-symbols-outlined text-primary">construction</span>
-          <h3 className="text-headline-md-mobile text-on-surface uppercase">Reporte por obra</h3>
-        </div>
-
-        <div className="mb-6">
-          <label className={labelClass}>Obra</label>
-          <select className={selectClass} value={selectedObraId} onChange={(e) => setSelectedObraId(e.target.value)}>
-            {obras.length === 0 && <option value="">Sin obras registradas</option>}
-            {obras.map((obra) => (
-              <option key={obra.id} value={obra.id}>
-                {obra.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {isLoadingObraOrders && <p className="font-label-sm uppercase text-on-surface-variant mb-6">Cargando...</p>}
-
-        {!isLoadingObraOrders && <SummaryCards summary={obraSummary} />}
-
-        <div className="flex flex-col sm:flex-row gap-4">
-          <button
-            onClick={() => handleObraExport("pdf")}
-            disabled={isExportingObra !== null || obraOrders.length === 0}
-            className={exportButtonClass}
-          >
-            <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
-            {isExportingObra === "pdf" ? "Generando..." : "Exportar PDF"}
-          </button>
-          <button
-            onClick={() => handleObraExport("excel")}
-            disabled={isExportingObra !== null || obraOrders.length === 0}
-            className={exportButtonClass}
-          >
-            <span className="material-symbols-outlined text-[18px]">table_chart</span>
-            {isExportingObra === "excel" ? "Generando..." : "Exportar Excel"}
-          </button>
-        </div>
-      </section>
-
-      <section className="bg-surface-container lux-card-border p-6 md:p-8">
-        <div className="flex items-center gap-3 mb-6 border-b border-outline-variant pb-4">
           <span className="material-symbols-outlined text-primary">local_shipping</span>
           <h3 className="text-headline-md-mobile text-on-surface uppercase">Reporte por proveedor</h3>
         </div>
@@ -634,21 +652,71 @@ export function Reports() {
         </div>
       </section>
 
-      <section className="bg-surface-container lux-card-border p-6 md:p-8 mb-10 mt-10">
+      <section className="bg-surface-container lux-card-border p-6 md:p-8 mb-10">
         <div className="flex items-center gap-3 mb-6 border-b border-outline-variant pb-4">
           <span className="material-symbols-outlined text-primary">apartment</span>
           <h3 className="text-headline-md-mobile text-on-surface uppercase">Gastos por proyecto y obra</h3>
         </div>
         <p className="font-body-md text-on-surface-variant mb-6">
-          Gastos de material (pedidos despachados) y de operacion (contratistas). Desmarca una obra para excluirla de
-          los totales.
+          Gastos de material (pedidos despachados) y de operacion (contratistas). Filtra por proyecto u obra y
+          desmarca una obra para excluirla de los totales. Los montos solo se ven al exportar.
         </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
+          <div>
+            <label className={labelClass}>Proyecto</label>
+            <select
+              className={selectClass}
+              value={financieroProyectoId}
+              onChange={(event) => {
+                setFinancieroProyectoId(event.target.value);
+                setFinancieroObraId("");
+              }}
+            >
+              <option value="">Todos</option>
+              <option value="none">Sin proyecto</option>
+              {proyectos.map((proyecto) => (
+                <option key={proyecto.id} value={proyecto.id}>
+                  {proyecto.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className={labelClass}>Obra</label>
+            <select
+              className={selectClass}
+              value={financieroObraId}
+              onChange={(event) => setFinancieroObraId(event.target.value)}
+            >
+              <option value="">Todas</option>
+              {financieroObraOptions.map((obra) => (
+                <option key={obra.obraId} value={obra.obraId}>
+                  {obra.obraName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-end pb-3">
+            <label className="flex items-center gap-3 font-body-md text-on-surface cursor-pointer">
+              <input
+                type="checkbox"
+                checked={financieroIncludeInactive}
+                onChange={(event) => setFinancieroIncludeInactive(event.target.checked)}
+                className="w-4 h-4 accent-primary shrink-0"
+              />
+              Incluir obras inactivas
+            </label>
+          </div>
+        </div>
 
         {isLoadingFinanciero && <p className="font-label-sm uppercase text-on-surface-variant mb-6">Cargando...</p>}
 
-        {!isLoadingFinanciero && financiero && (
+        {!isLoadingFinanciero && filteredFinanciero && (
           <div className="flex flex-col gap-6">
-            {financiero.proyectos.map((proyecto) => {
+            {filteredFinanciero.proyectos.map((proyecto) => {
               const subtotal = sumObras(proyecto.obras);
               return (
                 <div key={proyecto.proyectoId} className="border border-outline-variant">
@@ -676,13 +744,13 @@ export function Reports() {
               );
             })}
 
-            {financiero.obrasSinProyecto.length > 0 && (
+            {filteredFinanciero.obrasSinProyecto.length > 0 && (
               <div className="border border-outline-variant">
                 <div className="bg-surface px-4 py-3 border-b border-outline-variant">
                   <span className="font-body-md font-semibold text-on-surface-variant uppercase">Obras sin proyecto</span>
                 </div>
                 <div className="flex flex-col">
-                  {financiero.obrasSinProyecto.map((obra) => (
+                  {filteredFinanciero.obrasSinProyecto.map((obra) => (
                     <ObraFinancieroRow
                       key={obra.obraId}
                       obra={obra}
@@ -692,6 +760,12 @@ export function Reports() {
                   ))}
                 </div>
               </div>
+            )}
+
+            {filteredFinanciero.proyectos.length === 0 && filteredFinanciero.obrasSinProyecto.length === 0 && (
+              <p className="text-on-surface-variant/60 font-label-sm uppercase px-2 py-6">
+                Sin obras que coincidan con los filtros
+              </p>
             )}
 
             <div className="border border-primary p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
@@ -706,6 +780,29 @@ export function Reports() {
             </div>
           </div>
         )}
+
+        {financieroStatus && (
+          <p className="font-label-sm uppercase text-on-surface-variant mt-6">{financieroStatus}</p>
+        )}
+
+        <div className="flex flex-col sm:flex-row gap-4 mt-6">
+          <button
+            onClick={() => handleFinancieroExport("pdf")}
+            disabled={isExportingFinanciero !== null}
+            className={exportButtonClass}
+          >
+            <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+            {isExportingFinanciero === "pdf" ? "Generando..." : "Exportar PDF"}
+          </button>
+          <button
+            onClick={() => handleFinancieroExport("excel")}
+            disabled={isExportingFinanciero !== null}
+            className={exportButtonClass}
+          >
+            <span className="material-symbols-outlined text-[18px]">table_chart</span>
+            {isExportingFinanciero === "excel" ? "Generando..." : "Exportar Excel"}
+          </button>
+        </div>
       </section>
 
       <section className="bg-surface-container lux-card-border p-6 md:p-8 mb-10">
