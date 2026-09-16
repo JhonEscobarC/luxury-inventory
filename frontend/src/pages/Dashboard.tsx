@@ -6,23 +6,15 @@ import { listOrders } from "../lib/orders";
 import { listMyObras } from "../lib/obras";
 import { getClientesReport, getProveedoresDeudaReport } from "../lib/reports";
 
-const currencyFormatter = new Intl.NumberFormat("es-CO", {
-  style: "currency",
-  currency: "COP",
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
-});
-
 export function Dashboard() {
   const { user } = useAuth();
   const isObra = user?.role === "OBRA";
 
   const [totalProducts, setTotalProducts] = useState<number | null>(null);
-  const [deudaProveedores, setDeudaProveedores] = useState<number | null>(null);
+  const [proveedoresConDeuda, setProveedoresConDeuda] = useState<number | null>(null);
   const [pendingOrders, setPendingOrders] = useState<number | null>(null);
   const [myObrasCount, setMyObrasCount] = useState<number | null>(null);
-  const [cobradoClientes, setCobradoClientes] = useState<number | null>(null);
-  const [saldoPendienteClientes, setSaldoPendienteClientes] = useState<number | null>(null);
+  const [obrasConSaldoPendiente, setObrasConSaldoPendiente] = useState<number | null>(null);
 
   useEffect(() => {
     listOrders({ status: "PENDIENTE" }).then((orders) => setPendingOrders(orders.length));
@@ -31,11 +23,11 @@ export function Dashboard() {
     } else {
       listProducts().then((result) => setTotalProducts(result.total));
       getProveedoresDeudaReport().then((deudas) => {
-        setDeudaProveedores(deudas.reduce((sum, d) => sum + Math.max(0, d.saldo), 0));
+        setProveedoresConDeuda(deudas.filter((d) => d.saldo > 0).length);
       });
       getClientesReport().then((report) => {
-        setCobradoClientes(report.totalAbonado);
-        setSaldoPendienteClientes(report.totalPrecioVenta - report.totalAbonado);
+        const allObras = [...report.proyectos.flatMap((p) => p.obras), ...report.obrasSinProyecto];
+        setObrasConSaldoPendiente(allObras.filter((o) => o.saldo !== null && o.saldo > 0).length);
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -103,9 +95,9 @@ export function Dashboard() {
               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                 <span className="material-symbols-outlined text-6xl text-primary">local_shipping</span>
               </div>
-              <p className="font-label-sm text-on-surface-variant uppercase mb-2">Deuda a proveedores</p>
-              <h3 className="text-body-lg font-bold text-on-surface group-hover:text-primary transition-colors truncate">
-                {deudaProveedores !== null ? currencyFormatter.format(deudaProveedores) : "..."}
+              <p className="font-label-sm text-on-surface-variant uppercase mb-2">Proveedores con deuda</p>
+              <h3 className="text-display-lg-mobile text-on-surface group-hover:text-primary transition-colors">
+                {proveedoresConDeuda ?? "..."}
               </h3>
             </Link>
 
@@ -129,15 +121,10 @@ export function Dashboard() {
               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                 <span className="material-symbols-outlined text-6xl text-primary">payments</span>
               </div>
-              <p className="font-label-sm text-on-surface-variant uppercase mb-2">Cobrado a clientes</p>
-              <h3 className="text-body-lg font-bold text-on-surface group-hover:text-primary transition-colors truncate">
-                {cobradoClientes !== null ? currencyFormatter.format(cobradoClientes) : "..."}
+              <p className="font-label-sm text-on-surface-variant uppercase mb-2">Obras con saldo pendiente</p>
+              <h3 className="text-display-lg-mobile text-on-surface group-hover:text-primary transition-colors">
+                {obrasConSaldoPendiente ?? "..."}
               </h3>
-              {saldoPendienteClientes !== null && saldoPendienteClientes > 0 && (
-                <p className="font-label-sm text-on-surface-variant mt-2">
-                  Saldo pendiente: {currencyFormatter.format(saldoPendienteClientes)}
-                </p>
-              )}
             </Link>
           </>
         )}
