@@ -360,7 +360,6 @@ async function receiveItemsIntoInventory(
           quantity: item.quantity,
           unit: item.unit,
           price: item.unitPrice ?? 0,
-          minStock: 0,
         },
       });
       await tx.orderItem.update({ where: { id: item.id }, data: { productId: newProduct.id } });

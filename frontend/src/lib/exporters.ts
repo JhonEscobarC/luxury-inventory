@@ -57,7 +57,7 @@ export function exportInventoryPdf(products: Product[], options: ExportOptions =
 
   autoTable(doc, {
     startY: 36,
-    head: [["Nombre", "Categoria", "Obra", "Proyecto", "Cantidad", "Unidad", "Precio (COP)", "Stock min.", "Estado"]],
+    head: [["Nombre", "Categoria", "Obra", "Proyecto", "Cantidad", "Unidad", "Precio (COP)"]],
     body: products.map((product) => [
       product.name,
       product.categoriaName ?? "-",
@@ -66,17 +66,9 @@ export function exportInventoryPdf(products: Product[], options: ExportOptions =
       product.quantity.toString(),
       product.unit,
       product.price.toLocaleString("es-CO"),
-      product.minStock.toString(),
-      product.isLowStock ? "Stock bajo" : "OK",
     ]),
     headStyles: { fillColor: GOLD, textColor: [10, 10, 10] },
     styles: { fontSize: 8 },
-    didParseCell: (data) => {
-      if (data.section === "body" && data.column.index === 8 && data.cell.raw === "Stock bajo") {
-        data.cell.styles.textColor = [180, 40, 40];
-        data.cell.styles.fontStyle = "bold";
-      }
-    },
   });
 
   const prefix = options.filenamePrefix ? `inventario_${slugify(options.filenamePrefix)}` : "inventario";
@@ -96,13 +88,11 @@ export async function exportInventoryExcel(products: Product[], options: ExportO
     { header: "Unidad", key: "unit", width: 12 },
     { header: "Precio (COP)", key: "price", width: 16 },
     { header: "Proveedor", key: "proveedorName", width: 22 },
-    { header: "Stock minimo", key: "minStock", width: 14 },
-    { header: "Estado", key: "status", width: 14 },
   ];
   styleHeaderRow(sheet.getRow(1));
 
   products.forEach((product) => {
-    const row = sheet.addRow({
+    sheet.addRow({
       name: product.name,
       category: product.categoriaName ?? "-",
       obraName: product.obraName ?? "General",
@@ -111,12 +101,7 @@ export async function exportInventoryExcel(products: Product[], options: ExportO
       unit: product.unit,
       price: product.price,
       proveedorName: product.proveedorName ?? "",
-      minStock: product.minStock,
-      status: product.isLowStock ? "Stock bajo" : "OK",
     });
-    if (product.isLowStock) {
-      row.getCell("status").font = { color: { argb: ERROR_ARGB }, bold: true };
-    }
   });
 
   const prefix = options.filenamePrefix ? `inventario_${slugify(options.filenamePrefix)}` : "inventario";

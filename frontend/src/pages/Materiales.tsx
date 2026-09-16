@@ -110,9 +110,7 @@ export function Materiales() {
           products.map((product) => (
             <div
               key={product.id}
-              className={`border bg-surface p-4 md:px-4 md:py-5 flex flex-col md:grid md:grid-cols-12 gap-4 items-start md:items-center ${
-                product.isLowStock ? "border-secondary" : "border-outline-variant hover:border-primary"
-              } transition-colors duration-300`}
+              className="border border-outline-variant bg-surface p-4 md:px-4 md:py-5 flex flex-col md:grid md:grid-cols-12 gap-4 items-start md:items-center hover:border-primary transition-colors duration-300"
             >
               <div className="md:col-span-4 w-full flex flex-col gap-1">
                 <span className="font-body-md font-semibold text-on-surface">{product.name}</span>
@@ -131,16 +129,9 @@ export function Materiales() {
 
               <div className="md:col-span-2 w-full flex justify-between md:justify-end items-center gap-2">
                 <span className="md:hidden font-label-sm text-on-surface-variant uppercase">Disponible:</span>
-                <div className="flex items-center gap-2">
-                  {product.isLowStock && (
-                    <span className="material-symbols-outlined text-[16px] text-secondary">warning</span>
-                  )}
-                  <span
-                    className={`font-body-md ${product.isLowStock ? "text-secondary font-bold" : "text-on-surface"}`}
-                  >
-                    {product.quantity} {product.unit}
-                  </span>
-                </div>
+                <span className="font-body-md text-on-surface">
+                  {product.quantity} {product.unit}
+                </span>
               </div>
 
               <div className="md:col-span-2 w-full flex justify-end">

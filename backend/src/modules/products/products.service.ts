@@ -5,7 +5,6 @@ import { HttpError } from "../../middleware/errorHandler";
 export interface ListProductsParams {
   search?: string;
   categoriaId?: string;
-  lowStock?: boolean;
   page?: number;
   pageSize?: number;
   /** Filtro explicito por obra (incluye "sin obra" cuando se pasa null). */
@@ -24,7 +23,6 @@ export interface ProductInput {
   unit: string;
   price: number;
   proveedorId?: string | null;
-  minStock: number;
 }
 
 function serializeProduct(product: {
@@ -39,12 +37,9 @@ function serializeProduct(product: {
   categoria?: Categoria | null;
   obraId: string | null;
   obra?: (Obra & { proyecto?: Proyecto | null }) | null;
-  minStock: Prisma.Decimal;
   createdAt: Date;
   updatedAt: Date;
 }) {
-  const quantity = Number(product.quantity);
-  const minStock = Number(product.minStock);
   return {
     id: product.id,
     name: product.name,
@@ -54,13 +49,11 @@ function serializeProduct(product: {
     obraName: product.obra?.name ?? null,
     proyectoId: product.obra?.proyectoId ?? null,
     proyectoName: product.obra?.proyecto?.name ?? null,
-    quantity,
+    quantity: Number(product.quantity),
     unit: product.unit,
     price: Number(product.price),
     proveedorId: product.proveedorId,
     proveedorName: product.proveedor?.name ?? null,
-    minStock,
-    isLowStock: quantity <= minStock,
     createdAt: product.createdAt,
     updatedAt: product.updatedAt,
   };
@@ -112,22 +105,13 @@ export async function listProducts(params: ListProductsParams) {
       where,
       include: productInclude,
       orderBy: { name: "asc" },
-      skip: params.lowStock ? undefined : (page - 1) * pageSize,
-      take: params.lowStock ? undefined : pageSize,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
     }),
     prisma.product.count({ where }),
   ]);
 
-  let items = rows.map(serializeProduct);
-
-  if (params.lowStock) {
-    items = items.filter((item) => item.isLowStock);
-    const start = (page - 1) * pageSize;
-    const paged = items.slice(start, start + pageSize);
-    return { items: paged, total: items.length, page, pageSize };
-  }
-
-  return { items, total, page, pageSize };
+  return { items: rows.map(serializeProduct), total, page, pageSize };
 }
 
 export async function listAllProducts(params: Omit<ListProductsParams, "page" | "pageSize">) {
@@ -139,13 +123,7 @@ export async function listAllProducts(params: Omit<ListProductsParams, "page" | 
     orderBy: [{ name: "asc" }],
   });
 
-  let items = rows.map(serializeProduct);
-
-  if (params.lowStock) {
-    items = items.filter((item) => item.isLowStock);
-  }
-
-  return items;
+  return rows.map(serializeProduct);
 }
 
 export async function getProductById(id: string) {
@@ -166,7 +144,6 @@ export async function createProduct(input: ProductInput) {
       unit: input.unit,
       price: input.price,
       proveedorId: input.proveedorId ?? null,
-      minStock: input.minStock,
     },
     include: productInclude,
   });
@@ -186,7 +163,6 @@ export async function updateProduct(id: string, input: Partial<ProductInput>) {
       ...(input.unit !== undefined && { unit: input.unit }),
       ...(input.price !== undefined && { price: input.price }),
       ...(input.proveedorId !== undefined && { proveedorId: input.proveedorId }),
-      ...(input.minStock !== undefined && { minStock: input.minStock }),
     },
     include: productInclude,
   });
@@ -196,13 +172,6 @@ export async function updateProduct(id: string, input: Partial<ProductInput>) {
 export async function deleteProduct(id: string) {
   await getProductById(id);
   await prisma.product.delete({ where: { id } });
-}
-
-export async function getLowStockCount(): Promise<number> {
-  const rows = await prisma.product.findMany({
-    select: { quantity: true, minStock: true },
-  });
-  return rows.filter((row) => Number(row.quantity) <= Number(row.minStock)).length;
 }
 
 export async function getObraIdsForUser(userId: string): Promise<string[]> {

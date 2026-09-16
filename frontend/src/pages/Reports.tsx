@@ -99,7 +99,6 @@ export function Reports() {
   const [inventoryProyectoId, setInventoryProyectoId] = useState(() =>
     searchParams.get("obraId") ? "" : searchParams.get("proyectoId") ?? "",
   );
-  const [inventoryLowStockOnly, setInventoryLowStockOnly] = useState(false);
   const [inventoryStatus, setInventoryStatus] = useState<string | null>(null);
   const [isExportingInventory, setIsExportingInventory] = useState<"pdf" | "excel" | null>(null);
 
@@ -260,7 +259,6 @@ export function Reports() {
         categoriaId: inventoryCategoriaId || undefined,
         obraId: isGeneral ? "none" : inventoryObraId || undefined,
         proyectoId: !isGeneral && !inventoryObraId ? inventoryProyectoId || undefined : undefined,
-        lowStock: inventoryLowStockOnly,
       });
       // Los materiales agotados (cantidad 0) ya no representan stock real disponible
       // en la obra, asi que no se cuentan en este reporte.
@@ -452,18 +450,6 @@ export function Reports() {
                 Elige un proyecto para filtrar por obra
               </p>
             )}
-          </div>
-
-          <div className="flex items-end">
-            <label className="flex items-center gap-3 font-label-sm text-on-surface-variant uppercase tracking-widest cursor-pointer">
-              <input
-                type="checkbox"
-                checked={inventoryLowStockOnly}
-                onChange={(event) => setInventoryLowStockOnly(event.target.checked)}
-                className="w-4 h-4 accent-primary"
-              />
-              Solo stock bajo
-            </label>
           </div>
         </div>
 

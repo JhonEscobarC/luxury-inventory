@@ -10,7 +10,6 @@ const productInputSchema = z.object({
   unit: z.string().trim().min(1, "La unidad es requerida"),
   price: z.number().min(0, "El precio no puede ser negativo"),
   proveedorId: z.string().uuid("Proveedor invalido").optional().nullable(),
-  minStock: z.number().min(0, "El stock minimo no puede ser negativo").default(0),
 });
 
 const productUpdateSchema = productInputSchema.partial();
@@ -20,10 +19,6 @@ const listQuerySchema = z.object({
   categoriaId: z.string().uuid().optional(),
   obraId: z.string().optional(),
   proyectoId: z.string().optional(),
-  lowStock: z
-    .string()
-    .optional()
-    .transform((value) => value === "true"),
   page: z.coerce.number().int().positive().optional(),
   pageSize: z.coerce.number().int().positive().optional(),
 });
@@ -77,15 +72,6 @@ export async function exportHandler(req: Request, res: Response, next: NextFunct
       ...scope,
     });
     res.json({ items });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function lowStockCountHandler(req: Request, res: Response, next: NextFunction) {
-  try {
-    const count = await productsService.getLowStockCount();
-    res.json({ count });
   } catch (error) {
     next(error);
   }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { createProduct, deleteProduct, listProducts, updateProduct } from "../lib/products";
@@ -28,7 +28,6 @@ export function Inventory() {
   const [search, setSearch] = useState("");
   const [activeCategoriaId, setActiveCategoriaId] = useState<string | null>(null);
   const [activeObraId, setActiveObraId] = useState<string>(() => searchParams.get("obraId") ?? "");
-  const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -46,7 +45,6 @@ export function Inventory() {
           search: search || undefined,
           categoriaId: activeCategoriaId || undefined,
           obraId: activeObraId === "" ? undefined : activeObraId,
-          lowStock: showLowStockOnly,
         }),
         listCategorias(),
       ]);
@@ -78,9 +76,7 @@ export function Inventory() {
     const timeout = setTimeout(refresh, 250);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, activeCategoriaId, activeObraId, showLowStockOnly]);
-
-  const lowStockCount = useMemo(() => products.filter((product) => product.isLowStock).length, [products]);
+  }, [search, activeCategoriaId, activeObraId]);
 
   async function handleCreate(input: ProductInput) {
     await createProduct(input);
@@ -106,10 +102,7 @@ export function Inventory() {
         <div>
           <h2 className="text-display-lg-mobile md:text-display-lg text-primary uppercase">Inventario</h2>
           <p className="font-body-md text-on-surface-variant mt-2 max-w-xl">
-            Gestiona materiales de construccion, niveles de stock y precios.
-            {lowStockCount > 0 && (
-              <span className="text-error font-semibold"> {lowStockCount} producto(s) con stock bajo.</span>
-            )}
+            Gestiona materiales de construccion y sus cantidades disponibles por obra.
           </p>
         </div>
 
@@ -185,17 +178,6 @@ export function Inventory() {
             Categorias
           </button>
         )}
-
-        <button
-          onClick={() => setShowLowStockOnly((prev) => !prev)}
-          className={`font-label-sm uppercase px-4 py-3 border transition-colors ${
-            showLowStockOnly
-              ? "border-error text-error"
-              : "border-outline-variant text-on-surface-variant hover:border-error hover:text-error"
-          }`}
-        >
-          Stock bajo
-        </button>
       </div>
 
       {errorMessage && <p className="text-error font-label-sm uppercase mb-6">{errorMessage}</p>}
@@ -220,9 +202,7 @@ export function Inventory() {
           products.map((product) => (
             <div
               key={product.id}
-              className={`group border bg-surface p-4 md:px-4 md:py-5 flex flex-col md:grid md:grid-cols-12 gap-4 items-start md:items-center relative ${
-                product.isLowStock ? "border-secondary" : "border-outline-variant hover:border-primary"
-              } transition-colors duration-300`}
+              className="group border border-outline-variant bg-surface p-4 md:px-4 md:py-5 flex flex-col md:grid md:grid-cols-12 gap-4 items-start md:items-center relative hover:border-primary transition-colors duration-300"
             >
               <div className="md:col-span-2 w-full flex flex-col gap-1">
                 <span className="font-body-md font-semibold text-on-surface">{product.name}</span>
@@ -244,16 +224,9 @@ export function Inventory() {
 
               <div className="md:col-span-2 w-full flex justify-between md:justify-end items-center gap-2">
                 <span className="md:hidden font-label-sm text-on-surface-variant uppercase">Stock:</span>
-                <div className="flex items-center gap-2">
-                  {product.isLowStock && (
-                    <span className="material-symbols-outlined text-[16px] text-secondary">warning</span>
-                  )}
-                  <span
-                    className={`font-body-md ${product.isLowStock ? "text-secondary font-bold" : "text-on-surface"}`}
-                  >
-                    {product.quantity} {product.unit}
-                  </span>
-                </div>
+                <span className="font-body-md text-on-surface">
+                  {product.quantity} {product.unit}
+                </span>
               </div>
 
               <div className="md:col-span-2 w-full flex justify-between md:justify-end items-center font-body-md text-on-surface">

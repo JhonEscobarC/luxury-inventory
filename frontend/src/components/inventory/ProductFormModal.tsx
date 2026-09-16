@@ -21,7 +21,6 @@ const emptyForm: ProductInput = {
   unit: "",
   price: 0,
   proveedorId: "",
-  minStock: 0,
 };
 
 export function ProductFormModal({ product, proveedores, categorias, obras, onClose, onSubmit }: ProductFormModalProps) {
@@ -35,7 +34,6 @@ export function ProductFormModal({ product, proveedores, categorias, obras, onCl
           unit: product.unit,
           price: product.price,
           proveedorId: product.proveedorId ?? "",
-          minStock: product.minStock,
         }
       : emptyForm,
   );
@@ -46,7 +44,7 @@ export function ProductFormModal({ product, proveedores, categorias, obras, onCl
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  function updateNumberField(field: "quantity" | "price" | "minStock", rawValue: string) {
+  function updateNumberField(field: "quantity" | "price", rawValue: string) {
     const withoutLeadingZeros = rawValue.replace(/^0+(?=\d)/, "");
     const parsed = withoutLeadingZeros === "" ? 0 : Number(withoutLeadingZeros);
     updateField(field, Number.isNaN(parsed) ? 0 : parsed);
@@ -195,19 +193,6 @@ export function ProductFormModal({ product, proveedores, categorias, obras, onCl
             />
           </div>
 
-          <div>
-            <label className={labelClass}>Stock minimo</label>
-            <input
-              required
-              type="number"
-              min={0}
-              step="0.01"
-              className={inputClass}
-              value={form.minStock}
-              onFocus={selectAllOnFocus}
-              onChange={(event) => updateNumberField("minStock", event.target.value)}
-            />
-          </div>
         </div>
 
         {error && <p className="text-error font-label-sm uppercase tracking-wider mt-6">{error}</p>}
