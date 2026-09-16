@@ -4,8 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { listProducts } from "../lib/products";
 import { listOrders } from "../lib/orders";
 import { listMyObras } from "../lib/obras";
-import { getClientesReport } from "../lib/reports";
-import { api } from "../lib/api";
+import { getClientesReport, getProveedoresDeudaReport } from "../lib/reports";
 
 const currencyFormatter = new Intl.NumberFormat("es-CO", {
   style: "currency",
@@ -19,7 +18,7 @@ export function Dashboard() {
   const isObra = user?.role === "OBRA";
 
   const [totalProducts, setTotalProducts] = useState<number | null>(null);
-  const [lowStockCount, setLowStockCount] = useState<number | null>(null);
+  const [deudaProveedores, setDeudaProveedores] = useState<number | null>(null);
   const [pendingOrders, setPendingOrders] = useState<number | null>(null);
   const [myObrasCount, setMyObrasCount] = useState<number | null>(null);
   const [cobradoClientes, setCobradoClientes] = useState<number | null>(null);
@@ -31,7 +30,9 @@ export function Dashboard() {
       listMyObras().then((obras) => setMyObrasCount(obras.length));
     } else {
       listProducts().then((result) => setTotalProducts(result.total));
-      api.get<{ count: number }>("/products/low-stock-count").then((res) => setLowStockCount(res.data.count));
+      getProveedoresDeudaReport().then((deudas) => {
+        setDeudaProveedores(deudas.reduce((sum, d) => sum + Math.max(0, d.saldo), 0));
+      });
       getClientesReport().then((report) => {
         setCobradoClientes(report.totalAbonado);
         setSaldoPendienteClientes(report.totalPrecioVenta - report.totalAbonado);
@@ -96,20 +97,16 @@ export function Dashboard() {
             </Link>
 
             <Link
-              to="/inventario"
-              className="bg-surface-container p-6 lux-card-border relative overflow-hidden group block border-secondary"
+              to="/reportes"
+              className="bg-surface-container p-6 lux-card-border relative overflow-hidden group block"
             >
               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <span className="material-symbols-outlined text-6xl text-error">warning</span>
+                <span className="material-symbols-outlined text-6xl text-primary">local_shipping</span>
               </div>
-              <p className="font-label-sm text-on-surface-variant uppercase mb-2">Alertas de stock bajo</p>
-              <h3 className="text-display-lg-mobile text-on-surface">{lowStockCount ?? "..."}</h3>
-              {lowStockCount != null && lowStockCount > 0 && (
-                <div className="flex items-center gap-2 text-error mt-2">
-                  <span className="material-symbols-outlined text-sm">priority_high</span>
-                  <span className="font-label-sm">Requiere accion inmediata</span>
-                </div>
-              )}
+              <p className="font-label-sm text-on-surface-variant uppercase mb-2">Deuda a proveedores</p>
+              <h3 className="text-body-lg font-bold text-on-surface group-hover:text-primary transition-colors truncate">
+                {deudaProveedores !== null ? currencyFormatter.format(deudaProveedores) : "..."}
+              </h3>
             </Link>
 
             <Link
@@ -133,7 +130,7 @@ export function Dashboard() {
                 <span className="material-symbols-outlined text-6xl text-primary">payments</span>
               </div>
               <p className="font-label-sm text-on-surface-variant uppercase mb-2">Cobrado a clientes</p>
-              <h3 className="text-display-lg-mobile text-on-surface group-hover:text-primary transition-colors">
+              <h3 className="text-body-lg font-bold text-on-surface group-hover:text-primary transition-colors truncate">
                 {cobradoClientes !== null ? currencyFormatter.format(cobradoClientes) : "..."}
               </h3>
               {saldoPendienteClientes !== null && saldoPendienteClientes > 0 && (
