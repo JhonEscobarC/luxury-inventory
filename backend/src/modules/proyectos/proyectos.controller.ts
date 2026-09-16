@@ -68,3 +68,12 @@ export async function setActiveHandler(req: Request, res: Response, next: NextFu
     next(error);
   }
 }
+
+export async function deleteHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    await proyectosService.deleteProyecto(req.params.id);
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+}

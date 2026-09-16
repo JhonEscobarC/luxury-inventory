@@ -30,3 +30,7 @@ export async function setProyectoActive(id: string, isActive: boolean): Promise<
   const { data } = await api.patch<{ proyecto: Proyecto }>(`/proyectos/${id}/active`, { isActive });
   return data.proyecto;
 }
+
+export async function deleteProyecto(id: string): Promise<void> {
+  await api.delete(`/proyectos/${id}`);
+}

@@ -93,3 +93,33 @@ export async function setProyectoActive(id: string, isActive: boolean) {
   return serializeProyecto(proyecto);
 }
 
+// Borrado literal: elimina el proyecto y todo lo que cuelga de sus obras (inventario,
+// pedidos, asignaciones a contratistas, abonos de cliente). Solo se permite sobre un
+// proyecto ya inactivo, como salvaguarda. El Historial no tiene relacion (FK) con estas
+// entidades -- guarda nombres como texto plano -- asi que sus registros sobreviven intactos.
+export async function deleteProyecto(id: string) {
+  const existing = await prisma.proyecto.findUnique({
+    where: { id },
+    include: { obras: { select: { id: true } } },
+  });
+  if (!existing) {
+    throw new HttpError(404, "Proyecto no encontrado");
+  }
+  if (existing.isActive) {
+    throw new HttpError(400, "Solo se pueden eliminar proyectos inactivos. Desactivalo primero.");
+  }
+
+  const obraIds = existing.obras.map((o) => o.id);
+
+  await prisma.$transaction(async (tx) => {
+    if (obraIds.length > 0) {
+      await tx.product.deleteMany({ where: { obraId: { in: obraIds } } });
+      await tx.abonoCliente.deleteMany({ where: { obraId: { in: obraIds } } });
+      await tx.contratistaAsignacion.deleteMany({ where: { obraId: { in: obraIds } } });
+      await tx.order.deleteMany({ where: { obraId: { in: obraIds } } });
+      await tx.obra.deleteMany({ where: { id: { in: obraIds } } });
+    }
+    await tx.proyecto.delete({ where: { id } });
+  });
+}
+
