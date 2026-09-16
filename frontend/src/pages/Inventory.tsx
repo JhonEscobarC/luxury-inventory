@@ -23,6 +23,8 @@ const currencyFormatter = new Intl.NumberFormat("es-CO", {
 export function Inventory() {
   const { user } = useAuth();
   const canManage = user?.role === "ADMIN" || user?.role === "CONTABILIDAD";
+  // Eliminar es exclusivo de ADMIN; CONTABILIDAD puede crear/editar pero no borrar.
+  const isAdmin = user?.role === "ADMIN";
   const [searchParams] = useSearchParams();
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -275,13 +277,15 @@ export function Inventory() {
                     >
                       <span className="material-symbols-outlined text-[20px]">edit</span>
                     </button>
-                    <button
-                      onClick={() => setDeletingProduct(product)}
-                      className="text-on-surface-variant hover:text-error transition-colors"
-                      title="Eliminar"
-                    >
-                      <span className="material-symbols-outlined text-[20px]">delete</span>
-                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => setDeletingProduct(product)}
+                        className="text-on-surface-variant hover:text-error transition-colors"
+                        title="Eliminar"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">delete</span>
+                      </button>
+                    )}
                   </>
                 ) : (
                   <span className="font-label-sm text-on-surface-variant/50 uppercase">Solo lectura</span>

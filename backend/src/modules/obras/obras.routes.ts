@@ -21,5 +21,5 @@ obrasRouter.get("/", requireRole("ADMIN", "CONTABILIDAD"), listHandler);
 obrasRouter.get("/:id", requireRole("ADMIN", "CONTABILIDAD"), getHandler);
 obrasRouter.post("/", requireRole("ADMIN", "CONTABILIDAD"), createHandler);
 obrasRouter.put("/:id", requireRole("ADMIN", "CONTABILIDAD"), updateHandler);
-obrasRouter.patch("/:id/active", requireRole("ADMIN", "CONTABILIDAD"), setActiveHandler);
+obrasRouter.patch("/:id/active", requireRole("ADMIN"), setActiveHandler);
 obrasRouter.patch("/:id/users", requireRole("ADMIN", "CONTABILIDAD"), setUsersHandler);

@@ -17,4 +17,4 @@ productsRouter.get("/:id", requireRole("ADMIN", "CONTABILIDAD", "OBRA"), getHand
 // OBRA registran consumo mediante el modulo de materialUsos, no editan productos.
 productsRouter.post("/", requireRole("ADMIN", "CONTABILIDAD"), createHandler);
 productsRouter.put("/:id", requireRole("ADMIN", "CONTABILIDAD"), updateHandler);
-productsRouter.delete("/:id", requireRole("ADMIN", "CONTABILIDAD"), deleteHandler);
+productsRouter.delete("/:id", requireRole("ADMIN"), deleteHandler);

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useAuth } from "../context/AuthContext";
 import { createProveedor, listProveedores, setProveedorActive, updateProveedor } from "../lib/proveedores";
 import { getProveedoresDeudaReport } from "../lib/reports";
 import type { Proveedor, ProveedorInput } from "../types/proveedor";
@@ -15,6 +16,9 @@ const currencyFormatter = new Intl.NumberFormat("es-CO", {
 });
 
 export function Proveedores() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
+
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [deudas, setDeudas] = useState<ProveedorDeuda[]>([]);
   const [search, setSearch] = useState("");
@@ -174,15 +178,17 @@ export function Proveedores() {
                 >
                   <span className="material-symbols-outlined text-[20px]">edit</span>
                 </button>
-                <button
-                  onClick={() => handleToggleActive(proveedor)}
-                  className="text-on-surface-variant hover:text-error transition-colors"
-                  title={proveedor.isActive ? "Desactivar" : "Activar"}
-                >
-                  <span className="material-symbols-outlined text-[20px]">
-                    {proveedor.isActive ? "block" : "check_circle"}
-                  </span>
-                </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => handleToggleActive(proveedor)}
+                    className="text-on-surface-variant hover:text-error transition-colors"
+                    title={proveedor.isActive ? "Desactivar" : "Activar"}
+                  >
+                    <span className="material-symbols-outlined text-[20px]">
+                      {proveedor.isActive ? "block" : "check_circle"}
+                    </span>
+                  </button>
+                )}
               </div>
             </div>
             );

@@ -11,5 +11,5 @@ categoriasRouter.get("/", listHandler);
 
 categoriasRouter.post("/", requireRole("ADMIN", "CONTABILIDAD"), createHandler);
 categoriasRouter.put("/:id", requireRole("ADMIN", "CONTABILIDAD"), updateHandler);
-categoriasRouter.patch("/:id/active", requireRole("ADMIN", "CONTABILIDAD"), setActiveHandler);
-categoriasRouter.delete("/:id", requireRole("ADMIN", "CONTABILIDAD"), deleteHandler);
+categoriasRouter.patch("/:id/active", requireRole("ADMIN"), setActiveHandler);
+categoriasRouter.delete("/:id", requireRole("ADMIN"), deleteHandler);

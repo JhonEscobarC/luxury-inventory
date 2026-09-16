@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from "react";
+import { useAuth } from "../context/AuthContext";
 import { createContratista, listContratistas, setContratistaActive, updateContratista } from "../lib/contratistas";
 import type { Contratista, ContratistaInput } from "../types/contratista";
 import { ContratistaFormModal } from "../components/contratistas/ContratistaFormModal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 
 export function Contratistas() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
+
   const [contratistas, setContratistas] = useState<Contratista[]>([]);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -143,15 +147,17 @@ export function Contratistas() {
                 >
                   <span className="material-symbols-outlined text-[20px]">edit</span>
                 </button>
-                <button
-                  onClick={() => handleToggleActive(contratista)}
-                  className="text-on-surface-variant hover:text-error transition-colors"
-                  title={contratista.isActive ? "Desactivar" : "Activar"}
-                >
-                  <span className="material-symbols-outlined text-[20px]">
-                    {contratista.isActive ? "block" : "check_circle"}
-                  </span>
-                </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => handleToggleActive(contratista)}
+                    className="text-on-surface-variant hover:text-error transition-colors"
+                    title={contratista.isActive ? "Desactivar" : "Activar"}
+                  >
+                    <span className="material-symbols-outlined text-[20px]">
+                      {contratista.isActive ? "block" : "check_circle"}
+                    </span>
+                  </button>
+                )}
               </div>
             </div>
           ))}

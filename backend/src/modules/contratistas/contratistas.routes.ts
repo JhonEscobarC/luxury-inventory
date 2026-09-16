@@ -10,4 +10,4 @@ contratistasRouter.get("/", listHandler);
 contratistasRouter.get("/:id", getHandler);
 contratistasRouter.post("/", createHandler);
 contratistasRouter.put("/:id", updateHandler);
-contratistasRouter.patch("/:id/active", setActiveHandler);
+contratistasRouter.patch("/:id/active", requireRole("ADMIN"), setActiveHandler);

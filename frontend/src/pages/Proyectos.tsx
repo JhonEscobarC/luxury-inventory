@@ -9,7 +9,8 @@ import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 
 export function Proyectos() {
   const { user } = useAuth();
-  const canDelete = user?.role === "ADMIN";
+  // Desactivar y eliminar son exclusivos de ADMIN; CONTABILIDAD solo puede crear/editar.
+  const isAdmin = user?.role === "ADMIN";
 
   const [proyectos, setProyectos] = useState<Proyecto[]>([]);
   const [obrasSinProyectoCount, setObrasSinProyectoCount] = useState(0);
@@ -180,26 +181,28 @@ export function Proyectos() {
                     Inventario
                   </Link>
                 </div>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                  {!proyecto.isActive && canDelete && (
+                {isAdmin && (
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    {!proyecto.isActive && (
+                      <button
+                        onClick={() => setDeletingProyecto(proyecto)}
+                        className="font-label-sm uppercase text-error/80 hover:text-error transition-colors flex items-center gap-1"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">delete_forever</span>
+                        Eliminar
+                      </button>
+                    )}
                     <button
-                      onClick={() => setDeletingProyecto(proyecto)}
-                      className="font-label-sm uppercase text-error/80 hover:text-error transition-colors flex items-center gap-1"
+                      onClick={() => handleToggleActive(proyecto)}
+                      className="font-label-sm uppercase text-on-surface-variant hover:text-error transition-colors flex items-center gap-1"
                     >
-                      <span className="material-symbols-outlined text-[18px]">delete_forever</span>
-                      Eliminar
+                      <span className="material-symbols-outlined text-[18px]">
+                        {proyecto.isActive ? "block" : "check_circle"}
+                      </span>
+                      {proyecto.isActive ? "Desactivar" : "Activar"}
                     </button>
-                  )}
-                  <button
-                    onClick={() => handleToggleActive(proyecto)}
-                    className="font-label-sm uppercase text-on-surface-variant hover:text-error transition-colors flex items-center gap-1"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">
-                      {proyecto.isActive ? "block" : "check_circle"}
-                    </span>
-                    {proyecto.isActive ? "Desactivar" : "Activar"}
-                  </button>
-                </div>
+                  </div>
+                )}
               </div>
             </div>
           ))}

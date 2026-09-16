@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
+import { useAuth } from "../../context/AuthContext";
 import { createCategoria, deleteCategoria, listCategorias, updateCategoria } from "../../lib/categorias";
 import type { Categoria } from "../../types/categoria";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
@@ -9,6 +10,9 @@ interface CategoriasModalProps {
 }
 
 export function CategoriasModal({ onClose, onChanged }: CategoriasModalProps) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
+
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -175,13 +179,15 @@ export function CategoriasModal({ onClose, onChanged }: CategoriasModalProps) {
                       >
                         <span className="material-symbols-outlined text-[20px]">edit</span>
                       </button>
-                      <button
-                        onClick={() => setDeletingCategoria(categoria)}
-                        className="text-on-surface-variant hover:text-error transition-colors"
-                        title="Eliminar"
-                      >
-                        <span className="material-symbols-outlined text-[20px]">delete</span>
-                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={() => setDeletingCategoria(categoria)}
+                          className="text-on-surface-variant hover:text-error transition-colors"
+                          title="Eliminar"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">delete</span>
+                        </button>
+                      )}
                     </div>
                   </>
                 )}

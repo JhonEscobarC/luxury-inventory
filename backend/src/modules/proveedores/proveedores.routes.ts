@@ -10,4 +10,4 @@ proveedoresRouter.get("/", listHandler);
 proveedoresRouter.get("/:id", getHandler);
 proveedoresRouter.post("/", createHandler);
 proveedoresRouter.put("/:id", updateHandler);
-proveedoresRouter.patch("/:id/active", setActiveHandler);
+proveedoresRouter.patch("/:id/active", requireRole("ADMIN"), setActiveHandler);

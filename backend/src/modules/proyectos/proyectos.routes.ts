@@ -10,6 +10,6 @@ proyectosRouter.get("/", listHandler);
 proyectosRouter.get("/:id", getHandler);
 proyectosRouter.post("/", createHandler);
 proyectosRouter.put("/:id", updateHandler);
-proyectosRouter.patch("/:id/active", setActiveHandler);
-// Borrado literal (cascada completa): reservado a ADMIN por lo destructivo que es.
+// Activar/desactivar y borrar (este ultimo en cascada completa): reservado a ADMIN.
+proyectosRouter.patch("/:id/active", requireRole("ADMIN"), setActiveHandler);
 proyectosRouter.delete("/:id", requireRole("ADMIN"), deleteHandler);

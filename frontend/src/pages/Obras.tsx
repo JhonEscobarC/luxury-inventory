@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { createObra, listObras, setObraActive, setObraUsers, updateObra } from "../lib/obras";
 import { listUsers } from "../lib/users";
 import { listProyectos } from "../lib/proyectos";
@@ -22,6 +23,8 @@ const currencyFormatter = new Intl.NumberFormat("es-CO", {
 });
 
 export function Obras() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
   const { proyectoId } = useParams<{ proyectoId: string }>();
   const isSinProyecto = proyectoId === SIN_PROYECTO;
 
@@ -248,15 +251,17 @@ export function Obras() {
                     Abonos cliente
                   </button>
                 </div>
-                <button
-                  onClick={() => handleToggleActive(obra)}
-                  className="font-label-sm uppercase text-on-surface-variant hover:text-error transition-colors flex items-center gap-1"
-                >
-                  <span className="material-symbols-outlined text-[18px]">
-                    {obra.isActive ? "block" : "check_circle"}
-                  </span>
-                  {obra.isActive ? "Desactivar" : "Activar"}
-                </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => handleToggleActive(obra)}
+                    className="font-label-sm uppercase text-on-surface-variant hover:text-error transition-colors flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      {obra.isActive ? "block" : "check_circle"}
+                    </span>
+                    {obra.isActive ? "Desactivar" : "Activar"}
+                  </button>
+                )}
               </div>
             </div>
           ))}
