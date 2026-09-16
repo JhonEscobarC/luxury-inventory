@@ -107,6 +107,24 @@ export async function updateObra(id: string, input: Partial<ObraInput>) {
       throw new HttpError(404, "Proyecto no encontrado");
     }
   }
+  // No dejar que el precio de venta baje por debajo de lo ya abonado: eso dejaria un
+  // saldo pendiente negativo.
+  if (input.precioVenta !== undefined && input.precioVenta !== null) {
+    const abonoSum = await prisma.abonoCliente.aggregate({ where: { obraId: id }, _sum: { amount: true } });
+    const totalAbonado = Number(abonoSum._sum.amount ?? 0);
+    if (input.precioVenta < totalAbonado) {
+      const currencyFormatter = new Intl.NumberFormat("es-CO", {
+        style: "currency",
+        currency: "COP",
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      });
+      throw new HttpError(
+        400,
+        `El precio de venta no puede ser menor a lo ya abonado (${currencyFormatter.format(totalAbonado)})`,
+      );
+    }
+  }
   const obra = await prisma.obra.update({
     where: { id },
     data: {
