@@ -15,8 +15,9 @@ import { Contratistas } from "./pages/Contratistas";
 import { Historial } from "./pages/Historial";
 import { Users } from "./pages/Users";
 
-// Cargado bajo demanda: exceljs y jspdf son pesados y solo se necesitan en /reportes.
+// Cargado bajo demanda: exceljs y jspdf son pesados y solo se necesitan en /reportes y /financiero.
 const Reports = lazy(() => import("./pages/Reports").then((module) => ({ default: module.Reports })));
+const Financiero = lazy(() => import("./pages/Financiero").then((module) => ({ default: module.Financiero })));
 
 const ADMIN_CONTABILIDAD = ["ADMIN", "CONTABILIDAD"] as const;
 
@@ -148,6 +149,18 @@ function AppRoutes() {
             <AppLayout>
               <Suspense fallback={<RouteFallback />}>
                 <Reports />
+              </Suspense>
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/financiero"
+        element={
+          <ProtectedRoute allowedRoles={[...ADMIN_CONTABILIDAD]}>
+            <AppLayout>
+              <Suspense fallback={<RouteFallback />}>
+                <Financiero />
               </Suspense>
             </AppLayout>
           </ProtectedRoute>

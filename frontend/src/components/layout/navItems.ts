@@ -15,6 +15,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Proveedores", icon: "local_shipping", to: "/proveedores", roles: ["ADMIN", "CONTABILIDAD"] },
   { label: "Contratistas", icon: "engineering", to: "/contratistas", roles: ["ADMIN", "CONTABILIDAD"] },
   { label: "Inventario", icon: "inventory_2", to: "/inventario", roles: ["ADMIN", "CONTABILIDAD"] },
+  { label: "Financiero", icon: "account_balance", to: "/financiero", roles: ["ADMIN", "CONTABILIDAD"] },
   { label: "Reportes", icon: "analytics", to: "/reportes", roles: ["ADMIN", "CONTABILIDAD"] },
   { label: "Historial", icon: "history", to: "/historial", roles: ["ADMIN", "CONTABILIDAD"] },
   { label: "Usuarios", icon: "group", to: "/usuarios", roles: ["ADMIN"] },

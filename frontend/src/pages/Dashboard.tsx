@@ -89,7 +89,7 @@ export function Dashboard() {
             </Link>
 
             <Link
-              to="/reportes"
+              to="/financiero"
               className="bg-surface-container p-6 lux-card-border relative overflow-hidden group block"
             >
               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -115,7 +115,7 @@ export function Dashboard() {
             </Link>
 
             <Link
-              to="/reportes"
+              to="/financiero"
               className="bg-surface-container p-6 lux-card-border relative overflow-hidden group block"
             >
               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
