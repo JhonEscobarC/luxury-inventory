@@ -137,7 +137,6 @@ export function Reports() {
 
   const [gastos, setGastos] = useState<GastosReport | null>(null);
   const [isLoadingGastos, setIsLoadingGastos] = useState(true);
-  const [excludedObraIds, setExcludedObraIds] = useState<Set<string>>(new Set());
   const [gastosProyectoIds, setGastosProyectoIds] = useState<string[]>([]);
   const [gastosObraIds, setGastosObraIds] = useState<string[]>([]);
   const [gastosCategoriaId, setGastosCategoriaId] = useState("");
@@ -236,26 +235,24 @@ export function Reports() {
       .finally(() => setIsLoadingDeudas(false));
   }
 
-  function toggleObraIncluded(obraId: string) {
-    setExcludedObraIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(obraId)) next.delete(obraId);
-      else next.add(obraId);
-      return next;
-    });
+  function toggleGastosProyecto(id: string) {
+    setGastosProyectoIds((prev) => (prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id]));
+    setGastosObraIds([]);
+  }
+
+  function toggleGastosObra(id: string) {
+    setGastosObraIds((prev) => (prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id]));
   }
 
   function sumObras(obrasList: ObraFinanciero[]) {
-    return obrasList
-      .filter((o) => !excludedObraIds.has(o.obraId))
-      .reduce(
-        (acc, o) => ({
-          gastoMaterial: acc.gastoMaterial + o.gastoMaterial,
-          gastoOperacion: acc.gastoOperacion + o.gastoOperacion,
-          total: acc.total + o.total,
-        }),
-        { gastoMaterial: 0, gastoOperacion: 0, total: 0 },
-      );
+    return obrasList.reduce(
+      (acc, o) => ({
+        gastoMaterial: acc.gastoMaterial + o.gastoMaterial,
+        gastoOperacion: acc.gastoOperacion + o.gastoOperacion,
+        total: acc.total + o.total,
+      }),
+      { gastoMaterial: 0, gastoOperacion: 0, total: 0 },
+    );
   }
 
   // Filtra el reporte de gastos por si se incluyen obras inactivas (proyecto, obra,
@@ -298,7 +295,7 @@ export function Reports() {
     return obras.filter((o) => o.proyectoId === inventoryProyectoId);
   }, [obras, inventoryProyectoId]);
   const isInventoryObraLocked = !inventoryProyectoId || inventoryProyectoId === "general";
-  const grandTotal = useMemo(() => sumObras(allObrasFlat), [allObrasFlat, excludedObraIds]);
+  const grandTotal = useMemo(() => sumObras(allObrasFlat), [allObrasFlat]);
 
   const sortedDeudas = useMemo(
     () => [...deudas].sort((a, b) => (deudaSort === "desc" ? b.saldo - a.saldo : a.saldo - b.saldo)),
@@ -384,33 +381,25 @@ export function Reports() {
 
   async function handleGastosExport(format: "pdf" | "excel") {
     if (!filteredGastos || !gastos) return;
-    const includedObraIds = new Set(
-      [...filteredGastos.proyectos.flatMap((p) => p.obras), ...filteredGastos.obrasSinProyecto]
-        .filter((o) => !excludedObraIds.has(o.obraId))
-        .map((o) => o.obraId),
-    );
+    const visibleObraIds = new Set(allObrasFlat.map((o) => o.obraId));
 
     const resumen: GastosExportData["resumen"] = [
       ...filteredGastos.proyectos.flatMap((p) =>
-        p.obras
-          .filter((o) => includedObraIds.has(o.obraId))
-          .map((o) => ({
-            proyectoName: p.proyectoName,
-            obraName: o.obraName,
-            gastoMaterial: o.gastoMaterial,
-            gastoOperacion: o.gastoOperacion,
-            total: o.total,
-          })),
-      ),
-      ...filteredGastos.obrasSinProyecto
-        .filter((o) => includedObraIds.has(o.obraId))
-        .map((o) => ({
-          proyectoName: "Sin proyecto",
+        p.obras.map((o) => ({
+          proyectoName: p.proyectoName,
           obraName: o.obraName,
           gastoMaterial: o.gastoMaterial,
           gastoOperacion: o.gastoOperacion,
           total: o.total,
         })),
+      ),
+      ...filteredGastos.obrasSinProyecto.map((o) => ({
+        proyectoName: "Sin proyecto",
+        obraName: o.obraName,
+        gastoMaterial: o.gastoMaterial,
+        gastoOperacion: o.gastoOperacion,
+        total: o.total,
+      })),
     ];
 
     if (resumen.length === 0) {
@@ -420,8 +409,8 @@ export function Reports() {
 
     const data: GastosExportData = {
       resumen,
-      pedidos: gastos.pedidosDetalle.filter((p) => includedObraIds.has(p.obraId)),
-      contratistas: gastos.contratistasDetalle.filter((c) => includedObraIds.has(c.obraId)),
+      pedidos: gastos.pedidosDetalle.filter((p) => visibleObraIds.has(p.obraId)),
+      contratistas: gastos.contratistasDetalle.filter((c) => visibleObraIds.has(c.obraId)),
     };
 
     let scopeName: string | undefined;
@@ -669,57 +658,76 @@ export function Reports() {
         </div>
         <p className="font-body-md text-on-surface-variant mb-6">
           Gastos de material (pedidos despachados) y de operacion (contratistas), con todos los filtros: proyectos,
-          obras, categoria, proveedor, contratista, materiales y fechas. Desmarca una obra para excluirla de los
-          totales. Los montos y el detalle solo se ven al exportar.
+          obras, categoria, proveedor, contratista, materiales y fechas. Los montos y el detalle solo se ven al
+          exportar.
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
           <div>
             <label className={labelClass}>Proyectos</label>
-            <select
-              multiple
-              size={4}
-              className={`${selectClass} h-auto`}
-              value={gastosProyectoIds}
-              onChange={(event) => {
-                const values = Array.from(event.target.selectedOptions).map((o) => o.value);
-                setGastosProyectoIds(values);
-                setGastosObraIds([]);
-              }}
-            >
-              <option value="none">Sin proyecto</option>
+            <div className="border border-outline-variant max-h-40 overflow-y-auto p-3 flex flex-col gap-2">
+              <label className="flex items-center gap-2 font-body-md text-on-surface cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={gastosProyectoIds.length === 0}
+                  onChange={() => {
+                    setGastosProyectoIds([]);
+                    setGastosObraIds([]);
+                  }}
+                  className="w-4 h-4 accent-primary shrink-0"
+                />
+                Todos
+              </label>
+              <label className="flex items-center gap-2 font-body-md text-on-surface cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={gastosProyectoIds.includes("none")}
+                  onChange={() => toggleGastosProyecto("none")}
+                  className="w-4 h-4 accent-primary shrink-0"
+                />
+                Sin proyecto
+              </label>
               {proyectos.map((proyecto) => (
-                <option key={proyecto.id} value={proyecto.id}>
+                <label
+                  key={proyecto.id}
+                  className="flex items-center gap-2 font-body-md text-on-surface cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={gastosProyectoIds.includes(proyecto.id)}
+                    onChange={() => toggleGastosProyecto(proyecto.id)}
+                    className="w-4 h-4 accent-primary shrink-0"
+                  />
                   {proyecto.name}
-                </option>
+                </label>
               ))}
-            </select>
-            <p className="font-label-sm text-on-surface-variant/60 uppercase mt-2">
-              Ctrl/Cmd + clic para elegir varios. Ninguno = todos.
-            </p>
+            </div>
           </div>
 
           <div>
             <label className={labelClass}>Obras</label>
-            <select
-              multiple
-              size={4}
-              className={`${selectClass} h-auto`}
-              value={gastosObraIds}
-              onChange={(event) => {
-                const values = Array.from(event.target.selectedOptions).map((o) => o.value);
-                setGastosObraIds(values);
-              }}
-            >
+            <div className="border border-outline-variant max-h-40 overflow-y-auto p-3 flex flex-col gap-2">
+              <label className="flex items-center gap-2 font-body-md text-on-surface cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={gastosObraIds.length === 0}
+                  onChange={() => setGastosObraIds([])}
+                  className="w-4 h-4 accent-primary shrink-0"
+                />
+                Todas
+              </label>
               {gastosObraOptions.map((obra) => (
-                <option key={obra.id} value={obra.id}>
+                <label key={obra.id} className="flex items-center gap-2 font-body-md text-on-surface cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={gastosObraIds.includes(obra.id)}
+                    onChange={() => toggleGastosObra(obra.id)}
+                    className="w-4 h-4 accent-primary shrink-0"
+                  />
                   {obra.name}
-                </option>
+                </label>
               ))}
-            </select>
-            <p className="font-label-sm text-on-surface-variant/60 uppercase mt-2">
-              Ctrl/Cmd + clic para elegir varias. Ninguna = todas.
-            </p>
+            </div>
           </div>
 
           <div className="flex flex-col gap-6">
@@ -822,74 +830,32 @@ export function Reports() {
         {isLoadingGastos && <p className="font-label-sm uppercase text-on-surface-variant mb-6">Cargando...</p>}
 
         {!isLoadingGastos && filteredGastos && (
-          <div className="flex flex-col gap-6">
-            {filteredGastos.proyectos.map((proyecto) => {
-              const subtotal = sumObras(proyecto.obras);
-              return (
-                <div key={proyecto.proyectoId} className="border border-outline-variant">
-                  <div className="bg-surface px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 border-b border-outline-variant">
-                    <span className="font-body-md font-semibold text-primary uppercase">{proyecto.proyectoName}</span>
-                    <MoneyStats
-                      items={[
-                        { label: "Material", value: displayCurrency(subtotal.gastoMaterial) },
-                        { label: "Operacion", value: displayCurrency(subtotal.gastoOperacion) },
-                        { label: "Total", value: displayCurrency(subtotal.total), emphasize: true },
-                      ]}
-                    />
-                  </div>
-                  <div className="flex flex-col">
-                    {proyecto.obras.map((obra) => (
-                      <ObraFinancieroRow
-                        key={obra.obraId}
-                        obra={obra}
-                        checked={!excludedObraIds.has(obra.obraId)}
-                        onToggle={() => toggleObraIncluded(obra.obraId)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-
-            {filteredGastos.obrasSinProyecto.length > 0 && (
-              <div className="border border-outline-variant">
-                <div className="bg-surface px-4 py-3 border-b border-outline-variant">
-                  <span className="font-body-md font-semibold text-on-surface-variant uppercase">Obras sin proyecto</span>
-                </div>
-                <div className="flex flex-col">
-                  {filteredGastos.obrasSinProyecto.map((obra) => (
-                    <ObraFinancieroRow
-                      key={obra.obraId}
-                      obra={obra}
-                      checked={!excludedObraIds.has(obra.obraId)}
-                      onToggle={() => toggleObraIncluded(obra.obraId)}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {filteredGastos.proyectos.length === 0 && filteredGastos.obrasSinProyecto.length === 0 && (
+          <div className="flex flex-col gap-4">
+            {allObrasFlat.length === 0 ? (
               <p className="text-on-surface-variant/60 font-label-sm uppercase px-2 py-6">
                 Sin obras que coincidan con los filtros
               </p>
+            ) : (
+              <>
+                <div className="border border-primary p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                  <span className="font-label-sm uppercase text-on-surface-variant">
+                    Total general ({allObrasFlat.length} obra(s))
+                  </span>
+                  <MoneyStats
+                    items={[
+                      { label: "Material", value: displayCurrency(grandTotal.gastoMaterial) },
+                      { label: "Operacion", value: displayCurrency(grandTotal.gastoOperacion) },
+                      { label: "Total", value: displayCurrency(grandTotal.total), emphasize: true },
+                    ]}
+                  />
+                </div>
+
+                <p className="font-label-sm uppercase text-on-surface-variant/70">
+                  {gastos?.pedidosDetalle.length ?? 0} material(es) de pedidos y {gastos?.contratistasDetalle.length ?? 0}{" "}
+                  asignacion(es) de contratista incluidos en el detalle al exportar.
+                </p>
+              </>
             )}
-
-            <div className="border border-primary p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-              <span className="font-label-sm uppercase text-on-surface-variant">Total general (obras seleccionadas)</span>
-              <MoneyStats
-                items={[
-                  { label: "Material", value: displayCurrency(grandTotal.gastoMaterial) },
-                  { label: "Operacion", value: displayCurrency(grandTotal.gastoOperacion) },
-                  { label: "Total", value: displayCurrency(grandTotal.total), emphasize: true },
-                ]}
-              />
-            </div>
-
-            <p className="font-label-sm uppercase text-on-surface-variant/70">
-              {gastos?.pedidosDetalle.length ?? 0} material(es) de pedidos y {gastos?.contratistasDetalle.length ?? 0}{" "}
-              asignacion(es) de contratista incluidos en el detalle al exportar.
-            </p>
           </div>
         )}
 
@@ -1105,30 +1071,6 @@ export function Reports() {
   );
 }
 
-interface ObraFinancieroRowProps {
-  obra: ObraFinanciero;
-  checked: boolean;
-  onToggle: () => void;
-}
-
-function ObraFinancieroRow({ obra, checked, onToggle }: ObraFinancieroRowProps) {
-  return (
-    <div className="px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 border-b border-outline-variant last:border-b-0">
-      <label className="flex items-center gap-3 font-body-md text-on-surface cursor-pointer">
-        <input type="checkbox" checked={checked} onChange={onToggle} className="w-4 h-4 accent-primary shrink-0" />
-        <span>{obra.obraName}</span>
-        {!obra.isActive && <span className="font-label-sm text-error uppercase">(inactiva)</span>}
-      </label>
-      <MoneyStats
-        items={[
-          { label: "Material", value: displayCurrency(obra.gastoMaterial) },
-          { label: "Operacion", value: displayCurrency(obra.gastoOperacion) },
-          { label: "Total", value: displayCurrency(obra.total) },
-        ]}
-      />
-    </div>
-  );
-}
 
 function ObraClientesRow({ obra }: { obra: ObraClientes }) {
   return (
