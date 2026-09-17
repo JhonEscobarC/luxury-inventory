@@ -12,6 +12,7 @@ import { Obras } from "./pages/Obras";
 import { Proyectos } from "./pages/Proyectos";
 import { Proveedores } from "./pages/Proveedores";
 import { Contratistas } from "./pages/Contratistas";
+import { ProveedoresContratistas } from "./pages/ProveedoresContratistas";
 import { Historial } from "./pages/Historial";
 import { Users } from "./pages/Users";
 
@@ -78,6 +79,16 @@ function AppRoutes() {
           <ProtectedRoute allowedRoles={[...ADMIN_CONTABILIDAD]}>
             <AppLayout>
               <Obras />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/proveedores-contratistas"
+        element={
+          <ProtectedRoute allowedRoles={[...ADMIN_CONTABILIDAD]}>
+            <AppLayout>
+              <ProveedoresContratistas />
             </AppLayout>
           </ProtectedRoute>
         }

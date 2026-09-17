@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { createProveedor, listProveedores, setProveedorActive, updateProveedor } from "../lib/proveedores";
 import { getProveedoresDeudaReport } from "../lib/reports";
@@ -82,6 +83,14 @@ export function Proveedores() {
 
   return (
     <div>
+      <Link
+        to="/proveedores-contratistas"
+        className="font-label-sm uppercase text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1 mb-4"
+      >
+        <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+        Proveedores y contratistas
+      </Link>
+
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
         <div>
           <h2 className="text-display-lg-mobile md:text-display-lg text-primary uppercase">Proveedores</h2>
