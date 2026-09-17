@@ -6,26 +6,28 @@ import { listOrders } from "../lib/orders";
 import { listObras } from "../lib/obras";
 import { listProyectos } from "../lib/proyectos";
 import { listProveedores } from "../lib/proveedores";
-import { getClientesReport, getFinancieroReport, getProveedoresDeudaReport } from "../lib/reports";
+import { listContratistas } from "../lib/contratistas";
+import { getClientesReport, getGastosReport, getProveedoresDeudaReport } from "../lib/reports";
 import { displayCurrency } from "../lib/currency";
 import {
   exportClientesExcel,
   exportClientesPdf,
-  exportFinancieroExcel,
-  exportFinancieroPdf,
+  exportGastosExcel,
+  exportGastosPdf,
   exportInventoryExcel,
   exportInventoryPdf,
   exportOrdersExcel,
   exportOrdersPdf,
 } from "../lib/exporters";
-import type { FinancieroExportRow } from "../lib/exporters";
+import type { GastosExportData } from "../lib/exporters";
 import type { Order, OrderStatus } from "../types/order";
 import type { Obra } from "../types/obra";
 import type { Proveedor } from "../types/proveedor";
 import type { Categoria } from "../types/categoria";
 import type { Proyecto } from "../types/proyecto";
+import type { Contratista } from "../types/contratista";
 import type { Product } from "../types/product";
-import type { ClientesReport, FinancieroReport, ObraClientes, ObraFinanciero, ProveedorDeuda } from "../types/report";
+import type { ClientesReport, GastosReport, ObraClientes, ObraFinanciero, ProveedorDeuda } from "../types/report";
 import { ProveedorAbonosModal } from "../components/proveedores/ProveedorAbonosModal";
 
 type InventorySortField = "name" | "categoriaName" | "obraName" | "quantity" | "price";
@@ -52,14 +54,6 @@ function sortProducts(products: Product[], sortBy: InventorySortField, direction
     return comparison * factor;
   });
 }
-
-const ORDER_STATUS_OPTIONS: { value: OrderStatus | ""; label: string }[] = [
-  { value: "", label: "Todos" },
-  { value: "PENDIENTE", label: "Solicitud" },
-  { value: "CONFIRMADO", label: "Compra" },
-  { value: "DESPACHADO", label: "Recibido" },
-  { value: "CANCELADO", label: "Cancelado" },
-];
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
   PENDIENTE: "Solicitud",
@@ -133,25 +127,29 @@ export function Reports() {
   const [inventorySortBy, setInventorySortBy] = useState<InventorySortField>("name");
   const [inventorySortDir, setInventorySortDir] = useState<"asc" | "desc">("asc");
 
-  const [orderStatus, setOrderStatus] = useState<OrderStatus | "">("");
-  const [orderFrom, setOrderFrom] = useState("");
-  const [orderTo, setOrderTo] = useState("");
-  const [ordersStatus, setOrdersStatus] = useState<string | null>(null);
-  const [isExportingOrders, setIsExportingOrders] = useState<"pdf" | "excel" | null>(null);
-
   const [selectedProveedorId, setSelectedProveedorId] = useState("");
+  const [proveedorCategoriaId, setProveedorCategoriaId] = useState("");
   const [proveedorOrders, setProveedorOrders] = useState<Order[]>([]);
   const [isLoadingProveedorOrders, setIsLoadingProveedorOrders] = useState(false);
   const [isExportingProveedor, setIsExportingProveedor] = useState<"pdf" | "excel" | null>(null);
 
-  const [financiero, setFinanciero] = useState<FinancieroReport | null>(null);
-  const [isLoadingFinanciero, setIsLoadingFinanciero] = useState(true);
+  const [contratistas, setContratistas] = useState<Contratista[]>([]);
+
+  const [gastos, setGastos] = useState<GastosReport | null>(null);
+  const [isLoadingGastos, setIsLoadingGastos] = useState(true);
   const [excludedObraIds, setExcludedObraIds] = useState<Set<string>>(new Set());
-  const [financieroProyectoId, setFinancieroProyectoId] = useState("");
-  const [financieroObraId, setFinancieroObraId] = useState("");
-  const [financieroIncludeInactive, setFinancieroIncludeInactive] = useState(true);
-  const [isExportingFinanciero, setIsExportingFinanciero] = useState<"pdf" | "excel" | null>(null);
-  const [financieroStatus, setFinancieroStatus] = useState<string | null>(null);
+  const [gastosProyectoIds, setGastosProyectoIds] = useState<string[]>([]);
+  const [gastosObraIds, setGastosObraIds] = useState<string[]>([]);
+  const [gastosCategoriaId, setGastosCategoriaId] = useState("");
+  const [gastosProveedorId, setGastosProveedorId] = useState("");
+  const [gastosContratistaId, setGastosContratistaId] = useState("");
+  const [gastosMaterialInput, setGastosMaterialInput] = useState("");
+  const [gastosMaterial, setGastosMaterial] = useState("");
+  const [gastosFrom, setGastosFrom] = useState("");
+  const [gastosTo, setGastosTo] = useState("");
+  const [gastosIncludeInactive, setGastosIncludeInactive] = useState(true);
+  const [isExportingGastos, setIsExportingGastos] = useState<"pdf" | "excel" | null>(null);
+  const [gastosStatus, setGastosStatus] = useState<string | null>(null);
 
   const [deudas, setDeudas] = useState<ProveedorDeuda[]>([]);
   const [isLoadingDeudas, setIsLoadingDeudas] = useState(true);
@@ -184,10 +182,43 @@ export function Reports() {
         if (items[0]) setSelectedProveedorId(items[0].id);
       })
       .catch(() => setProveedores([]));
-    refreshFinanciero();
+    listContratistas({ isActive: true }).then(setContratistas).catch(() => setContratistas([]));
     refreshDeudas();
     refreshClientes();
   }, []);
+
+  // Filtro de texto libre por material: se debounce para no repetir la consulta al
+  // backend en cada tecla.
+  useEffect(() => {
+    const timeout = setTimeout(() => setGastosMaterial(gastosMaterialInput.trim()), 400);
+    return () => clearTimeout(timeout);
+  }, [gastosMaterialInput]);
+
+  useEffect(() => {
+    setIsLoadingGastos(true);
+    getGastosReport({
+      proyectoIds: gastosProyectoIds.length > 0 ? gastosProyectoIds : undefined,
+      obraIds: gastosObraIds.length > 0 ? gastosObraIds : undefined,
+      categoriaId: gastosCategoriaId || undefined,
+      proveedorId: gastosProveedorId || undefined,
+      contratistaId: gastosContratistaId || undefined,
+      material: gastosMaterial || undefined,
+      from: gastosFrom || undefined,
+      to: gastosTo || undefined,
+    })
+      .then(setGastos)
+      .catch(() => setGastos(null))
+      .finally(() => setIsLoadingGastos(false));
+  }, [
+    gastosProyectoIds,
+    gastosObraIds,
+    gastosCategoriaId,
+    gastosProveedorId,
+    gastosContratistaId,
+    gastosMaterial,
+    gastosFrom,
+    gastosTo,
+  ]);
 
   function refreshClientes() {
     setIsLoadingClientes(true);
@@ -195,14 +226,6 @@ export function Reports() {
       .then(setClientes)
       .catch(() => setClientes(null))
       .finally(() => setIsLoadingClientes(false));
-  }
-
-  function refreshFinanciero() {
-    setIsLoadingFinanciero(true);
-    getFinancieroReport()
-      .then(setFinanciero)
-      .catch(() => setFinanciero(null))
-      .finally(() => setIsLoadingFinanciero(false));
   }
 
   function refreshDeudas() {
@@ -235,41 +258,35 @@ export function Reports() {
       );
   }
 
-  // Filtra el reporte financiero por proyecto/obra elegidos y si se incluyen obras
-  // inactivas; las casillas por obra siguen permitiendo afinar el total dentro de lo filtrado.
-  const filteredFinanciero = useMemo(() => {
-    if (!financiero) return null;
-    const matchesObra = (obra: ObraFinanciero) => {
-      if (!financieroIncludeInactive && !obra.isActive) return false;
-      if (financieroObraId) return obra.obraId === financieroObraId;
-      return true;
-    };
-    const proyectos = financiero.proyectos
-      .filter((p) => !financieroProyectoId || financieroProyectoId === p.proyectoId)
+  // Filtra el reporte de gastos por si se incluyen obras inactivas (proyecto, obra,
+  // categoria, proveedor, contratista, fechas y material ya se filtraron en el backend);
+  // las casillas por obra siguen permitiendo afinar el total dentro de lo filtrado.
+  const filteredGastos = useMemo(() => {
+    if (!gastos) return null;
+    const matchesObra = (obra: ObraFinanciero) => gastosIncludeInactive || obra.isActive;
+    const proyectos = gastos.proyectos
       .map((p) => ({ ...p, obras: p.obras.filter(matchesObra) }))
       .filter((p) => p.obras.length > 0);
-    const obrasSinProyecto =
-      !financieroProyectoId || financieroProyectoId === "none"
-        ? financiero.obrasSinProyecto.filter(matchesObra)
-        : [];
+    const obrasSinProyecto = gastos.obrasSinProyecto.filter(matchesObra);
     return { proyectos, obrasSinProyecto };
-  }, [financiero, financieroProyectoId, financieroObraId, financieroIncludeInactive]);
+  }, [gastos, gastosIncludeInactive]);
 
-  const financieroObraOptions = useMemo(() => {
-    if (!financiero) return [];
-    if (financieroProyectoId === "none") return financiero.obrasSinProyecto;
-    if (financieroProyectoId) {
-      return financiero.proyectos.find((p) => p.proyectoId === financieroProyectoId)?.obras ?? [];
-    }
-    return [...financiero.proyectos.flatMap((p) => p.obras), ...financiero.obrasSinProyecto];
-  }, [financiero, financieroProyectoId]);
+  // El multi-select de Obra del reporte de Gastos solo muestra las obras de los
+  // proyectos elegidos (o todas si no se eligio ningun proyecto).
+  const gastosObraOptions = useMemo(() => {
+    if (gastosProyectoIds.length === 0) return obras;
+    const wantsSinProyecto = gastosProyectoIds.includes("none");
+    return obras.filter(
+      (o) => (o.proyectoId && gastosProyectoIds.includes(o.proyectoId)) || (wantsSinProyecto && !o.proyectoId),
+    );
+  }, [obras, gastosProyectoIds]);
 
   const allObrasFlat = useMemo(
     () =>
-      filteredFinanciero
-        ? [...filteredFinanciero.proyectos.flatMap((p) => p.obras), ...filteredFinanciero.obrasSinProyecto]
+      filteredGastos
+        ? [...filteredGastos.proyectos.flatMap((p) => p.obras), ...filteredGastos.obrasSinProyecto]
         : [],
-    [filteredFinanciero],
+    [filteredGastos],
   );
 
   // El select de Obra del reporte de Inventario queda bloqueado hasta elegir un
@@ -294,11 +311,11 @@ export function Reports() {
       return;
     }
     setIsLoadingProveedorOrders(true);
-    listOrders({ proveedorId: selectedProveedorId })
+    listOrders({ proveedorId: selectedProveedorId, categoriaId: proveedorCategoriaId || undefined })
       .then(setProveedorOrders)
       .catch(() => setProveedorOrders([]))
       .finally(() => setIsLoadingProveedorOrders(false));
-  }, [selectedProveedorId]);
+  }, [selectedProveedorId, proveedorCategoriaId]);
 
   async function handleInventoryExport(format: "pdf" | "excel") {
     setIsExportingInventory(format);
@@ -349,32 +366,6 @@ export function Reports() {
     }
   }
 
-  async function handleOrdersExport(format: "pdf" | "excel") {
-    setIsExportingOrders(format);
-    setOrdersStatus(null);
-    try {
-      const orders = await listOrders({
-        status: orderStatus || undefined,
-        from: orderFrom || undefined,
-        to: orderTo || undefined,
-      });
-      if (orders.length === 0) {
-        setOrdersStatus("No hay pedidos que coincidan con los filtros seleccionados.");
-        return;
-      }
-      if (format === "pdf") {
-        exportOrdersPdf(orders);
-      } else {
-        await exportOrdersExcel(orders);
-      }
-      setOrdersStatus(`Exportados ${orders.length} pedido(s).`);
-    } catch {
-      setOrdersStatus("No se pudo generar el reporte de pedidos.");
-    } finally {
-      setIsExportingOrders(null);
-    }
-  }
-
   async function handleProveedorExport(format: "pdf" | "excel") {
     if (proveedorOrders.length === 0) return;
     const proveedorName = proveedores.find((p) => p.id === selectedProveedorId)?.name ?? "proveedor";
@@ -391,12 +382,18 @@ export function Reports() {
     }
   }
 
-  async function handleFinancieroExport(format: "pdf" | "excel") {
-    if (!filteredFinanciero) return;
-    const rows: FinancieroExportRow[] = [
-      ...filteredFinanciero.proyectos.flatMap((p) =>
+  async function handleGastosExport(format: "pdf" | "excel") {
+    if (!filteredGastos || !gastos) return;
+    const includedObraIds = new Set(
+      [...filteredGastos.proyectos.flatMap((p) => p.obras), ...filteredGastos.obrasSinProyecto]
+        .filter((o) => !excludedObraIds.has(o.obraId))
+        .map((o) => o.obraId),
+    );
+
+    const resumen: GastosExportData["resumen"] = [
+      ...filteredGastos.proyectos.flatMap((p) =>
         p.obras
-          .filter((o) => !excludedObraIds.has(o.obraId))
+          .filter((o) => includedObraIds.has(o.obraId))
           .map((o) => ({
             proyectoName: p.proyectoName,
             obraName: o.obraName,
@@ -405,8 +402,8 @@ export function Reports() {
             total: o.total,
           })),
       ),
-      ...filteredFinanciero.obrasSinProyecto
-        .filter((o) => !excludedObraIds.has(o.obraId))
+      ...filteredGastos.obrasSinProyecto
+        .filter((o) => includedObraIds.has(o.obraId))
         .map((o) => ({
           proyectoName: "Sin proyecto",
           obraName: o.obraName,
@@ -415,34 +412,37 @@ export function Reports() {
           total: o.total,
         })),
     ];
-    if (rows.length === 0) {
-      setFinancieroStatus("No hay obras que coincidan con los filtros seleccionados.");
+
+    if (resumen.length === 0) {
+      setGastosStatus("No hay obras que coincidan con los filtros seleccionados.");
       return;
     }
 
-    let scopeName: string | undefined;
-    if (financieroObraId) {
-      scopeName = financieroObraOptions.find((o) => o.obraId === financieroObraId)?.obraName;
-    } else if (financieroProyectoId === "none") {
-      scopeName = "Sin proyecto";
-    } else if (financieroProyectoId) {
-      scopeName = proyectos.find((p) => p.id === financieroProyectoId)?.name;
-    }
-    const options = scopeName
-      ? { title: `Reporte de Gastos por Obra - ${scopeName}`, filenamePrefix: scopeName }
-      : undefined;
+    const data: GastosExportData = {
+      resumen,
+      pedidos: gastos.pedidosDetalle.filter((p) => includedObraIds.has(p.obraId)),
+      contratistas: gastos.contratistasDetalle.filter((c) => includedObraIds.has(c.obraId)),
+    };
 
-    setIsExportingFinanciero(format);
-    setFinancieroStatus(null);
+    let scopeName: string | undefined;
+    if (gastosObraIds.length === 1) {
+      scopeName = gastosObraOptions.find((o) => o.id === gastosObraIds[0])?.name;
+    } else if (gastosProyectoIds.length === 1 && gastosProyectoIds[0] !== "none") {
+      scopeName = proyectos.find((p) => p.id === gastosProyectoIds[0])?.name;
+    }
+    const options = scopeName ? { title: `Reporte de Gastos - ${scopeName}`, filenamePrefix: scopeName } : undefined;
+
+    setIsExportingGastos(format);
+    setGastosStatus(null);
     try {
       if (format === "pdf") {
-        exportFinancieroPdf(rows, options);
+        exportGastosPdf(data, options);
       } else {
-        await exportFinancieroExcel(rows, options);
+        await exportGastosExcel(data, options);
       }
-      setFinancieroStatus(`Exportadas ${rows.length} obra(s).`);
+      setGastosStatus(`Exportadas ${resumen.length} obra(s), ${data.pedidos.length} material(es) y ${data.contratistas.length} asignacion(es).`);
     } finally {
-      setIsExportingFinanciero(null);
+      setIsExportingGastos(null);
     }
   }
 
@@ -598,91 +598,42 @@ export function Reports() {
 
       <section className="bg-surface-container lux-card-border p-6 md:p-8 mb-10">
         <div className="flex items-center gap-3 mb-6 border-b border-outline-variant pb-4">
-          <span className="material-symbols-outlined text-primary">assignment</span>
-          <h3 className="text-headline-md-mobile text-on-surface uppercase">Pedidos (general)</h3>
+          <span className="material-symbols-outlined text-primary">local_shipping</span>
+          <h3 className="text-headline-md-mobile text-on-surface uppercase">Reporte por proveedor</h3>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
           <div>
-            <label className={labelClass}>Estado</label>
+            <label className={labelClass}>Proveedor</label>
             <select
               className={selectClass}
-              value={orderStatus}
-              onChange={(event) => setOrderStatus(event.target.value as OrderStatus | "")}
+              value={selectedProveedorId}
+              onChange={(e) => setSelectedProveedorId(e.target.value)}
             >
-              {ORDER_STATUS_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
+              {proveedores.length === 0 && <option value="">Sin proveedores registrados</option>}
+              {proveedores.map((proveedor) => (
+                <option key={proveedor.id} value={proveedor.id}>
+                  {proveedor.name}
                 </option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className={labelClass}>Desde</label>
-            <input
-              type="date"
+            <label className={labelClass}>Categoria</label>
+            <select
               className={selectClass}
-              value={orderFrom}
-              max={orderTo || undefined}
-              onChange={(event) => setOrderFrom(event.target.value)}
-            />
+              value={proveedorCategoriaId}
+              onChange={(event) => setProveedorCategoriaId(event.target.value)}
+            >
+              <option value="">Todas</option>
+              {categorias.map((categoria) => (
+                <option key={categoria.id} value={categoria.id}>
+                  {categoria.name}
+                </option>
+              ))}
+            </select>
           </div>
-
-          <div>
-            <label className={labelClass}>Hasta</label>
-            <input
-              type="date"
-              className={selectClass}
-              value={orderTo}
-              min={orderFrom || undefined}
-              onChange={(event) => setOrderTo(event.target.value)}
-            />
-          </div>
-        </div>
-
-        {ordersStatus && <p className="font-label-sm uppercase text-on-surface-variant mb-4">{ordersStatus}</p>}
-
-        <div className="flex flex-col sm:flex-row gap-4">
-          <button
-            onClick={() => handleOrdersExport("pdf")}
-            disabled={isExportingOrders !== null}
-            className={exportButtonClass}
-          >
-            <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
-            {isExportingOrders === "pdf" ? "Generando..." : "Exportar PDF"}
-          </button>
-          <button
-            onClick={() => handleOrdersExport("excel")}
-            disabled={isExportingOrders !== null}
-            className={exportButtonClass}
-          >
-            <span className="material-symbols-outlined text-[18px]">table_chart</span>
-            {isExportingOrders === "excel" ? "Generando..." : "Exportar Excel"}
-          </button>
-        </div>
-      </section>
-
-      <section className="bg-surface-container lux-card-border p-6 md:p-8 mb-10">
-        <div className="flex items-center gap-3 mb-6 border-b border-outline-variant pb-4">
-          <span className="material-symbols-outlined text-primary">local_shipping</span>
-          <h3 className="text-headline-md-mobile text-on-surface uppercase">Reporte por proveedor</h3>
-        </div>
-
-        <div className="mb-6">
-          <label className={labelClass}>Proveedor</label>
-          <select
-            className={selectClass}
-            value={selectedProveedorId}
-            onChange={(e) => setSelectedProveedorId(e.target.value)}
-          >
-            {proveedores.length === 0 && <option value="">Sin proveedores registrados</option>}
-            {proveedores.map((proveedor) => (
-              <option key={proveedor.id} value={proveedor.id}>
-                {proveedor.name}
-              </option>
-            ))}
-          </select>
         </div>
 
         {isLoadingProveedorOrders && (
@@ -714,25 +665,28 @@ export function Reports() {
       <section className="bg-surface-container lux-card-border p-6 md:p-8 mb-10">
         <div className="flex items-center gap-3 mb-6 border-b border-outline-variant pb-4">
           <span className="material-symbols-outlined text-primary">apartment</span>
-          <h3 className="text-headline-md-mobile text-on-surface uppercase">Gastos por proyecto y obra</h3>
+          <h3 className="text-headline-md-mobile text-on-surface uppercase">Gastos generales</h3>
         </div>
         <p className="font-body-md text-on-surface-variant mb-6">
-          Gastos de material (pedidos despachados) y de operacion (contratistas). Filtra por proyecto u obra y
-          desmarca una obra para excluirla de los totales. Los montos solo se ven al exportar.
+          Gastos de material (pedidos despachados) y de operacion (contratistas), con todos los filtros: proyectos,
+          obras, categoria, proveedor, contratista, materiales y fechas. Desmarca una obra para excluirla de los
+          totales. Los montos y el detalle solo se ven al exportar.
         </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
           <div>
-            <label className={labelClass}>Proyecto</label>
+            <label className={labelClass}>Proyectos</label>
             <select
-              className={selectClass}
-              value={financieroProyectoId}
+              multiple
+              size={4}
+              className={`${selectClass} h-auto`}
+              value={gastosProyectoIds}
               onChange={(event) => {
-                setFinancieroProyectoId(event.target.value);
-                setFinancieroObraId("");
+                const values = Array.from(event.target.selectedOptions).map((o) => o.value);
+                setGastosProyectoIds(values);
+                setGastosObraIds([]);
               }}
             >
-              <option value="">Todos</option>
               <option value="none">Sin proyecto</option>
               {proyectos.map((proyecto) => (
                 <option key={proyecto.id} value={proyecto.id}>
@@ -740,30 +694,124 @@ export function Reports() {
                 </option>
               ))}
             </select>
+            <p className="font-label-sm text-on-surface-variant/60 uppercase mt-2">
+              Ctrl/Cmd + clic para elegir varios. Ninguno = todos.
+            </p>
           </div>
 
           <div>
-            <label className={labelClass}>Obra</label>
+            <label className={labelClass}>Obras</label>
             <select
-              className={selectClass}
-              value={financieroObraId}
-              onChange={(event) => setFinancieroObraId(event.target.value)}
+              multiple
+              size={4}
+              className={`${selectClass} h-auto`}
+              value={gastosObraIds}
+              onChange={(event) => {
+                const values = Array.from(event.target.selectedOptions).map((o) => o.value);
+                setGastosObraIds(values);
+              }}
             >
-              <option value="">Todas</option>
-              {financieroObraOptions.map((obra) => (
-                <option key={obra.obraId} value={obra.obraId}>
-                  {obra.obraName}
+              {gastosObraOptions.map((obra) => (
+                <option key={obra.id} value={obra.id}>
+                  {obra.name}
                 </option>
               ))}
             </select>
+            <p className="font-label-sm text-on-surface-variant/60 uppercase mt-2">
+              Ctrl/Cmd + clic para elegir varias. Ninguna = todas.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-6">
+            <div>
+              <label className={labelClass}>Categoria</label>
+              <select
+                className={selectClass}
+                value={gastosCategoriaId}
+                onChange={(event) => setGastosCategoriaId(event.target.value)}
+              >
+                <option value="">Todas</option>
+                {categorias.map((categoria) => (
+                  <option key={categoria.id} value={categoria.id}>
+                    {categoria.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className={labelClass}>Proveedor</label>
+              <select
+                className={selectClass}
+                value={gastosProveedorId}
+                onChange={(event) => setGastosProveedorId(event.target.value)}
+              >
+                <option value="">Todos</option>
+                {proveedores.map((proveedor) => (
+                  <option key={proveedor.id} value={proveedor.id}>
+                    {proveedor.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className={labelClass}>Contratista</label>
+            <select
+              className={selectClass}
+              value={gastosContratistaId}
+              onChange={(event) => setGastosContratistaId(event.target.value)}
+            >
+              <option value="">Todos</option>
+              {contratistas.map((contratista) => (
+                <option key={contratista.id} value={contratista.id}>
+                  {contratista.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className={labelClass}>Material</label>
+            <input
+              type="text"
+              placeholder="Buscar por nombre..."
+              className={selectClass}
+              value={gastosMaterialInput}
+              onChange={(event) => setGastosMaterialInput(event.target.value)}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>Desde</label>
+              <input
+                type="date"
+                className={selectClass}
+                value={gastosFrom}
+                max={gastosTo || undefined}
+                onChange={(event) => setGastosFrom(event.target.value)}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Hasta</label>
+              <input
+                type="date"
+                className={selectClass}
+                value={gastosTo}
+                min={gastosFrom || undefined}
+                onChange={(event) => setGastosTo(event.target.value)}
+              />
+            </div>
           </div>
 
           <div className="flex items-end pb-3">
             <label className="flex items-center gap-3 font-body-md text-on-surface cursor-pointer">
               <input
                 type="checkbox"
-                checked={financieroIncludeInactive}
-                onChange={(event) => setFinancieroIncludeInactive(event.target.checked)}
+                checked={gastosIncludeInactive}
+                onChange={(event) => setGastosIncludeInactive(event.target.checked)}
                 className="w-4 h-4 accent-primary shrink-0"
               />
               Incluir obras inactivas
@@ -771,11 +819,11 @@ export function Reports() {
           </div>
         </div>
 
-        {isLoadingFinanciero && <p className="font-label-sm uppercase text-on-surface-variant mb-6">Cargando...</p>}
+        {isLoadingGastos && <p className="font-label-sm uppercase text-on-surface-variant mb-6">Cargando...</p>}
 
-        {!isLoadingFinanciero && filteredFinanciero && (
+        {!isLoadingGastos && filteredGastos && (
           <div className="flex flex-col gap-6">
-            {filteredFinanciero.proyectos.map((proyecto) => {
+            {filteredGastos.proyectos.map((proyecto) => {
               const subtotal = sumObras(proyecto.obras);
               return (
                 <div key={proyecto.proyectoId} className="border border-outline-variant">
@@ -803,13 +851,13 @@ export function Reports() {
               );
             })}
 
-            {filteredFinanciero.obrasSinProyecto.length > 0 && (
+            {filteredGastos.obrasSinProyecto.length > 0 && (
               <div className="border border-outline-variant">
                 <div className="bg-surface px-4 py-3 border-b border-outline-variant">
                   <span className="font-body-md font-semibold text-on-surface-variant uppercase">Obras sin proyecto</span>
                 </div>
                 <div className="flex flex-col">
-                  {filteredFinanciero.obrasSinProyecto.map((obra) => (
+                  {filteredGastos.obrasSinProyecto.map((obra) => (
                     <ObraFinancieroRow
                       key={obra.obraId}
                       obra={obra}
@@ -821,7 +869,7 @@ export function Reports() {
               </div>
             )}
 
-            {filteredFinanciero.proyectos.length === 0 && filteredFinanciero.obrasSinProyecto.length === 0 && (
+            {filteredGastos.proyectos.length === 0 && filteredGastos.obrasSinProyecto.length === 0 && (
               <p className="text-on-surface-variant/60 font-label-sm uppercase px-2 py-6">
                 Sin obras que coincidan con los filtros
               </p>
@@ -837,29 +885,32 @@ export function Reports() {
                 ]}
               />
             </div>
+
+            <p className="font-label-sm uppercase text-on-surface-variant/70">
+              {gastos?.pedidosDetalle.length ?? 0} material(es) de pedidos y {gastos?.contratistasDetalle.length ?? 0}{" "}
+              asignacion(es) de contratista incluidos en el detalle al exportar.
+            </p>
           </div>
         )}
 
-        {financieroStatus && (
-          <p className="font-label-sm uppercase text-on-surface-variant mt-6">{financieroStatus}</p>
-        )}
+        {gastosStatus && <p className="font-label-sm uppercase text-on-surface-variant mt-6">{gastosStatus}</p>}
 
         <div className="flex flex-col sm:flex-row gap-4 mt-6">
           <button
-            onClick={() => handleFinancieroExport("pdf")}
-            disabled={isExportingFinanciero !== null}
+            onClick={() => handleGastosExport("pdf")}
+            disabled={isExportingGastos !== null}
             className={exportButtonClass}
           >
             <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
-            {isExportingFinanciero === "pdf" ? "Generando..." : "Exportar PDF"}
+            {isExportingGastos === "pdf" ? "Generando..." : "Exportar PDF"}
           </button>
           <button
-            onClick={() => handleFinancieroExport("excel")}
-            disabled={isExportingFinanciero !== null}
+            onClick={() => handleGastosExport("excel")}
+            disabled={isExportingGastos !== null}
             className={exportButtonClass}
           >
             <span className="material-symbols-outlined text-[18px]">table_chart</span>
-            {isExportingFinanciero === "excel" ? "Generando..." : "Exportar Excel"}
+            {isExportingGastos === "excel" ? "Generando..." : "Exportar Excel"}
           </button>
         </div>
       </section>

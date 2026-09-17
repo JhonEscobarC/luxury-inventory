@@ -5,6 +5,7 @@ export interface OrdersFilters {
   status?: OrderStatus;
   obraId?: string;
   proveedorId?: string;
+  categoriaId?: string;
   from?: string;
   to?: string;
 }
@@ -15,6 +16,7 @@ export async function listOrders(filters: OrdersFilters = {}): Promise<Order[]> 
       status: filters.status || undefined,
       obraId: filters.obraId || undefined,
       proveedorId: filters.proveedorId || undefined,
+      categoriaId: filters.categoriaId || undefined,
       from: filters.from || undefined,
       to: filters.to || undefined,
     },

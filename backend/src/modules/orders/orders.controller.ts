@@ -48,6 +48,7 @@ const filtersSchema = z.object({
   status: z.nativeEnum(OrderStatus).optional(),
   obraId: z.string().uuid().optional(),
   proveedorId: z.string().uuid().optional(),
+  categoriaId: z.string().uuid().optional(),
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
 });

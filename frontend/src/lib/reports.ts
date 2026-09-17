@@ -1,8 +1,19 @@
 import { api } from "./api";
-import type { ClientesReport, FinancieroReport, ProveedorDeuda } from "../types/report";
+import type { ClientesReport, GastosFilters, GastosReport, ProveedorDeuda } from "../types/report";
 
-export async function getFinancieroReport(): Promise<FinancieroReport> {
-  const { data } = await api.get<FinancieroReport>("/reports/financiero");
+export async function getGastosReport(filters: GastosFilters = {}): Promise<GastosReport> {
+  const { data } = await api.get<GastosReport>("/reports/gastos", {
+    params: {
+      proyectoIds: filters.proyectoIds?.length ? filters.proyectoIds.join(",") : undefined,
+      obraIds: filters.obraIds?.length ? filters.obraIds.join(",") : undefined,
+      categoriaId: filters.categoriaId || undefined,
+      proveedorId: filters.proveedorId || undefined,
+      contratistaId: filters.contratistaId || undefined,
+      from: filters.from || undefined,
+      to: filters.to || undefined,
+      material: filters.material || undefined,
+    },
+  });
   return data;
 }
 

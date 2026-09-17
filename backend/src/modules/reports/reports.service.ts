@@ -1,5 +1,6 @@
 import { OrderStatus, FormaPago } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
+import { endOfDay } from "../../utils/dates";
 
 export interface ObraFinanciero {
   obraId: string;
@@ -21,43 +22,146 @@ export interface ProyectoFinanciero {
   total: number;
 }
 
-export interface FinancieroReport {
-  proyectos: ProyectoFinanciero[];
-  obrasSinProyecto: ObraFinanciero[];
+export interface GastosFilters {
+  proyectoIds?: string[]; // "none" incluye obras sin proyecto
+  obraIds?: string[];
+  categoriaId?: string;
+  proveedorId?: string;
+  contratistaId?: string;
+  from?: Date;
+  to?: Date;
+  material?: string;
 }
 
-// Gastos de material: pedidos DESPACHADOS con precios asignados por obra.
-// Gastos de operacion: monto total de las asignaciones a contratistas por obra.
-export async function getFinancieroReport(): Promise<FinancieroReport> {
-  const [obras, orders, asignaciones] = await Promise.all([
-    prisma.obra.findMany({
-      include: { proyecto: { select: { id: true, name: true, isActive: true } } },
-      orderBy: { name: "asc" },
-    }),
-    prisma.order.findMany({
-      where: { status: OrderStatus.DESPACHADO },
-      include: { items: true },
-    }),
-    prisma.contratistaAsignacion.findMany(),
-  ]);
+export interface GastoPedidoDetalle {
+  orderId: string;
+  obraId: string;
+  obraName: string;
+  proveedorName: string | null;
+  categoriaName: string | null;
+  description: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  subtotal: number;
+  createdAt: Date;
+}
 
-  const materialByObra = new Map<string, number>();
-  for (const order of orders) {
-    const hasAllPrices = order.items.every((item) => item.unitPrice !== null);
-    if (!hasAllPrices) continue;
-    const total = order.items.reduce((sum, item) => sum + Number(item.quantity) * Number(item.unitPrice), 0);
-    materialByObra.set(order.obraId, (materialByObra.get(order.obraId) ?? 0) + total);
-  }
+export interface GastoContratistaDetalle {
+  obraId: string;
+  obraName: string;
+  contratistaName: string;
+  totalAmount: number;
+  createdAt: Date;
+}
 
-  const operacionByObra = new Map<string, number>();
-  for (const asignacion of asignaciones) {
-    operacionByObra.set(
-      asignacion.obraId,
-      (operacionByObra.get(asignacion.obraId) ?? 0) + Number(asignacion.totalAmount),
+export interface GastosReport {
+  proyectos: ProyectoFinanciero[];
+  obrasSinProyecto: ObraFinanciero[];
+  pedidosDetalle: GastoPedidoDetalle[];
+  contratistasDetalle: GastoContratistaDetalle[];
+}
+
+// Version filtrable de getFinancieroReport: permite acotar por proyecto/obra, categoria
+// de inventario, proveedor, contratista, fechas y texto libre de material, y ademas
+// devuelve el detalle (pedidos y asignaciones a contratistas) que compone cada total,
+// pensado para exportarse como anexo del reporte.
+export async function getGastosReport(filters: GastosFilters = {}): Promise<GastosReport> {
+  const obras = await prisma.obra.findMany({
+    include: { proyecto: { select: { id: true, name: true, isActive: true } } },
+    orderBy: { name: "asc" },
+  });
+
+  let allowedObraIds: Set<string> | null = null;
+  if (filters.obraIds && filters.obraIds.length > 0) {
+    allowedObraIds = new Set(filters.obraIds);
+  } else if (filters.proyectoIds && filters.proyectoIds.length > 0) {
+    const wantsSinProyecto = filters.proyectoIds.includes("none");
+    allowedObraIds = new Set(
+      obras
+        .filter(
+          (o) => (o.proyectoId && filters.proyectoIds!.includes(o.proyectoId)) || (wantsSinProyecto && !o.proyectoId),
+        )
+        .map((o) => o.id),
     );
   }
 
-  const obraFinancieros: ObraFinanciero[] = obras.map((obra) => {
+  const dateWhere =
+    filters.from || filters.to
+      ? { createdAt: { ...(filters.from && { gte: filters.from }), ...(filters.to && { lte: endOfDay(filters.to) }) } }
+      : {};
+
+  const orders = await prisma.order.findMany({
+    where: {
+      status: OrderStatus.DESPACHADO,
+      ...(allowedObraIds && { obraId: { in: Array.from(allowedObraIds) } }),
+      ...dateWhere,
+    },
+    include: { items: { include: { categoria: true, proveedor: true } }, obra: true, proveedor: true },
+  });
+
+  const materialQuery = filters.material?.trim().toLowerCase();
+  const materialByObra = new Map<string, number>();
+  const pedidosDetalle: GastoPedidoDetalle[] = [];
+
+  for (const order of orders) {
+    for (const item of order.items) {
+      if (item.unitPrice === null) continue;
+      const effectiveProveedorId = item.proveedorId ?? order.proveedorId;
+      if (filters.categoriaId && item.categoriaId !== filters.categoriaId) continue;
+      if (filters.proveedorId && effectiveProveedorId !== filters.proveedorId) continue;
+      if (materialQuery && !item.description.toLowerCase().includes(materialQuery)) continue;
+
+      const subtotal = Number(item.quantity) * Number(item.unitPrice);
+      materialByObra.set(order.obraId, (materialByObra.get(order.obraId) ?? 0) + subtotal);
+      pedidosDetalle.push({
+        orderId: order.id,
+        obraId: order.obraId,
+        obraName: order.obra.name,
+        proveedorName: item.proveedor?.name ?? order.proveedor?.name ?? null,
+        categoriaName: item.categoria?.name ?? null,
+        description: item.description,
+        quantity: Number(item.quantity),
+        unit: item.unit,
+        unitPrice: Number(item.unitPrice),
+        subtotal,
+        createdAt: order.createdAt,
+      });
+    }
+  }
+
+  // Los gastos de operacion (contratistas) no tienen categoria, proveedor de material ni
+  // texto de material propios: si alguno de esos filtros esta activo se excluyen del
+  // calculo para no mezclar conceptos que no aplican.
+  const skipOperacion = !!(filters.categoriaId || filters.proveedorId || materialQuery);
+
+  const asignaciones = skipOperacion
+    ? []
+    : await prisma.contratistaAsignacion.findMany({
+        where: {
+          ...(allowedObraIds && { obraId: { in: Array.from(allowedObraIds) } }),
+          ...(filters.contratistaId && { contratistaId: filters.contratistaId }),
+          ...dateWhere,
+        },
+        include: { obra: true, contratista: true },
+      });
+
+  const operacionByObra = new Map<string, number>();
+  const contratistasDetalle: GastoContratistaDetalle[] = [];
+  for (const asignacion of asignaciones) {
+    operacionByObra.set(asignacion.obraId, (operacionByObra.get(asignacion.obraId) ?? 0) + Number(asignacion.totalAmount));
+    contratistasDetalle.push({
+      obraId: asignacion.obraId,
+      obraName: asignacion.obra.name,
+      contratistaName: asignacion.contratista.name,
+      totalAmount: Number(asignacion.totalAmount),
+      createdAt: asignacion.createdAt,
+    });
+  }
+
+  const relevantObras = allowedObraIds ? obras.filter((o) => allowedObraIds!.has(o.id)) : obras;
+
+  const obraFinancieros: ObraFinanciero[] = relevantObras.map((obra) => {
     const gastoMaterial = materialByObra.get(obra.id) ?? 0;
     const gastoOperacion = operacionByObra.get(obra.id) ?? 0;
     return {
@@ -79,7 +183,7 @@ export async function getFinancieroReport(): Promise<FinancieroReport> {
       obrasSinProyecto.push(obraFin);
       continue;
     }
-    const obraModel = obras.find((o) => o.id === obraFin.obraId)!;
+    const obraModel = relevantObras.find((o) => o.id === obraFin.obraId)!;
     if (!proyectosMap.has(obraFin.proyectoId)) {
       proyectosMap.set(obraFin.proyectoId, {
         proyectoId: obraFin.proyectoId,
@@ -101,6 +205,8 @@ export async function getFinancieroReport(): Promise<FinancieroReport> {
   return {
     proyectos: Array.from(proyectosMap.values()).sort((a, b) => a.proyectoName.localeCompare(b.proyectoName)),
     obrasSinProyecto,
+    pedidosDetalle,
+    contratistasDetalle,
   };
 }
 

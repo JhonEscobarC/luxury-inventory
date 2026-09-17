@@ -135,6 +135,7 @@ export interface ListOrdersFilters {
   status?: OrderStatus;
   obraId?: string;
   proveedorId?: string;
+  categoriaId?: string;
   from?: Date;
   to?: Date;
   restrictToObraIds?: string[];
@@ -146,6 +147,8 @@ export async function listOrders(filters: ListOrdersFilters) {
   if (filters.status) where.status = filters.status;
   if (filters.obraId) where.obraId = filters.obraId;
   if (filters.proveedorId) where.proveedorId = filters.proveedorId;
+  // Un pedido "coincide" con la categoria si al menos uno de sus materiales la tiene.
+  if (filters.categoriaId) where.items = { some: { categoriaId: filters.categoriaId } };
   if (filters.from || filters.to) {
     where.createdAt = {
       ...(filters.from && { gte: filters.from }),

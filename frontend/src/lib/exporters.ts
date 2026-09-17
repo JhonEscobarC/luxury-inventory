@@ -13,6 +13,31 @@ export interface FinancieroExportRow {
   total: number;
 }
 
+export interface GastoPedidoExportRow {
+  obraName: string;
+  proveedorName: string | null;
+  categoriaName: string | null;
+  description: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  subtotal: number;
+  createdAt: string;
+}
+
+export interface GastoContratistaExportRow {
+  obraName: string;
+  contratistaName: string;
+  totalAmount: number;
+  createdAt: string;
+}
+
+export interface GastosExportData {
+  resumen: FinancieroExportRow[];
+  pedidos: GastoPedidoExportRow[];
+  contratistas: GastoContratistaExportRow[];
+}
+
 const GOLD: [number, number, number] = [198, 161, 91];
 const GOLD_ARGB = "FFC6A15B";
 const ERROR_ARGB = "FFB4231F";
@@ -216,11 +241,26 @@ export async function exportOrdersExcel(orders: Order[], options: ExportOptions 
   );
 }
 
-export function exportFinancieroPdf(rows: FinancieroExportRow[], options: ExportOptions = {}) {
-  const doc = new jsPDF();
-  addReportHeader(doc, options.title ?? "Reporte de Gastos por Obra");
+function lastAutoTableY(doc: jsPDF): number {
+  return (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
+}
 
-  const totals = rows.reduce(
+function addSectionTitle(doc: jsPDF, title: string, y: number): number {
+  if (y > 270) {
+    doc.addPage();
+    y = 20;
+  }
+  doc.setFontSize(11);
+  doc.setTextColor(...GOLD);
+  doc.text(title, 14, y);
+  return y + 6;
+}
+
+export function exportGastosPdf(data: GastosExportData, options: ExportOptions = {}) {
+  const doc = new jsPDF();
+  addReportHeader(doc, options.title ?? "Reporte de Gastos");
+
+  const totals = data.resumen.reduce(
     (acc, row) => ({
       gastoMaterial: acc.gastoMaterial + row.gastoMaterial,
       gastoOperacion: acc.gastoOperacion + row.gastoOperacion,
@@ -233,7 +273,7 @@ export function exportFinancieroPdf(rows: FinancieroExportRow[], options: Export
     startY: 36,
     head: [["Proyecto", "Obra", "Material", "Operacion", "Total"]],
     body: [
-      ...rows.map((row) => [
+      ...data.resumen.map((row) => [
         row.proyectoName,
         row.obraName,
         row.gastoMaterial.toLocaleString("es-CO"),
@@ -250,32 +290,70 @@ export function exportFinancieroPdf(rows: FinancieroExportRow[], options: Export
     ],
     headStyles: { fillColor: GOLD, textColor: [10, 10, 10] },
     styles: { fontSize: 8 },
-    didParseCell: (data) => {
-      if (data.row.index === rows.length && data.section === "body") {
-        data.cell.styles.fontStyle = "bold";
+    didParseCell: (data_) => {
+      if (data_.row.index === data.resumen.length && data_.section === "body") {
+        data_.cell.styles.fontStyle = "bold";
       }
     },
   });
+  let cursorY = lastAutoTableY(doc) + 12;
 
-  const prefix = options.filenamePrefix ? `gastos_obra_${slugify(options.filenamePrefix)}` : "gastos_obra";
+  if (data.pedidos.length > 0) {
+    cursorY = addSectionTitle(doc, "Detalle de pedidos", cursorY);
+    autoTable(doc, {
+      startY: cursorY,
+      head: [["Obra", "Proveedor", "Categoria", "Material", "Cant.", "Unidad", "Precio", "Subtotal", "Fecha"]],
+      body: data.pedidos.map((p) => [
+        p.obraName,
+        p.proveedorName ?? "-",
+        p.categoriaName ?? "-",
+        p.description,
+        p.quantity.toString(),
+        p.unit,
+        p.unitPrice.toLocaleString("es-CO"),
+        p.subtotal.toLocaleString("es-CO"),
+        new Date(p.createdAt).toLocaleDateString("es-CO"),
+      ]),
+      headStyles: { fillColor: GOLD, textColor: [10, 10, 10] },
+      styles: { fontSize: 7 },
+    });
+    cursorY = lastAutoTableY(doc) + 12;
+  }
+
+  if (data.contratistas.length > 0) {
+    cursorY = addSectionTitle(doc, "Detalle de contratistas", cursorY);
+    autoTable(doc, {
+      startY: cursorY,
+      head: [["Obra", "Contratista", "Monto", "Fecha"]],
+      body: data.contratistas.map((c) => [
+        c.obraName,
+        c.contratistaName,
+        c.totalAmount.toLocaleString("es-CO"),
+        new Date(c.createdAt).toLocaleDateString("es-CO"),
+      ]),
+      headStyles: { fillColor: GOLD, textColor: [10, 10, 10] },
+      styles: { fontSize: 8 },
+    });
+  }
+
+  const prefix = options.filenamePrefix ? `gastos_${slugify(options.filenamePrefix)}` : "gastos";
   doc.save(`${prefix}_${Date.now()}.pdf`);
 }
 
-export async function exportFinancieroExcel(rows: FinancieroExportRow[], options: ExportOptions = {}) {
+export async function exportGastosExcel(data: GastosExportData, options: ExportOptions = {}) {
   const workbook = newStyledWorkbook();
-  const sheet = workbook.addWorksheet("Gastos por obra");
 
-  sheet.columns = [
+  const resumenSheet = workbook.addWorksheet("Resumen por obra");
+  resumenSheet.columns = [
     { header: "Proyecto", key: "proyectoName", width: 24 },
     { header: "Obra", key: "obraName", width: 26 },
     { header: "Material (COP)", key: "gastoMaterial", width: 18 },
     { header: "Operacion (COP)", key: "gastoOperacion", width: 18 },
     { header: "Total (COP)", key: "total", width: 18 },
   ];
-  styleHeaderRow(sheet.getRow(1));
-
-  rows.forEach((row) => {
-    sheet.addRow({
+  styleHeaderRow(resumenSheet.getRow(1));
+  data.resumen.forEach((row) => {
+    resumenSheet.addRow({
       proyectoName: row.proyectoName,
       obraName: row.obraName,
       gastoMaterial: row.gastoMaterial,
@@ -283,8 +361,7 @@ export async function exportFinancieroExcel(rows: FinancieroExportRow[], options
       total: row.total,
     });
   });
-
-  const totals = rows.reduce(
+  const totals = data.resumen.reduce(
     (acc, row) => ({
       gastoMaterial: acc.gastoMaterial + row.gastoMaterial,
       gastoOperacion: acc.gastoOperacion + row.gastoOperacion,
@@ -292,7 +369,7 @@ export async function exportFinancieroExcel(rows: FinancieroExportRow[], options
     }),
     { gastoMaterial: 0, gastoOperacion: 0, total: 0 },
   );
-  const totalRow = sheet.addRow({
+  const totalRow = resumenSheet.addRow({
     proyectoName: "",
     obraName: "Total general",
     gastoMaterial: totals.gastoMaterial,
@@ -301,8 +378,56 @@ export async function exportFinancieroExcel(rows: FinancieroExportRow[], options
   });
   totalRow.font = { bold: true };
 
+  if (data.pedidos.length > 0) {
+    const pedidosSheet = workbook.addWorksheet("Detalle de pedidos");
+    pedidosSheet.columns = [
+      { header: "Obra", key: "obraName", width: 24 },
+      { header: "Proveedor", key: "proveedorName", width: 22 },
+      { header: "Categoria", key: "categoriaName", width: 18 },
+      { header: "Material", key: "description", width: 28 },
+      { header: "Cantidad", key: "quantity", width: 12 },
+      { header: "Unidad", key: "unit", width: 12 },
+      { header: "Precio unitario", key: "unitPrice", width: 16 },
+      { header: "Subtotal", key: "subtotal", width: 16 },
+      { header: "Fecha", key: "createdAt", width: 18 },
+    ];
+    styleHeaderRow(pedidosSheet.getRow(1));
+    data.pedidos.forEach((p) => {
+      pedidosSheet.addRow({
+        obraName: p.obraName,
+        proveedorName: p.proveedorName ?? "-",
+        categoriaName: p.categoriaName ?? "-",
+        description: p.description,
+        quantity: p.quantity,
+        unit: p.unit,
+        unitPrice: p.unitPrice,
+        subtotal: p.subtotal,
+        createdAt: new Date(p.createdAt).toLocaleString("es-CO"),
+      });
+    });
+  }
+
+  if (data.contratistas.length > 0) {
+    const contratistasSheet = workbook.addWorksheet("Detalle de contratistas");
+    contratistasSheet.columns = [
+      { header: "Obra", key: "obraName", width: 24 },
+      { header: "Contratista", key: "contratistaName", width: 24 },
+      { header: "Monto (COP)", key: "totalAmount", width: 18 },
+      { header: "Fecha", key: "createdAt", width: 18 },
+    ];
+    styleHeaderRow(contratistasSheet.getRow(1));
+    data.contratistas.forEach((c) => {
+      contratistasSheet.addRow({
+        obraName: c.obraName,
+        contratistaName: c.contratistaName,
+        totalAmount: c.totalAmount,
+        createdAt: new Date(c.createdAt).toLocaleString("es-CO"),
+      });
+    });
+  }
+
   const buffer = await workbook.xlsx.writeBuffer();
-  const prefix = options.filenamePrefix ? `gastos_obra_${slugify(options.filenamePrefix)}` : "gastos_obra";
+  const prefix = options.filenamePrefix ? `gastos_${slugify(options.filenamePrefix)}` : "gastos";
   downloadBlob(
     new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
     `${prefix}_${Date.now()}.xlsx`,
