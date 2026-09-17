@@ -115,6 +115,13 @@ export function Proyectos() {
               className="w-full bg-surface-container border-b border-outline-variant py-3 pl-10 pr-4 font-body-md text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary transition-colors"
             />
           </div>
+          <Link
+            to="/inventario"
+            className="border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary transition-colors font-label-sm uppercase tracking-widest px-6 py-3 flex items-center justify-center gap-2"
+          >
+            <span className="material-symbols-outlined text-[18px]">inventory_2</span>
+            Inventario
+          </Link>
           <button
             onClick={() => setIsCreating(true)}
             className="bg-primary hover:bg-primary-fixed transition-colors text-on-primary font-label-sm uppercase tracking-widest px-6 py-3 flex items-center justify-center gap-2"

@@ -12,6 +12,7 @@ const exportButtonClass =
   "flex-1 border border-primary text-primary font-label-sm uppercase px-4 py-3 hover:bg-primary hover:text-on-primary transition-colors disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2";
 
 export function Financiero() {
+  const [valuesVisible, setValuesVisible] = useState(false);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
 
   const [deudas, setDeudas] = useState<ProveedorDeuda[]>([]);
@@ -74,11 +75,20 @@ export function Financiero() {
 
   return (
     <div>
-      <div className="mb-12">
-        <h2 className="text-display-lg-mobile md:text-display-lg text-primary uppercase">Financiero</h2>
-        <p className="font-body-md text-on-surface-variant mt-2 max-w-xl">
-          Pagos de clientes por obra y deuda pendiente con proveedores.
-        </p>
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+        <div>
+          <h2 className="text-display-lg-mobile md:text-display-lg text-primary uppercase">Financiero</h2>
+          <p className="font-body-md text-on-surface-variant mt-2 max-w-xl">
+            Pagos de clientes por obra y deuda pendiente con proveedores.
+          </p>
+        </div>
+        <button
+          onClick={() => setValuesVisible((prev) => !prev)}
+          className="border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary transition-colors font-label-sm uppercase tracking-widest px-6 py-3 flex items-center justify-center gap-2 self-start"
+        >
+          <span className="material-symbols-outlined text-[18px]">{valuesVisible ? "visibility_off" : "visibility"}</span>
+          {valuesVisible ? "Ocultar valores" : "Mostrar valores"}
+        </button>
       </div>
 
       <section className="bg-surface-container lux-card-border p-6 md:p-8 mb-10">
@@ -103,11 +113,11 @@ export function Financiero() {
                   <span className="font-body-md font-semibold text-primary uppercase">{proyecto.proyectoName}</span>
                   <MoneyStats
                     items={[
-                      { label: "Precio venta", value: displayCurrency(proyecto.precioVenta) },
-                      { label: "Abonado", value: displayCurrency(proyecto.totalAbonado) },
+                      { label: "Precio venta", value: displayCurrency(proyecto.precioVenta, valuesVisible) },
+                      { label: "Abonado", value: displayCurrency(proyecto.totalAbonado, valuesVisible) },
                       {
                         label: "Saldo",
-                        value: displayCurrency(proyecto.precioVenta - proyecto.totalAbonado),
+                        value: displayCurrency(proyecto.precioVenta - proyecto.totalAbonado, valuesVisible),
                         emphasize: true,
                       },
                     ]}
@@ -115,7 +125,7 @@ export function Financiero() {
                 </div>
                 <div className="flex flex-col">
                   {proyecto.obras.map((obra) => (
-                    <ObraClientesRow key={obra.obraId} obra={obra} />
+                    <ObraClientesRow key={obra.obraId} obra={obra} valuesVisible={valuesVisible} />
                   ))}
                 </div>
               </div>
@@ -128,7 +138,7 @@ export function Financiero() {
                 </div>
                 <div className="flex flex-col">
                   {clientes.obrasSinProyecto.map((obra) => (
-                    <ObraClientesRow key={obra.obraId} obra={obra} />
+                    <ObraClientesRow key={obra.obraId} obra={obra} valuesVisible={valuesVisible} />
                   ))}
                 </div>
               </div>
@@ -138,11 +148,11 @@ export function Financiero() {
               <span className="font-label-sm uppercase text-on-surface-variant">Total general</span>
               <MoneyStats
                 items={[
-                  { label: "Precio venta", value: displayCurrency(clientes.totalPrecioVenta) },
-                  { label: "Abonado", value: displayCurrency(clientes.totalAbonado) },
+                  { label: "Precio venta", value: displayCurrency(clientes.totalPrecioVenta, valuesVisible) },
+                  { label: "Abonado", value: displayCurrency(clientes.totalAbonado, valuesVisible) },
                   {
                     label: "Saldo",
-                    value: displayCurrency(clientes.totalPrecioVenta - clientes.totalAbonado),
+                    value: displayCurrency(clientes.totalPrecioVenta - clientes.totalAbonado, valuesVisible),
                     emphasize: true,
                   },
                 ]}
@@ -214,18 +224,18 @@ export function Financiero() {
                 <div className="md:col-span-4 font-body-md font-semibold text-on-surface">{deuda.proveedorName}</div>
                 <div className="md:col-span-2 font-body-md text-on-surface-variant">
                   <span className="md:hidden font-label-sm uppercase text-on-surface-variant/70 mr-1">Despachado:</span>
-                  {displayCurrency(deuda.totalDespachado)}
+                  {displayCurrency(deuda.totalDespachado, valuesVisible)}
                 </div>
                 <div className="md:col-span-2 font-body-md text-on-surface-variant">
                   <span className="md:hidden font-label-sm uppercase text-on-surface-variant/70 mr-1">Abonado:</span>
-                  {displayCurrency(deuda.totalAbonado)}
+                  {displayCurrency(deuda.totalAbonado, valuesVisible)}
                 </div>
                 <div className="md:col-span-2 font-body-md font-semibold">
                   <span className="md:hidden font-label-sm uppercase text-on-surface-variant/70 mr-1 font-normal">
                     Saldo:
                   </span>
                   <span className={deuda.saldo > 0 ? "text-error" : "text-on-surface-variant"}>
-                    {displayCurrency(deuda.saldo)}
+                    {displayCurrency(deuda.saldo, valuesVisible)}
                   </span>
                 </div>
                 <div className="md:col-span-2 flex justify-start md:justify-end">
@@ -271,7 +281,7 @@ export function Financiero() {
   );
 }
 
-function ObraClientesRow({ obra }: { obra: ObraClientes }) {
+function ObraClientesRow({ obra, valuesVisible }: { obra: ObraClientes; valuesVisible: boolean }) {
   return (
     <div className="px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 border-b border-outline-variant last:border-b-0">
       <div className="font-body-md text-on-surface">
@@ -283,12 +293,12 @@ function ObraClientesRow({ obra }: { obra: ObraClientes }) {
         items={[
           {
             label: "Precio venta",
-            value: obra.precioVenta !== null ? displayCurrency(obra.precioVenta) : "Sin definir",
+            value: obra.precioVenta !== null ? displayCurrency(obra.precioVenta, valuesVisible) : "Sin definir",
           },
-          { label: "Abonado", value: displayCurrency(obra.totalAbonado) },
+          { label: "Abonado", value: displayCurrency(obra.totalAbonado, valuesVisible) },
           {
             label: "Saldo",
-            value: obra.saldo !== null ? displayCurrency(obra.saldo) : "-",
+            value: obra.saldo !== null ? displayCurrency(obra.saldo, valuesVisible) : "-",
             emphasize: obra.saldo !== null && obra.saldo > 0,
           },
         ]}

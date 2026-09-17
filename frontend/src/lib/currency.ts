@@ -16,9 +16,12 @@ const HIDDEN_PLACEHOLDER = "•••••";
  * Usar SOLO en pantallas de consulta (listas, tablas, resumenes, dashboards, reportes
  * en pantalla). Los formularios donde el usuario escribe activamente un precio o monto
  * (inputs) no deben usar esto: ahi el valor siempre debe verse mientras se digita.
+ *
+ * `forceVisible` permite que una pantalla puntual (ej. un boton "Mostrar valores" en
+ * Financiero) revele los montos bajo demanda sin afectar el resto de la app.
  */
-export function displayCurrency(value: number | null | undefined): string {
-  if (!MONEY_VISIBLE_IN_UI) return HIDDEN_PLACEHOLDER;
+export function displayCurrency(value: number | null | undefined, forceVisible = false): string {
+  if (!MONEY_VISIBLE_IN_UI && !forceVisible) return HIDDEN_PLACEHOLDER;
   if (value === null || value === undefined) return "-";
   return currencyFormatter.format(value);
 }
