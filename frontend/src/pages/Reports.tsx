@@ -354,7 +354,7 @@ export function Reports() {
         : undefined;
 
       if (format === "pdf") {
-        exportInventoryPdf(products, options);
+        await exportInventoryPdf(products, options);
       } else {
         await exportInventoryExcel(products, options);
       }
@@ -373,7 +373,7 @@ export function Reports() {
     setIsExportingProveedor(format);
     try {
       if (format === "pdf") {
-        exportOrdersPdf(proveedorOrders, options);
+        await exportOrdersPdf(proveedorOrders, options);
       } else {
         await exportOrdersExcel(proveedorOrders, options);
       }
@@ -436,7 +436,7 @@ export function Reports() {
     setGastosStatus(null);
     try {
       if (format === "pdf") {
-        exportGastosPdf(data, options);
+        await exportGastosPdf(data, options);
       } else {
         await exportGastosExcel(data, options);
       }
@@ -457,7 +457,7 @@ export function Reports() {
     setClientesStatus(null);
     try {
       if (format === "pdf") {
-        exportClientesPdf(allObras);
+        await exportClientesPdf(allObras);
       } else {
         await exportClientesExcel(allObras);
       }

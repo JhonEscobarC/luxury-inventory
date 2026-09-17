@@ -60,16 +60,47 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-function addReportHeader(doc: jsPDF, title: string) {
+// El logo se carga una sola vez como data URL (jsPDF.addImage no acepta una ruta/URL) y
+// se reutiliza en cada PDF; si falla la carga, el header cae al texto solo.
+let logoDataUrlPromise: Promise<string | null> | null = null;
+function getLogoDataUrl(): Promise<string | null> {
+  if (!logoDataUrlPromise) {
+    logoDataUrlPromise = fetch("/logo.jpg")
+      .then((res) => (res.ok ? res.blob() : Promise.reject(new Error("logo not found"))))
+      .then(
+        (blob) =>
+          new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(blob);
+          }),
+      )
+      .catch(() => null);
+  }
+  return logoDataUrlPromise;
+}
+
+async function addReportHeader(doc: jsPDF, title: string) {
+  const logo = await getLogoDataUrl();
+  let textX = 14;
+  if (logo) {
+    try {
+      doc.addImage(logo, "JPEG", 14, 8, 20, 20);
+      textX = 38;
+    } catch {
+      textX = 14;
+    }
+  }
   doc.setFontSize(16);
   doc.setTextColor(20, 20, 20);
-  doc.text("LUXURY - Diseno y Construccion", 14, 18);
+  doc.text("LUXURY - Diseno y Construccion", textX, 18);
   doc.setFontSize(11);
   doc.setTextColor(...GOLD);
-  doc.text(title, 14, 25);
+  doc.text(title, textX, 25);
   doc.setFontSize(8);
   doc.setTextColor(120, 120, 120);
-  doc.text(`Generado: ${new Date().toLocaleString("es-CO")}`, 14, 30);
+  doc.text(`Generado: ${new Date().toLocaleString("es-CO")}`, textX, 30);
 }
 
 function newStyledWorkbook() {
@@ -84,9 +115,9 @@ function styleHeaderRow(row: ExcelJS.Row) {
   row.fill = { type: "pattern", pattern: "solid", fgColor: { argb: GOLD_ARGB } };
 }
 
-export function exportInventoryPdf(products: Product[], options: ExportOptions = {}) {
+export async function exportInventoryPdf(products: Product[], options: ExportOptions = {}) {
   const doc = new jsPDF();
-  addReportHeader(doc, options.title ?? "Reporte de Inventario");
+  await addReportHeader(doc, options.title ?? "Reporte de Inventario");
 
   autoTable(doc, {
     startY: 36,
@@ -159,9 +190,9 @@ function slugify(text: string) {
     .replace(/(^-|-$)/g, "");
 }
 
-export function exportOrdersPdf(orders: Order[], options: ExportOptions = {}) {
+export async function exportOrdersPdf(orders: Order[], options: ExportOptions = {}) {
   const doc = new jsPDF();
-  addReportHeader(doc, options.title ?? "Reporte de Pedidos");
+  await addReportHeader(doc, options.title ?? "Reporte de Pedidos");
 
   autoTable(doc, {
     startY: 36,
@@ -256,9 +287,9 @@ function addSectionTitle(doc: jsPDF, title: string, y: number): number {
   return y + 6;
 }
 
-export function exportGastosPdf(data: GastosExportData, options: ExportOptions = {}) {
+export async function exportGastosPdf(data: GastosExportData, options: ExportOptions = {}) {
   const doc = new jsPDF();
-  addReportHeader(doc, options.title ?? "Reporte de Gastos");
+  await addReportHeader(doc, options.title ?? "Reporte de Gastos");
 
   const totals = data.resumen.reduce(
     (acc, row) => ({
@@ -434,9 +465,9 @@ export async function exportGastosExcel(data: GastosExportData, options: ExportO
   );
 }
 
-export function exportClientesPdf(obras: ObraClientes[], options: ExportOptions = {}) {
+export async function exportClientesPdf(obras: ObraClientes[], options: ExportOptions = {}) {
   const doc = new jsPDF();
-  addReportHeader(doc, options.title ?? "Reporte de Pagos de Clientes");
+  await addReportHeader(doc, options.title ?? "Reporte de Pagos de Clientes");
 
   autoTable(doc, {
     startY: 36,

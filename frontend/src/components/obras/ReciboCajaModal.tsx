@@ -68,9 +68,12 @@ export function ReciboCajaModal({ abono, obra, onClose }: ReciboCajaModalProps) 
 
         <div id="recibo-print-area" className="p-6 md:p-8 bg-surface-container text-on-surface">
           <div className="flex justify-between items-start border-b-2 border-primary pb-4 mb-6">
-            <div>
-              <p className="font-body-lg font-bold uppercase text-primary">LUXURY</p>
-              <p className="font-label-sm text-on-surface-variant uppercase">Diseno y Construccion</p>
+            <div className="flex items-center gap-3">
+              <img src="/logo.jpg" alt="Luxury" className="h-14 w-14 object-contain shrink-0" />
+              <div>
+                <p className="font-body-lg font-bold uppercase text-primary">LUXURY</p>
+                <p className="font-label-sm text-on-surface-variant uppercase">Diseno y Construccion</p>
+              </div>
             </div>
             <div className="text-right">
               <p className="font-label-sm uppercase text-on-surface-variant">Recibo de caja</p>
