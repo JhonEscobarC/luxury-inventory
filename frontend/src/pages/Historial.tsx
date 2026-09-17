@@ -7,6 +7,19 @@ import type { Obra } from "../types/obra";
 import type { Proveedor } from "../types/proveedor";
 import { displayCurrency } from "../lib/currency";
 
+// Los abonos (a proveedores y de clientes) tienen su propio historial dentro de
+// Financiero y quedan fuera de este historial general, que es solo operativo.
+const OPERATIONAL_TIPOS: HistorialTipo[] = [
+  "PEDIDO_CREADO",
+  "PEDIDO_CONFIRMADO",
+  "PEDIDO_DESPACHADO",
+  "PEDIDO_CANCELADO",
+  "ASIGNACION_CREADA",
+  "ETAPA_COMPLETADA",
+  "ETAPA_PAGADA",
+  "MATERIAL_USADO",
+];
+
 const TIPO_OPTIONS: { value: HistorialTipo | ""; label: string }[] = [
   { value: "", label: "Todos" },
   { value: "PEDIDO_CREADO", label: "Solicitud creada" },
@@ -16,9 +29,7 @@ const TIPO_OPTIONS: { value: HistorialTipo | ""; label: string }[] = [
   { value: "ASIGNACION_CREADA", label: "Contratista asignado" },
   { value: "ETAPA_COMPLETADA", label: "Etapa completada" },
   { value: "ETAPA_PAGADA", label: "Etapa pagada" },
-  { value: "ABONO_REGISTRADO", label: "Abono registrado" },
   { value: "MATERIAL_USADO", label: "Material usado" },
-  { value: "ABONO_CLIENTE_REGISTRADO", label: "Abono de cliente" },
 ];
 
 const TIPO_META: Record<HistorialTipo, { label: string; icon: string; color: string }> = {
@@ -63,6 +74,7 @@ export function Historial() {
       setEventos(
         await listHistorial({
           tipo: tipo || undefined,
+          tipos: tipo ? undefined : OPERATIONAL_TIPOS,
           obraId: obraId || undefined,
           proveedorId: proveedorId || undefined,
           from: from || undefined,
@@ -86,8 +98,8 @@ export function Historial() {
       <div className="mb-8">
         <h2 className="text-display-lg-mobile md:text-display-lg text-primary uppercase">Historial</h2>
         <p className="font-body-md text-on-surface-variant mt-2 max-w-xl">
-          Registro cronologico de pedidos, pagos a contratistas y abonos a proveedores, con fecha, hora y quien lo
-          hizo.
+          Registro cronologico de pedidos, contratistas y material usado, con fecha, hora y quien lo hizo. Los
+          abonos a proveedores y de clientes tienen su propio historial en Financiero.
         </p>
       </div>
 

@@ -1,21 +1,43 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { createAbonoCliente, listAbonosCliente } from "../../lib/abonosCliente";
 import { currencyFormatter, displayCurrency } from "../../lib/currency";
-import type { AbonoCliente } from "../../types/abonoCliente";
+import type { AbonoCliente, MetodoPago } from "../../types/abonoCliente";
+import type { FormaPago } from "../../types/order";
 import type { Obra } from "../../types/obra";
 import { ReciboCajaModal } from "./ReciboCajaModal";
 
+const FORMA_PAGO_OPTIONS: { value: FormaPago; label: string }[] = [
+  { value: "CONTADO", label: "Contado" },
+  { value: "CREDITO", label: "Credito" },
+];
+
+const METODO_PAGO_OPTIONS: { value: MetodoPago; label: string }[] = [
+  { value: "EFECTIVO", label: "Efectivo" },
+  { value: "TRANSFERENCIA", label: "Transferencia" },
+  { value: "TARJETA", label: "Tarjeta" },
+];
+
+const FORMA_PAGO_LABEL: Record<FormaPago, string> = { CONTADO: "Contado", CREDITO: "Credito" };
+const METODO_PAGO_LABEL: Record<MetodoPago, string> = {
+  EFECTIVO: "Efectivo",
+  TRANSFERENCIA: "Transferencia",
+  TARJETA: "Tarjeta",
+};
+
 interface ObraAbonosClienteModalProps {
   obra: Obra;
+  valuesVisible: boolean;
   onClose: () => void;
   onChanged?: () => void;
 }
 
-export function ObraAbonosClienteModal({ obra, onClose, onChanged }: ObraAbonosClienteModalProps) {
+export function ObraAbonosClienteModal({ obra, valuesVisible, onClose, onChanged }: ObraAbonosClienteModalProps) {
   const [abonos, setAbonos] = useState<AbonoCliente[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [amount, setAmount] = useState("");
   const [notes, setNotes] = useState("");
+  const [formaPago, setFormaPago] = useState<FormaPago>("CONTADO");
+  const [metodoPago, setMetodoPago] = useState<MetodoPago>("EFECTIVO");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [receiptAbono, setReceiptAbono] = useState<AbonoCliente | null>(null);
@@ -55,7 +77,13 @@ export function ObraAbonosClienteModal({ obra, onClose, onChanged }: ObraAbonosC
     }
     setIsSubmitting(true);
     try {
-      const created = await createAbonoCliente({ obraId: obra.id, amount: value, notes: notes || null });
+      const created = await createAbonoCliente({
+        obraId: obra.id,
+        amount: value,
+        notes: notes || null,
+        formaPago,
+        metodoPago,
+      });
       setAmount("");
       setNotes("");
       await refresh();
@@ -85,42 +113,73 @@ export function ObraAbonosClienteModal({ obra, onClose, onChanged }: ObraAbonosC
           {obra.client ? `Comprador: ${obra.client}` : "Sin comprador asignado en la obra"}
         </p>
         <p className="font-label-sm text-on-surface-variant uppercase mb-8">
-          Total abonado: <span className="text-primary">{displayCurrency(totalAbonado)}</span>
+          Total abonado: <span className="text-primary">{displayCurrency(totalAbonado, valuesVisible)}</span>
           {obra.precioVenta !== null && (
             <>
               {" "}
-              &middot; Precio de venta: <span>{displayCurrency(obra.precioVenta)}</span> &middot; Saldo pendiente:{" "}
+              &middot; Precio de venta: <span>{displayCurrency(obra.precioVenta, valuesVisible)}</span> &middot;
+              Saldo pendiente:{" "}
               <span className={(saldoPendiente ?? 0) > 0 ? "text-error" : "text-on-surface-variant"}>
-                {displayCurrency(saldoPendiente ?? 0)}
+                {displayCurrency(saldoPendiente ?? 0, valuesVisible)}
               </span>
             </>
           )}
           {obra.precioVenta === null && " · Sin precio de venta definido para esta obra"}
         </p>
 
-        <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4 items-end mb-8">
-          <div className="flex-1 w-full">
-            <label className={labelClass}>Monto del abono</label>
-            <input
-              type="number"
-              min="0"
-              max={saldoPendiente}
-              step="1"
-              className={inputClass}
-              value={amount}
-              onFocus={(e) => e.target.select()}
-              onChange={(e) => setAmount(e.target.value.replace(/^0+(?=\d)/, ""))}
-              placeholder="0"
-            />
-          </div>
-          <div className="flex-1 w-full">
-            <label className={labelClass}>Notas (opcional)</label>
-            <input className={inputClass} value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label className={labelClass}>Monto del abono</label>
+              <input
+                type="number"
+                min="0"
+                max={saldoPendiente}
+                step="1"
+                className={inputClass}
+                value={amount}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setAmount(e.target.value.replace(/^0+(?=\d)/, ""))}
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Forma de pago</label>
+              <select
+                className={inputClass}
+                value={formaPago}
+                onChange={(e) => setFormaPago(e.target.value as FormaPago)}
+              >
+                {FORMA_PAGO_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelClass}>Metodo de pago</label>
+              <select
+                className={inputClass}
+                value={metodoPago}
+                onChange={(e) => setMetodoPago(e.target.value as MetodoPago)}
+              >
+                {METODO_PAGO_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelClass}>Notas (opcional)</label>
+              <input className={inputClass} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            </div>
           </div>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="bg-primary-container text-on-primary font-label-sm uppercase py-3 px-6 hover:bg-primary-fixed transition-colors disabled:opacity-60 whitespace-nowrap"
+            className="bg-primary-container text-on-primary font-label-sm uppercase py-3 px-6 hover:bg-primary-fixed transition-colors disabled:opacity-60 whitespace-nowrap self-start"
           >
             {isSubmitting ? "Guardando..." : "Registrar abono"}
           </button>
@@ -130,9 +189,10 @@ export function ObraAbonosClienteModal({ obra, onClose, onChanged }: ObraAbonosC
 
         <div className="flex flex-col gap-3">
           <div className="hidden md:grid grid-cols-12 gap-4 pb-2 border-b border-outline-variant font-label-sm text-on-surface-variant uppercase tracking-widest px-2">
-            <div className="col-span-3">Fecha</div>
+            <div className="col-span-2">Fecha</div>
             <div className="col-span-2">Monto</div>
-            <div className="col-span-4">Notas</div>
+            <div className="col-span-2">Pago</div>
+            <div className="col-span-3">Notas</div>
             <div className="col-span-2">Registrado por</div>
             <div className="col-span-1 text-right">Recibo</div>
           </div>
@@ -146,13 +206,17 @@ export function ObraAbonosClienteModal({ obra, onClose, onChanged }: ObraAbonosC
                 key={abono.id}
                 className="border border-outline-variant p-3 md:px-2 md:py-3 grid grid-cols-1 md:grid-cols-12 gap-2 items-center"
               >
-                <div className="md:col-span-3 font-body-md text-on-surface-variant">
+                <div className="md:col-span-2 font-body-md text-on-surface-variant">
                   {new Date(abono.createdAt).toLocaleDateString("es-CO")}
                 </div>
                 <div className="md:col-span-2 font-body-md font-semibold text-primary">
-                  {displayCurrency(abono.amount)}
+                  {displayCurrency(abono.amount, valuesVisible)}
                 </div>
-                <div className="md:col-span-4 font-body-md text-on-surface-variant">{abono.notes || "-"}</div>
+                <div className="md:col-span-2 font-label-sm uppercase text-on-surface-variant">
+                  {abono.formaPago ? FORMA_PAGO_LABEL[abono.formaPago] : "-"}
+                  {abono.metodoPago ? ` · ${METODO_PAGO_LABEL[abono.metodoPago]}` : ""}
+                </div>
+                <div className="md:col-span-3 font-body-md text-on-surface-variant">{abono.notes || "-"}</div>
                 <div className="md:col-span-2 font-label-sm uppercase text-on-surface-variant">
                   {abono.createdByName || "-"}
                 </div>

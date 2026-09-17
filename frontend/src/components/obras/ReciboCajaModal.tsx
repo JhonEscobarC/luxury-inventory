@@ -15,6 +15,13 @@ const currencyFormatter = new Intl.NumberFormat("es-CO", {
   maximumFractionDigits: 0,
 });
 
+const FORMA_PAGO_LABEL: Record<string, string> = { CONTADO: "Contado", CREDITO: "Credito" };
+const METODO_PAGO_LABEL: Record<string, string> = {
+  EFECTIVO: "Efectivo",
+  TRANSFERENCIA: "Transferencia",
+  TARJETA: "Tarjeta",
+};
+
 export function ReciboCajaModal({ abono, obra, onClose }: ReciboCajaModalProps) {
   const numero = abono.id.slice(0, 8).toUpperCase();
   const fecha = new Date(abono.createdAt);
@@ -101,6 +108,14 @@ export function ReciboCajaModal({ abono, obra, onClose }: ReciboCajaModalProps) 
             <div>
               <p className="font-label-sm text-on-surface-variant uppercase">Fecha y hora</p>
               <p>{fecha.toLocaleString("es-CO")}</p>
+            </div>
+            <div>
+              <p className="font-label-sm text-on-surface-variant uppercase">Forma de pago</p>
+              <p>{abono.formaPago ? FORMA_PAGO_LABEL[abono.formaPago] : "-"}</p>
+            </div>
+            <div>
+              <p className="font-label-sm text-on-surface-variant uppercase">Metodo de pago</p>
+              <p>{abono.metodoPago ? METODO_PAGO_LABEL[abono.metodoPago] : "-"}</p>
             </div>
           </div>
 

@@ -34,6 +34,12 @@ enum FormaPago {
   CREDITO
 }
 
+enum MetodoPago {
+  EFECTIVO
+  TRANSFERENCIA
+  TARJETA
+}
+
 enum HistorialTipo {
   PEDIDO_CREADO
   PEDIDO_CONFIRMADO
@@ -257,10 +263,13 @@ model Abono {
 // Pagos que hace el comprador de una obra (casa) hacia su precio de venta.
 // Distinto de Abono, que es lo que la empresa le paga a un Proveedor.
 model AbonoCliente {
-  id        String   @id @default(uuid())
-  amount    Decimal  @db.Decimal(14, 2)
-  notes     String?
-  createdAt DateTime @default(now())
+  id         String      @id @default(uuid())
+  amount     Decimal     @db.Decimal(14, 2)
+  notes      String?
+  // Nulos en abonos registrados antes de agregar estos campos.
+  formaPago  FormaPago?
+  metodoPago MetodoPago?
+  createdAt  DateTime    @default(now())
 
   obraId String
   obra   Obra   @relation(fields: [obraId], references: [id])

@@ -76,6 +76,7 @@ export async function recordEvento(input: RecordEventoInput) {
 
 export interface ListHistorialFilters {
   tipo?: HistorialTipo;
+  tipos?: HistorialTipo[];
   obraId?: string;
   proveedorId?: string;
   contratistaId?: string;
@@ -85,7 +86,11 @@ export interface ListHistorialFilters {
 
 export async function listHistorial(filters: ListHistorialFilters) {
   const where: Prisma.HistorialEventoWhereInput = {};
-  if (filters.tipo) where.tipo = filters.tipo;
+  if (filters.tipos && filters.tipos.length > 0) {
+    where.tipo = { in: filters.tipos };
+  } else if (filters.tipo) {
+    where.tipo = filters.tipo;
+  }
   if (filters.obraId) where.obraId = filters.obraId;
   if (filters.proveedorId) where.proveedorId = filters.proveedorId;
   if (filters.contratistaId) where.contratistaId = filters.contratistaId;

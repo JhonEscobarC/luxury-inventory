@@ -26,4 +26,5 @@ export interface HistorialEvento {
   orderId: string | null;
   asignacionId: string | null;
   abonoId: string | null;
+  abonoClienteId: string | null;
 }

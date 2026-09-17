@@ -13,6 +13,11 @@ export async function createAbonoCliente(input: AbonoClienteInput): Promise<Abon
   return data.abono;
 }
 
+export async function getAbonoCliente(id: string): Promise<AbonoCliente> {
+  const { data } = await api.get<{ abono: AbonoCliente }>(`/abonos-cliente/${id}`);
+  return data.abono;
+}
+
 export async function deleteAbonoCliente(id: string): Promise<void> {
   await api.delete(`/abonos-cliente/${id}`);
 }

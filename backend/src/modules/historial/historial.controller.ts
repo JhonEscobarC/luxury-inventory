@@ -5,6 +5,7 @@ import * as historialService from "./historial.service";
 
 const listQuerySchema = z.object({
   tipo: z.nativeEnum(HistorialTipo).optional(),
+  tipos: z.string().optional(),
   obraId: z.string().uuid().optional(),
   proveedorId: z.string().uuid().optional(),
   contratistaId: z.string().uuid().optional(),
@@ -15,7 +16,10 @@ const listQuerySchema = z.object({
 export async function listHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const query = listQuerySchema.parse(req.query);
-    const items = await historialService.listHistorial(query);
+    const items = await historialService.listHistorial({
+      ...query,
+      tipos: query.tipos ? (query.tipos.split(",") as HistorialTipo[]) : undefined,
+    });
     res.json({ items });
   } catch (error) {
     next(error);

@@ -3,6 +3,7 @@ import type { HistorialEvento, HistorialTipo } from "../types/historial";
 
 export interface ListHistorialFilters {
   tipo?: HistorialTipo;
+  tipos?: HistorialTipo[];
   obraId?: string;
   proveedorId?: string;
   contratistaId?: string;
@@ -14,6 +15,7 @@ export async function listHistorial(filters: ListHistorialFilters = {}): Promise
   const { data } = await api.get<{ items: HistorialEvento[] }>("/historial", {
     params: {
       tipo: filters.tipo || undefined,
+      tipos: filters.tipos?.length ? filters.tipos.join(",") : undefined,
       obraId: filters.obraId || undefined,
       proveedorId: filters.proveedorId || undefined,
       contratistaId: filters.contratistaId || undefined,

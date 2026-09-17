@@ -1,4 +1,4 @@
-import { Prisma, HistorialTipo, type AbonoCliente, type User } from "@prisma/client";
+import { Prisma, HistorialTipo, type AbonoCliente, type FormaPago, type MetodoPago, type User } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { HttpError } from "../../middleware/errorHandler";
 import { recordEvento } from "../historial/historial.service";
@@ -18,6 +18,8 @@ function serializeAbonoCliente(
     id: abono.id,
     amount: Number(abono.amount),
     notes: abono.notes,
+    formaPago: abono.formaPago,
+    metodoPago: abono.metodoPago,
     obraId: abono.obraId,
     obraName: abono.obra?.name ?? null,
     createdById: abono.createdById,
@@ -46,7 +48,16 @@ export interface CreateAbonoClienteInput {
   obraId: string;
   amount: number;
   notes?: string | null;
+  formaPago: FormaPago;
+  metodoPago: MetodoPago;
 }
+
+const FORMA_PAGO_LABEL: Record<FormaPago, string> = { CONTADO: "contado", CREDITO: "credito" };
+const METODO_PAGO_LABEL: Record<MetodoPago, string> = {
+  EFECTIVO: "efectivo",
+  TRANSFERENCIA: "transferencia",
+  TARJETA: "tarjeta",
+};
 
 export async function createAbonoCliente(input: CreateAbonoClienteInput, createdById: string) {
   if (input.amount <= 0) {
@@ -72,6 +83,8 @@ export async function createAbonoCliente(input: CreateAbonoClienteInput, created
       obraId: input.obraId,
       amount: input.amount,
       notes: input.notes ?? null,
+      formaPago: input.formaPago,
+      metodoPago: input.metodoPago,
       createdById,
     },
     include: { createdBy: { select: { id: true, name: true } }, obra: { select: { name: true } } },
@@ -80,7 +93,9 @@ export async function createAbonoCliente(input: CreateAbonoClienteInput, created
   const serialized = serializeAbonoCliente(abono);
   await recordEvento({
     tipo: HistorialTipo.ABONO_CLIENTE_REGISTRADO,
-    descripcion: `Abono de cliente registrado para "${obra.name}"${obra.client ? ` (${obra.client})` : ""}`,
+    descripcion: `Abono de cliente registrado para "${obra.name}"${obra.client ? ` (${obra.client})` : ""} - ${
+      FORMA_PAGO_LABEL[input.formaPago]
+    }, ${METODO_PAGO_LABEL[input.metodoPago]}`,
     monto: serialized.amount,
     userId: createdById,
     obraId: obra.id,
@@ -88,6 +103,17 @@ export async function createAbonoCliente(input: CreateAbonoClienteInput, created
   });
 
   return serialized;
+}
+
+export async function getAbonoCliente(id: string) {
+  const abono = await prisma.abonoCliente.findUnique({
+    where: { id },
+    include: { createdBy: { select: { id: true, name: true } }, obra: { select: { name: true } } },
+  });
+  if (!abono) {
+    throw new HttpError(404, "Abono no encontrado");
+  }
+  return serializeAbonoCliente(abono);
 }
 
 export async function deleteAbonoCliente(id: string) {

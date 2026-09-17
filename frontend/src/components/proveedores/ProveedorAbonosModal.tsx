@@ -7,11 +7,18 @@ import type { Proveedor } from "../../types/proveedor";
 interface ProveedorAbonosModalProps {
   proveedor: Proveedor;
   saldoPendiente?: number;
+  valuesVisible?: boolean;
   onClose: () => void;
   onChanged?: () => void;
 }
 
-export function ProveedorAbonosModal({ proveedor, saldoPendiente, onClose, onChanged }: ProveedorAbonosModalProps) {
+export function ProveedorAbonosModal({
+  proveedor,
+  saldoPendiente,
+  valuesVisible = false,
+  onClose,
+  onChanged,
+}: ProveedorAbonosModalProps) {
   const [abonos, setAbonos] = useState<Abono[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [amount, setAmount] = useState("");
@@ -83,13 +90,13 @@ export function ProveedorAbonosModal({ proveedor, saldoPendiente, onClose, onCha
           </button>
         </div>
         <p className="font-label-sm text-on-surface-variant uppercase mb-8">
-          Total abonado: <span className="text-primary">{displayCurrency(totalAbonado)}</span>
+          Total abonado: <span className="text-primary">{displayCurrency(totalAbonado, valuesVisible)}</span>
           {saldoPendiente !== undefined && (
             <>
               {" "}
               &middot; Saldo pendiente:{" "}
               <span className={saldoPendiente > 0 ? "text-error" : "text-on-surface-variant"}>
-                {displayCurrency(saldoPendiente)}
+                {displayCurrency(saldoPendiente, valuesVisible)}
               </span>
             </>
           )}
@@ -146,7 +153,7 @@ export function ProveedorAbonosModal({ proveedor, saldoPendiente, onClose, onCha
                   {new Date(abono.createdAt).toLocaleDateString("es-CO")}
                 </div>
                 <div className="md:col-span-3 font-body-md font-semibold text-primary">
-                  {displayCurrency(abono.amount)}
+                  {displayCurrency(abono.amount, valuesVisible)}
                 </div>
                 <div className="md:col-span-4 font-body-md text-on-surface-variant">{abono.notes || "-"}</div>
                 <div className="md:col-span-2 font-label-sm uppercase text-on-surface-variant">
