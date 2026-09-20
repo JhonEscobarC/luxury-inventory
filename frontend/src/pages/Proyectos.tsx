@@ -6,6 +6,8 @@ import { listObras } from "../lib/obras";
 import type { Proyecto, ProyectoInput } from "../types/proyecto";
 import { ProyectoFormModal } from "../components/proyectos/ProyectoFormModal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { usePagination } from "../hooks/usePagination";
+import { Pagination } from "../components/ui/Pagination";
 
 export function Proyectos() {
   const { user } = useAuth();
@@ -93,6 +95,7 @@ export function Proyectos() {
     }
   }
 
+  const { pageItems: pageProyectos, ...pagination } = usePagination(proyectos);
   return (
     <div>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
@@ -137,7 +140,7 @@ export function Proyectos() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {!isLoading &&
-          proyectos.map((proyecto) => (
+          pageProyectos.map((proyecto) => (
             <div
               key={proyecto.id}
               className={`border bg-surface-container p-6 transition-colors ${
@@ -235,6 +238,8 @@ export function Proyectos() {
           </Link>
         )}
       </div>
+
+      <Pagination {...pagination} onPageChange={pagination.setPage} />
 
       {isCreating && <ProyectoFormModal proyecto={null} onClose={() => setIsCreating(false)} onSubmit={handleCreate} />}
 

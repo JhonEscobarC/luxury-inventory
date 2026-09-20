@@ -9,6 +9,8 @@ import type { ProveedorDeuda } from "../types/report";
 import { ProveedorFormModal } from "../components/proveedores/ProveedorFormModal";
 import { ProveedorAbonosModal } from "../components/proveedores/ProveedorAbonosModal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { usePagination } from "../hooks/usePagination";
+import { Pagination } from "../components/ui/Pagination";
 
 export function Proveedores() {
   const { user } = useAuth();
@@ -81,6 +83,7 @@ export function Proveedores() {
     await refresh();
   }
 
+  const { pageItems: pageProveedores, ...pagination } = usePagination(proveedores);
   return (
     <div>
       <Link
@@ -135,7 +138,7 @@ export function Proveedores() {
         </div>
 
         {!isLoading &&
-          proveedores.map((proveedor) => {
+          pageProveedores.map((proveedor) => {
             const deuda = deudas.find((d) => d.proveedorId === proveedor.id);
             const saldo = deuda?.saldo ?? 0;
             return (
@@ -195,6 +198,8 @@ export function Proveedores() {
             );
           })}
       </div>
+
+      <Pagination {...pagination} onPageChange={pagination.setPage} />
 
       {abonosProveedor && (
         <ProveedorAbonosModal

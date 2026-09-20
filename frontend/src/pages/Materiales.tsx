@@ -7,6 +7,8 @@ import type { Obra } from "../types/obra";
 import type { MaterialUsoInput } from "../types/materialUso";
 import { RegistrarUsoModal } from "../components/materiales/RegistrarUsoModal";
 import { ProductoHistorialModal } from "../components/materiales/ProductoHistorialModal";
+import { usePagination } from "../hooks/usePagination";
+import { Pagination } from "../components/ui/Pagination";
 
 const selectClass =
   "w-full bg-surface border border-outline-variant focus:outline-none focus:border-primary text-on-surface font-body-md px-3 py-3";
@@ -50,6 +52,7 @@ export function Materiales() {
     await refresh();
   }
 
+  const { pageItems: pageProducts, ...pagination } = usePagination(products);
   return (
     <div>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
@@ -104,7 +107,7 @@ export function Materiales() {
         )}
 
         {!isLoading &&
-          products.map((product) => (
+          pageProducts.map((product) => (
             <div
               key={product.id}
               onClick={() => setHistoryProduct(product)}
@@ -147,6 +150,8 @@ export function Materiales() {
             </div>
           ))}
       </div>
+
+      <Pagination {...pagination} onPageChange={pagination.setPage} />
 
       {historyProduct && <ProductoHistorialModal product={historyProduct} onClose={() => setHistoryProduct(null)} />}
 

@@ -13,6 +13,8 @@ import { ProductFormModal } from "../components/inventory/ProductFormModal";
 import { CategoriasModal } from "../components/inventory/CategoriasModal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { displayCurrency } from "../lib/currency";
+import { usePagination } from "../hooks/usePagination";
+import { Pagination } from "../components/ui/Pagination";
 
 export function Inventory() {
   const { user } = useAuth();
@@ -96,6 +98,7 @@ export function Inventory() {
     await refresh();
   }
 
+  const { pageItems: pageProducts, ...pagination } = usePagination(products);
   return (
     <div>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
@@ -199,7 +202,7 @@ export function Inventory() {
         )}
 
         {!isLoading &&
-          products.map((product) => (
+          pageProducts.map((product) => (
             <div
               key={product.id}
               className="group border border-outline-variant bg-surface p-4 md:px-4 md:py-5 flex flex-col md:grid md:grid-cols-12 gap-4 items-start md:items-center relative hover:border-primary transition-colors duration-300"
@@ -261,6 +264,8 @@ export function Inventory() {
             </div>
           ))}
       </div>
+
+      <Pagination {...pagination} onPageChange={pagination.setPage} />
 
       {isCreating && (
         <ProductFormModal

@@ -6,6 +6,8 @@ import type { HistorialEvento, HistorialTipo } from "../types/historial";
 import type { Obra } from "../types/obra";
 import type { Proveedor } from "../types/proveedor";
 import { displayCurrency } from "../lib/currency";
+import { usePagination } from "../hooks/usePagination";
+import { Pagination } from "../components/ui/Pagination";
 
 // Los abonos (a proveedores y de clientes) tienen su propio historial dentro de
 // Financiero y quedan fuera de este historial general, que es solo operativo.
@@ -94,6 +96,7 @@ export function Historial() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipo, obraId, proveedorId, from, to]);
 
+  const { pageItems: pageEventos, ...pagination } = usePagination(eventos);
   return (
     <div>
       <div className="mb-8">
@@ -172,7 +175,7 @@ export function Historial() {
 
       <div className="flex flex-col gap-3">
         {!isLoading &&
-          eventos.map((evento) => {
+          pageEventos.map((evento) => {
             const meta = TIPO_META[evento.tipo];
             const fecha = new Date(evento.createdAt);
             return (
@@ -207,6 +210,8 @@ export function Historial() {
             );
           })}
       </div>
+
+      <Pagination {...pagination} onPageChange={pagination.setPage} />
     </div>
   );
 }

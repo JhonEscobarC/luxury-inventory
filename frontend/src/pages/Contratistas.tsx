@@ -5,6 +5,8 @@ import { createContratista, listContratistas, setContratistaActive, updateContra
 import type { Contratista, ContratistaInput } from "../types/contratista";
 import { ContratistaFormModal } from "../components/contratistas/ContratistaFormModal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { usePagination } from "../hooks/usePagination";
+import { Pagination } from "../components/ui/Pagination";
 
 export function Contratistas() {
   const { user } = useAuth();
@@ -70,6 +72,7 @@ export function Contratistas() {
     await refresh();
   }
 
+  const { pageItems: pageContratistas, ...pagination } = usePagination(contratistas);
   return (
     <div>
       <Link
@@ -123,7 +126,7 @@ export function Contratistas() {
         </div>
 
         {!isLoading &&
-          contratistas.map((contratista) => (
+          pageContratistas.map((contratista) => (
             <div
               key={contratista.id}
               className={`border bg-surface p-4 md:px-4 md:py-5 flex flex-col md:grid md:grid-cols-12 gap-3 items-start md:items-center transition-colors ${
@@ -171,6 +174,8 @@ export function Contratistas() {
             </div>
           ))}
       </div>
+
+      <Pagination {...pagination} onPageChange={pagination.setPage} />
 
       {isCreating && (
         <ContratistaFormModal contratista={null} onClose={() => setIsCreating(false)} onSubmit={handleCreate} />

@@ -19,6 +19,8 @@ import { ReciboCajaModal } from "../components/obras/ReciboCajaModal";
 import { GastoAdicionalModal } from "../components/financiero/GastoAdicionalModal";
 import { ComprobanteGastoModal } from "../components/financiero/ComprobanteGastoModal";
 import { MoneyStats } from "../components/ui/MoneyStats";
+import { Pagination } from "../components/ui/Pagination";
+import { usePagination } from "../hooks/usePagination";
 
 const exportButtonClass =
   "flex-1 border border-primary text-primary font-label-sm uppercase px-4 py-3 hover:bg-primary hover:text-on-primary transition-colors disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2";
@@ -128,6 +130,9 @@ export function Financiero() {
     () => [...deudas].sort((a, b) => (deudaSort === "desc" ? b.saldo - a.saldo : a.saldo - b.saldo)),
     [deudas, deudaSort],
   );
+
+  const { pageItems: pageDeudas, ...deudasPagination } = usePagination(sortedDeudas);
+  const { pageItems: pageHistorial, ...historialPagination } = usePagination(historial);
 
   function findObra(obraId: string, obraName: string, client: string | null, precioVenta: number | null): Obra {
     return obras.find((o) => o.id === obraId) ?? fallbackObra(obraId, obraName, client, precioVenta);
@@ -329,7 +334,7 @@ export function Financiero() {
             {sortedDeudas.length === 0 && (
               <p className="text-on-surface-variant/60 font-label-sm uppercase px-2 py-6">Sin proveedores</p>
             )}
-            {sortedDeudas.map((deuda) => (
+            {pageDeudas.map((deuda) => (
               <div
                 key={deuda.proveedorId}
                 className="border border-outline-variant p-3 md:px-2 md:py-3 grid grid-cols-1 md:grid-cols-12 gap-2 items-center"
@@ -378,6 +383,7 @@ export function Financiero() {
                 </div>
               </div>
             ))}
+            <Pagination {...deudasPagination} onPageChange={deudasPagination.setPage} />
           </div>
         )}
       </section>
@@ -410,7 +416,7 @@ export function Financiero() {
 
         <div className="flex flex-col gap-3">
           {!isLoadingHistorial &&
-            historial.map((evento) => {
+            pageHistorial.map((evento) => {
               const meta = HISTORIAL_META[evento.tipo as (typeof HISTORIAL_FINANCIERO_TIPOS)[number]];
               const fecha = new Date(evento.createdAt);
               return (
@@ -465,6 +471,7 @@ export function Financiero() {
               );
             })}
         </div>
+        <Pagination {...historialPagination} onPageChange={historialPagination.setPage} />
       </section>
 
       {abonosProveedor && (

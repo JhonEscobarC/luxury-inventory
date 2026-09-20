@@ -13,6 +13,8 @@ import { AssignOrderModal } from "../components/orders/AssignOrderModal";
 import { ComprobanteModal } from "../components/orders/ComprobanteModal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { displayCurrency } from "../lib/currency";
+import { usePagination } from "../hooks/usePagination";
+import { Pagination } from "../components/ui/Pagination";
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
   PENDIENTE: "Solicitud",
@@ -124,6 +126,7 @@ export function Orders() {
     setCancelingOrder(null);
   }
 
+  const { pageItems: pageOrders, ...pagination } = usePagination(orders);
   return (
     <div>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
@@ -183,7 +186,7 @@ export function Orders() {
 
       <div className="flex flex-col gap-4">
         {!isLoading &&
-          orders.map((order) => {
+          pageOrders.map((order) => {
             const isExpanded = expandedId === order.id;
             const isOwner = order.createdById === user?.id;
             const canEditAsObra = isObra && isOwner && order.status === "PENDIENTE";
@@ -317,6 +320,8 @@ export function Orders() {
             );
           })}
       </div>
+
+      <Pagination {...pagination} onPageChange={pagination.setPage} />
 
       {isCreating && (
         <OrderFormModal

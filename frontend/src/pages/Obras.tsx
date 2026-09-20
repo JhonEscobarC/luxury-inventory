@@ -12,6 +12,8 @@ import { AssignUsersModal } from "../components/obras/AssignUsersModal";
 import { ObraContratistasModal } from "../components/contratistas/ObraContratistasModal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { displayCurrency } from "../lib/currency";
+import { usePagination } from "../hooks/usePagination";
+import { Pagination } from "../components/ui/Pagination";
 
 const SIN_PROYECTO = "sin-proyecto";
 
@@ -113,6 +115,7 @@ export function Obras() {
 
   const tituloProyecto = isSinProyecto ? "Obras sin proyecto" : proyectoActual?.name ?? "Obras";
 
+  const { pageItems: pageObras, ...pagination } = usePagination(obras);
   return (
     <div>
       <Link
@@ -160,7 +163,7 @@ export function Obras() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {!isLoading &&
-          obras.map((obra) => (
+          pageObras.map((obra) => (
             <div
               key={obra.id}
               className={`border bg-surface-container p-6 transition-colors ${
@@ -251,6 +254,8 @@ export function Obras() {
             </div>
           ))}
       </div>
+
+      <Pagination {...pagination} onPageChange={pagination.setPage} />
 
       {isCreating && (
         <ObraFormModal

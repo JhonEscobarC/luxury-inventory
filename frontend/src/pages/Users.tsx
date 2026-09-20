@@ -5,6 +5,8 @@ import type { ManagedUser, CreateUserInput, UpdateUserInput } from "../types/use
 import { UserFormModal } from "../components/users/UserFormModal";
 import { ResetPasswordModal } from "../components/users/ResetPasswordModal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { usePagination } from "../hooks/usePagination";
+import { Pagination } from "../components/ui/Pagination";
 
 const ROLE_LABEL: Record<string, string> = {
   ADMIN: "Administrador",
@@ -96,6 +98,7 @@ export function Users() {
     }
   }
 
+  const { pageItems: pageUsers, ...pagination } = usePagination(users);
   return (
     <div>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
@@ -129,7 +132,7 @@ export function Users() {
         </div>
 
         {!isLoading &&
-          users.map((user) => {
+          pageUsers.map((user) => {
             const isSelf = user.id === currentUser?.id;
             return (
               <div
@@ -193,6 +196,8 @@ export function Users() {
             );
           })}
       </div>
+
+      <Pagination {...pagination} onPageChange={pagination.setPage} />
 
       {isCreating && <UserFormModal user={null} onClose={() => setIsCreating(false)} onSubmit={handleCreate} />}
 
