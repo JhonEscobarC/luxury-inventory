@@ -81,6 +81,14 @@ export function Proyectos() {
   const { pageItems: pageProyectos, ...pagination } = usePagination(proyectos);
   return (
     <div>
+      <Link
+        to="/terceros"
+        className="font-label-sm uppercase text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1 mb-4"
+      >
+        <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+        Terceros
+      </Link>
+
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
         <div>
           <h2 className="text-display-lg-mobile md:text-display-lg text-primary uppercase">Proyectos</h2>

@@ -86,11 +86,11 @@ export function Proveedores() {
   return (
     <div>
       <Link
-        to="/proveedores-contratistas"
+        to="/terceros"
         className="font-label-sm uppercase text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1 mb-4"
       >
         <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-        Proveedores y contratistas
+        Terceros
       </Link>
 
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">

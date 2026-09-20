@@ -2,6 +2,12 @@ import { Link } from "react-router-dom";
 
 const CARDS = [
   {
+    to: "/proyectos",
+    icon: "apartment",
+    title: "Proyectos",
+    description: "Agrupa las obras en proyectos, consulta su inventario y gestiona cada obra.",
+  },
+  {
     to: "/proveedores",
     icon: "local_shipping",
     title: "Proveedores",
@@ -15,19 +21,19 @@ const CARDS = [
   },
 ];
 
-export function ProveedoresContratistas() {
+export function Terceros() {
   return (
     <div>
       <div className="mb-12">
         <h2 className="text-display-lg-mobile md:text-display-lg text-primary uppercase">
-          Proveedores y contratistas
+          Terceros
         </h2>
         <p className="font-body-md text-on-surface-variant mt-2 max-w-xl">
-          Elige a donde quieres ir.
+          Proyectos, proveedores y contratistas. Elige a donde quieres ir.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         {CARDS.map((card) => (
           <Link
             key={card.to}

@@ -12,7 +12,7 @@ import { Obras } from "./pages/Obras";
 import { Proyectos } from "./pages/Proyectos";
 import { Proveedores } from "./pages/Proveedores";
 import { Contratistas } from "./pages/Contratistas";
-import { ProveedoresContratistas } from "./pages/ProveedoresContratistas";
+import { Terceros } from "./pages/Terceros";
 import { Historial } from "./pages/Historial";
 import { Users } from "./pages/Users";
 
@@ -84,11 +84,11 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/proveedores-contratistas"
+        path="/terceros"
         element={
           <ProtectedRoute allowedRoles={[...ADMIN_CONTABILIDAD]}>
             <AppLayout>
-              <ProveedoresContratistas />
+              <Terceros />
             </AppLayout>
           </ProtectedRoute>
         }

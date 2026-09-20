@@ -11,11 +11,10 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", icon: "dashboard", to: "/" },
   { label: "Pedidos", icon: "assignment", to: "/pedidos" },
   { label: "Materiales", icon: "construction", to: "/materiales", roles: ["OBRA"] },
-  { label: "Proyectos", icon: "apartment", to: "/proyectos", roles: ["ADMIN", "CONTABILIDAD"] },
   {
-    label: "Proveedores y contratistas",
+    label: "Terceros",
     icon: "groups",
-    to: "/proveedores-contratistas",
+    to: "/terceros",
     roles: ["ADMIN", "CONTABILIDAD"],
   },
   { label: "Financiero", icon: "account_balance", to: "/financiero", roles: ["ADMIN", "CONTABILIDAD"] },
