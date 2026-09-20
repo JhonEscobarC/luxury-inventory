@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { listProducts } from "../lib/products";
 import { listMyObras } from "../lib/obras";
-import { createMaterialUso, listMaterialUsos } from "../lib/materialUsos";
+import { createMaterialUso } from "../lib/materialUsos";
 import type { Product } from "../types/product";
 import type { Obra } from "../types/obra";
-import type { MaterialUso, MaterialUsoInput } from "../types/materialUso";
+import type { MaterialUsoInput } from "../types/materialUso";
 import { RegistrarUsoModal } from "../components/materiales/RegistrarUsoModal";
+import { ProductoHistorialModal } from "../components/materiales/ProductoHistorialModal";
 
 const selectClass =
   "w-full bg-surface border border-outline-variant focus:outline-none focus:border-primary text-on-surface font-body-md px-3 py-3";
@@ -13,22 +14,18 @@ const selectClass =
 export function Materiales() {
   const [products, setProducts] = useState<Product[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
-  const [usos, setUsos] = useState<MaterialUso[]>([]);
   const [activeObraId, setActiveObraId] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [usingProduct, setUsingProduct] = useState<Product | null>(null);
+  const [historyProduct, setHistoryProduct] = useState<Product | null>(null);
 
   async function refresh() {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const [productsResult, usosResult] = await Promise.all([
-        listProducts({ obraId: activeObraId || undefined }),
-        listMaterialUsos({ obraId: activeObraId || undefined }),
-      ]);
+      const productsResult = await listProducts({ obraId: activeObraId || undefined });
       setProducts(productsResult.items);
-      setUsos(usosResult);
     } catch {
       setErrorMessage("No se pudo cargar el inventario de tu obra.");
     } finally {
@@ -59,7 +56,7 @@ export function Materiales() {
         <div>
           <h2 className="text-display-lg-mobile md:text-display-lg text-primary uppercase">Materiales</h2>
           <p className="font-body-md text-on-surface-variant mt-2 max-w-xl">
-            Consulta el material disponible en tu obra y registra lo que se haya usado.
+            Consulta el material disponible en tu obra y registra lo que se haya usado. Toca un producto para ver su historial.
           </p>
         </div>
 
@@ -110,7 +107,8 @@ export function Materiales() {
           products.map((product) => (
             <div
               key={product.id}
-              className="border border-outline-variant bg-surface p-4 md:px-4 md:py-5 flex flex-col md:grid md:grid-cols-12 gap-4 items-start md:items-center hover:border-primary transition-colors duration-300"
+              onClick={() => setHistoryProduct(product)}
+              className="border border-outline-variant bg-surface p-4 md:px-4 md:py-5 flex flex-col md:grid md:grid-cols-12 gap-4 items-start md:items-center hover:border-primary transition-colors duration-300 cursor-pointer"
             >
               <div className="md:col-span-4 w-full flex flex-col gap-1">
                 <span className="font-body-md font-semibold text-on-surface">{product.name}</span>
@@ -136,7 +134,10 @@ export function Materiales() {
 
               <div className="md:col-span-2 w-full flex justify-end">
                 <button
-                  onClick={() => setUsingProduct(product)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setUsingProduct(product);
+                  }}
                   disabled={product.quantity <= 0}
                   className="border border-primary text-primary font-label-sm uppercase px-4 py-2 hover:bg-primary hover:text-on-primary transition-colors disabled:opacity-40 disabled:pointer-events-none w-full md:w-auto"
                 >
@@ -147,28 +148,7 @@ export function Materiales() {
           ))}
       </div>
 
-      <h3 className="font-label-sm text-on-surface-variant uppercase tracking-widest mb-4">Uso reciente</h3>
-      <div className="flex flex-col gap-3">
-        {usos.length === 0 && !isLoading && (
-          <p className="text-on-surface-variant font-label-sm uppercase px-4 py-4">Sin registros de uso todavia.</p>
-        )}
-        {usos.map((uso) => (
-          <div key={uso.id} className="border border-outline-variant bg-surface p-4 flex flex-col gap-1">
-            <div className="flex justify-between items-center flex-wrap gap-2">
-              <span className="font-body-md font-semibold text-on-surface">
-                {uso.quantity} {uso.unit} de {uso.productName}
-              </span>
-              <span className="font-label-sm text-on-surface-variant uppercase">
-                {new Date(uso.createdAt).toLocaleString("es-CO")}
-              </span>
-            </div>
-            <p className="font-label-sm text-on-surface-variant/70 uppercase">
-              {uso.obraName} - {uso.userName ?? "-"}
-            </p>
-            <p className="font-body-md text-on-surface-variant">{uso.reason}</p>
-          </div>
-        ))}
-      </div>
+      {historyProduct && <ProductoHistorialModal product={historyProduct} onClose={() => setHistoryProduct(null)} />}
 
       {usingProduct && (
         <RegistrarUsoModal

@@ -1,5 +1,5 @@
 import { api } from "./api";
-import type { Product, ProductInput } from "../types/product";
+import type { Product, ProductInput, ProductoHistorialItem } from "../types/product";
 
 export interface ListProductsResult {
   items: Product[];
@@ -54,4 +54,9 @@ export async function updateProduct(id: string, input: Partial<ProductInput>): P
 
 export async function deleteProduct(id: string): Promise<void> {
   await api.delete(`/products/${id}`);
+}
+
+export async function listProductoHistorial(productId: string): Promise<ProductoHistorialItem[]> {
+  const { data } = await api.get<{ items: ProductoHistorialItem[] }>(`/products/${productId}/historial`);
+  return data.items;
 }

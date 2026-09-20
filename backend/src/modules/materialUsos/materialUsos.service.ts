@@ -1,6 +1,15 @@
-import { HistorialTipo, Prisma, type MaterialUso, type Obra, type Product, type User } from "@prisma/client";
+import {
+  HistorialTipo,
+  Prisma,
+  ProductoHistorialTipo,
+  type MaterialUso,
+  type Obra,
+  type Product,
+  type User,
+} from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { HttpError } from "../../middleware/errorHandler";
+import { recordProductoHistorial } from "../products/productHistorial.service";
 import { recordEvento } from "../historial/historial.service";
 
 function serializeMaterialUso(
@@ -58,9 +67,17 @@ export async function createMaterialUso(input: CreateMaterialUsoInput) {
   }
 
   const uso = await prisma.$transaction(async (tx) => {
-    await tx.product.update({
+    const updatedProduct = await tx.product.update({
       where: { id: product.id },
       data: { quantity: { decrement: input.quantity } },
+    });
+    await recordProductoHistorial(tx, {
+      productId: product.id,
+      tipo: ProductoHistorialTipo.USO,
+      descripcion: `Uso: ${input.reason}`,
+      cantidad: -input.quantity,
+      cantidadResultante: updatedProduct.quantity,
+      userId: input.userId,
     });
     return tx.materialUso.create({
       data: {

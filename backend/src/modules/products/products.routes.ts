@@ -1,6 +1,14 @@
 import { Router } from "express";
 import { requireAuth, requireRole } from "../../middleware/auth";
-import { createHandler, deleteHandler, exportHandler, getHandler, listHandler, updateHandler } from "./products.controller";
+import {
+  createHandler,
+  deleteHandler,
+  exportHandler,
+  getHandler,
+  historialHandler,
+  listHandler,
+  updateHandler,
+} from "./products.controller";
 
 export const productsRouter = Router();
 
@@ -10,6 +18,7 @@ productsRouter.use(requireAuth);
 // asignadas (el scoping se aplica en el controlador).
 productsRouter.get("/", requireRole("ADMIN", "CONTABILIDAD", "OBRA"), listHandler);
 productsRouter.get("/export", requireRole("ADMIN", "CONTABILIDAD", "OBRA"), exportHandler);
+productsRouter.get("/:id/historial", requireRole("ADMIN", "CONTABILIDAD", "OBRA"), historialHandler);
 productsRouter.get("/:id", requireRole("ADMIN", "CONTABILIDAD", "OBRA"), getHandler);
 
 // Escritura directa de inventario: exclusiva de ADMIN y CONTABILIDAD. Los usuarios

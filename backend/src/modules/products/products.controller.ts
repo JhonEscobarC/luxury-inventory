@@ -1,6 +1,8 @@
 import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 import * as productsService from "./products.service";
+import { listProductoHistorial } from "./productHistorial.service";
+import { HttpError } from "../../middleware/errorHandler";
 
 const productInputSchema = z.object({
   name: z.string().trim().min(1, "El nombre es requerido"),
@@ -86,10 +88,26 @@ export async function getHandler(req: Request, res: Response, next: NextFunction
   }
 }
 
+export async function historialHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const product = await productsService.getProductById(req.params.id);
+    if (req.user?.role === "OBRA") {
+      const obraIds = await productsService.getObraIdsForUser(req.user.sub);
+      if (!product.obraId || !obraIds.includes(product.obraId)) {
+        throw new HttpError(403, "No tienes acceso al inventario de esta obra");
+      }
+    }
+    const items = await listProductoHistorial(req.params.id);
+    res.json({ items });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function createHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const input = productInputSchema.parse(req.body);
-    const product = await productsService.createProduct(input);
+    const product = await productsService.createProduct(input, req.user!.sub);
     res.status(201).json({ product });
   } catch (error) {
     next(error);
@@ -99,7 +117,7 @@ export async function createHandler(req: Request, res: Response, next: NextFunct
 export async function updateHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const input = productUpdateSchema.parse(req.body);
-    const product = await productsService.updateProduct(req.params.id, input);
+    const product = await productsService.updateProduct(req.params.id, input, req.user!.sub);
     res.json({ product });
   } catch (error) {
     next(error);

@@ -3,6 +3,7 @@ import {
   OrderStatus,
   FormaPago,
   HistorialTipo,
+  ProductoHistorialTipo,
   type Order,
   type OrderItem,
   type Obra,
@@ -14,6 +15,7 @@ import {
 import { prisma } from "../../lib/prisma";
 import { HttpError } from "../../middleware/errorHandler";
 import { recordEvento } from "../historial/historial.service";
+import { recordProductoHistorial } from "../products/productHistorial.service";
 import { endOfDay } from "../../utils/dates";
 
 // Los estados internos (PENDIENTE/CONFIRMADO/DESPACHADO) no cambiaron de nombre para
@@ -338,6 +340,8 @@ export async function assignOrder(id: string, input: AssignOrderInput, assignedB
 // Los materiales sin categoria no se inventarian.
 async function receiveItemsIntoInventory(
   tx: Prisma.TransactionClient,
+  orderId: string,
+  userId: string | undefined,
   obraId: string,
   items: { id: string; description: string; quantity: Prisma.Decimal; unit: string; unitPrice: Prisma.Decimal | null; categoriaId: string | null }[],
 ) {
@@ -349,11 +353,19 @@ async function receiveItemsIntoInventory(
     });
 
     if (existingProduct) {
-      await tx.product.update({
+      const updated = await tx.product.update({
         where: { id: existingProduct.id },
         data: { quantity: { increment: item.quantity } },
       });
       await tx.orderItem.update({ where: { id: item.id }, data: { productId: existingProduct.id } });
+      await recordProductoHistorial(tx, {
+        productId: existingProduct.id,
+        tipo: ProductoHistorialTipo.INGRESO,
+        descripcion: `Ingreso por pedido ${orderId.slice(0, 8).toUpperCase()}`,
+        cantidad: item.quantity,
+        cantidadResultante: updated.quantity,
+        userId,
+      });
     } else {
       const newProduct = await tx.product.create({
         data: {
@@ -366,6 +378,14 @@ async function receiveItemsIntoInventory(
         },
       });
       await tx.orderItem.update({ where: { id: item.id }, data: { productId: newProduct.id } });
+      await recordProductoHistorial(tx, {
+        productId: newProduct.id,
+        tipo: ProductoHistorialTipo.CREADO,
+        descripcion: `Producto agregado al inventario por pedido ${orderId.slice(0, 8).toUpperCase()}`,
+        cantidad: item.quantity,
+        cantidadResultante: item.quantity,
+        userId,
+      });
     }
   }
 }
@@ -383,7 +403,7 @@ export async function updateOrderStatus(id: string, nextStatus: OrderStatus, use
 
   if (nextStatus === OrderStatus.DESPACHADO) {
     const order = await prisma.$transaction(async (tx) => {
-      await receiveItemsIntoInventory(tx, existing.obraId, existing.items);
+      await receiveItemsIntoInventory(tx, id, userId, existing.obraId, existing.items);
       return tx.order.update({
         where: { id },
         data: { status: nextStatus },

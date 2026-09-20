@@ -40,6 +40,13 @@ enum MetodoPago {
   TARJETA
 }
 
+enum ProductoHistorialTipo {
+  CREADO
+  INGRESO
+  USO
+  EDITADO
+}
+
 enum HistorialTipo {
   PEDIDO_CREADO
   PEDIDO_CONFIRMADO
@@ -110,10 +117,29 @@ model Product {
 
   orderItems   OrderItem[]
   materialUsos MaterialUso[]
+  historial    ProductoHistorial[]
 
   @@index([categoriaId])
   @@index([obraId])
   @@map("products")
+}
+
+// Bitacora de cada producto: cuando se agrego, cada ingreso por pedido, cada uso y
+// cada edicion. No guarda precios (la ven tambien los residentes).
+model ProductoHistorial {
+  id                 String                @id @default(uuid())
+  tipo               ProductoHistorialTipo
+  descripcion        String
+  cantidad           Decimal?              @db.Decimal(12, 2)
+  cantidadResultante Decimal?              @db.Decimal(12, 2)
+  userName           String?
+  createdAt          DateTime              @default(now())
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("producto_historial")
 }
 
 model Proyecto {

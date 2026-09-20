@@ -1,6 +1,7 @@
-import { Prisma, type Proveedor, type Categoria, type Obra, type Proyecto } from "@prisma/client";
+import { Prisma, ProductoHistorialTipo, type Proveedor, type Categoria, type Obra, type Proyecto } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { HttpError } from "../../middleware/errorHandler";
+import { recordProductoHistorial } from "./productHistorial.service";
 
 export interface ListProductsParams {
   search?: string;
@@ -134,37 +135,81 @@ export async function getProductById(id: string) {
   return serializeProduct(product);
 }
 
-export async function createProduct(input: ProductInput) {
-  const product = await prisma.product.create({
-    data: {
-      name: input.name,
-      categoriaId: input.categoriaId ?? null,
-      obraId: input.obraId ?? null,
-      quantity: input.quantity,
-      unit: input.unit,
-      price: input.price,
-      proveedorId: input.proveedorId ?? null,
-    },
-    include: productInclude,
+export async function createProduct(input: ProductInput, userId?: string) {
+  const product = await prisma.$transaction(async (tx) => {
+    const created = await tx.product.create({
+      data: {
+        name: input.name,
+        categoriaId: input.categoriaId ?? null,
+        obraId: input.obraId ?? null,
+        quantity: input.quantity,
+        unit: input.unit,
+        price: input.price,
+        proveedorId: input.proveedorId ?? null,
+      },
+      include: productInclude,
+    });
+    await recordProductoHistorial(tx, {
+      productId: created.id,
+      tipo: ProductoHistorialTipo.CREADO,
+      descripcion: "Producto agregado al inventario",
+      cantidad: input.quantity,
+      cantidadResultante: input.quantity,
+      userId,
+    });
+    return created;
   });
   return serializeProduct(product);
 }
 
-export async function updateProduct(id: string, input: Partial<ProductInput>) {
-  await getProductById(id);
+export async function updateProduct(id: string, input: Partial<ProductInput>, userId?: string) {
+  const before = await prisma.product.findUnique({ where: { id } });
+  if (!before) {
+    throw new HttpError(404, "Producto no encontrado");
+  }
 
-  const product = await prisma.product.update({
-    where: { id },
-    data: {
-      ...(input.name !== undefined && { name: input.name }),
-      ...(input.categoriaId !== undefined && { categoriaId: input.categoriaId }),
-      ...(input.obraId !== undefined && { obraId: input.obraId }),
-      ...(input.quantity !== undefined && { quantity: input.quantity }),
-      ...(input.unit !== undefined && { unit: input.unit }),
-      ...(input.price !== undefined && { price: input.price }),
-      ...(input.proveedorId !== undefined && { proveedorId: input.proveedorId }),
-    },
-    include: productInclude,
+  const product = await prisma.$transaction(async (tx) => {
+    const updated = await tx.product.update({
+      where: { id },
+      data: {
+        ...(input.name !== undefined && { name: input.name }),
+        ...(input.categoriaId !== undefined && { categoriaId: input.categoriaId }),
+        ...(input.obraId !== undefined && { obraId: input.obraId }),
+        ...(input.quantity !== undefined && { quantity: input.quantity }),
+        ...(input.unit !== undefined && { unit: input.unit }),
+        ...(input.price !== undefined && { price: input.price }),
+        ...(input.proveedorId !== undefined && { proveedorId: input.proveedorId }),
+      },
+      include: productInclude,
+    });
+
+    // Los precios no se detallan: esta bitacora tambien la ven los residentes.
+    const cambios: string[] = [];
+    if (input.name !== undefined && input.name !== before.name) cambios.push(`Nombre: "${before.name}" -> "${input.name}"`);
+    if (input.unit !== undefined && input.unit !== before.unit) cambios.push(`Unidad: ${before.unit} -> ${input.unit}`);
+    if (input.price !== undefined && Number(input.price) !== Number(before.price)) cambios.push("Precio actualizado");
+    if (input.categoriaId !== undefined && input.categoriaId !== before.categoriaId) cambios.push("Categoria cambiada");
+    if (input.obraId !== undefined && input.obraId !== before.obraId) cambios.push("Obra reasignada");
+    if (input.proveedorId !== undefined && input.proveedorId !== before.proveedorId) cambios.push("Proveedor cambiado");
+
+    const cantidadAntes = Number(before.quantity);
+    const cantidadDespues = Number(updated.quantity);
+    const delta = cantidadDespues - cantidadAntes;
+    if (delta !== 0) {
+      cambios.push(`Cantidad ajustada de ${cantidadAntes} a ${cantidadDespues} ${updated.unit}`);
+    }
+
+    if (cambios.length > 0) {
+      await recordProductoHistorial(tx, {
+        productId: id,
+        tipo: ProductoHistorialTipo.EDITADO,
+        descripcion: cambios.join(". "),
+        cantidad: delta !== 0 ? delta : null,
+        cantidadResultante: delta !== 0 ? cantidadDespues : null,
+        userId,
+      });
+    }
+    return updated;
   });
   return serializeProduct(product);
 }

@@ -25,3 +25,15 @@ export interface ProductInput {
   price: number;
   proveedorId?: string | null;
 }
+
+export type ProductoHistorialTipo = "CREADO" | "INGRESO" | "USO" | "EDITADO";
+
+export interface ProductoHistorialItem {
+  id: string;
+  tipo: ProductoHistorialTipo;
+  descripcion: string;
+  cantidad: number | null;
+  cantidadResultante: number | null;
+  userName: string | null;
+  createdAt: string;
+}
