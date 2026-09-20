@@ -51,6 +51,7 @@ enum HistorialTipo {
   ABONO_REGISTRADO
   MATERIAL_USADO
   ABONO_CLIENTE_REGISTRADO
+  GASTO_ADICIONAL_REGISTRADO
 }
 
 model User {
@@ -63,12 +64,13 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  ordersCreated        Order[]        @relation("OrderCreatedBy")
-  ordersAssigned       Order[]        @relation("OrderAssignedBy")
-  obras                Obra[]         @relation("UserObras")
-  abonosCreated        Abono[]        @relation("AbonoCreatedBy")
-  abonosClienteCreated AbonoCliente[] @relation("AbonoClienteCreatedBy")
-  materialUsos         MaterialUso[]
+  ordersCreated          Order[]          @relation("OrderCreatedBy")
+  ordersAssigned         Order[]          @relation("OrderAssignedBy")
+  obras                  Obra[]           @relation("UserObras")
+  abonosCreated          Abono[]          @relation("AbonoCreatedBy")
+  abonosClienteCreated   AbonoCliente[]   @relation("AbonoClienteCreatedBy")
+  materialUsos           MaterialUso[]
+  gastosAdicionalesCreated GastoAdicional[] @relation("GastoAdicionalCreatedBy")
 
   @@map("users")
 }
@@ -150,6 +152,7 @@ model Obra {
   products                Product[]
   materialUsos            MaterialUso[]
   abonosCliente           AbonoCliente[]
+  gastosAdicionales       GastoAdicional[]
 
   @@map("obras")
 }
@@ -280,6 +283,25 @@ model AbonoCliente {
   @@map("abonos_cliente")
 }
 
+// Gastos varios de la empresa que no encajan como pedido a proveedor ni pago a
+// contratista (ej. transporte, tramites, papeleria). Opcionalmente se asocian a una obra.
+model GastoAdicional {
+  id         String     @id @default(uuid())
+  concepto   String
+  amount     Decimal    @db.Decimal(14, 2)
+  metodoPago MetodoPago
+  notes      String?
+  createdAt  DateTime   @default(now())
+
+  obraId String?
+  obra   Obra?   @relation(fields: [obraId], references: [id], onDelete: SetNull)
+
+  createdById String?
+  createdBy   User?   @relation("GastoAdicionalCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@map("gastos_adicionales")
+}
+
 model Order {
   id        String      @id @default(uuid())
   status    OrderStatus @default(PENDIENTE)
@@ -324,10 +346,11 @@ model HistorialEvento {
   contratistaId   String?
   contratistaName String?
 
-  orderId        String?
-  asignacionId   String?
-  abonoId        String?
-  abonoClienteId String?
+  orderId          String?
+  asignacionId     String?
+  abonoId          String?
+  abonoClienteId   String?
+  gastoAdicionalId String?
 
   @@index([createdAt])
   @@index([obraId])

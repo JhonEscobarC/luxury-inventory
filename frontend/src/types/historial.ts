@@ -8,7 +8,8 @@ export type HistorialTipo =
   | "ETAPA_PAGADA"
   | "ABONO_REGISTRADO"
   | "MATERIAL_USADO"
-  | "ABONO_CLIENTE_REGISTRADO";
+  | "ABONO_CLIENTE_REGISTRADO"
+  | "GASTO_ADICIONAL_REGISTRADO";
 
 export interface HistorialEvento {
   id: string;
@@ -27,4 +28,5 @@ export interface HistorialEvento {
   asignacionId: string | null;
   abonoId: string | null;
   abonoClienteId: string | null;
+  gastoAdicionalId: string | null;
 }

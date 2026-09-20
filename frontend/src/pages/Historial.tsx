@@ -43,6 +43,7 @@ const TIPO_META: Record<HistorialTipo, { label: string; icon: string; color: str
   ABONO_REGISTRADO: { label: "Abono registrado", icon: "payments", color: "text-primary" },
   MATERIAL_USADO: { label: "Material usado", icon: "construction", color: "text-secondary" },
   ABONO_CLIENTE_REGISTRADO: { label: "Abono de cliente", icon: "receipt_long", color: "text-primary" },
+  GASTO_ADICIONAL_REGISTRADO: { label: "Gasto adicional", icon: "request_quote", color: "text-primary" },
 };
 
 const selectClass =

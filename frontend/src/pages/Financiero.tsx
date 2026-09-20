@@ -4,26 +4,35 @@ import { listObras } from "../lib/obras";
 import { getClientesReport, getProveedoresDeudaReport } from "../lib/reports";
 import { listHistorial } from "../lib/historial";
 import { getAbonoCliente } from "../lib/abonosCliente";
+import { getGastoAdicional } from "../lib/gastosAdicionales";
 import { displayCurrency } from "../lib/currency";
 import { exportClientesExcel, exportClientesPdf } from "../lib/exporters";
 import type { Proveedor } from "../types/proveedor";
 import type { Obra } from "../types/obra";
 import type { AbonoCliente } from "../types/abonoCliente";
+import type { GastoAdicional } from "../types/gastoAdicional";
 import type { HistorialEvento } from "../types/historial";
 import type { ClientesReport, ObraClientes, ProveedorDeuda } from "../types/report";
 import { ProveedorAbonosModal } from "../components/proveedores/ProveedorAbonosModal";
 import { ObraAbonosClienteModal } from "../components/obras/ObraAbonosClienteModal";
 import { ReciboCajaModal } from "../components/obras/ReciboCajaModal";
+import { GastoAdicionalModal } from "../components/financiero/GastoAdicionalModal";
+import { ComprobanteGastoModal } from "../components/financiero/ComprobanteGastoModal";
 import { MoneyStats } from "../components/ui/MoneyStats";
 
 const exportButtonClass =
   "flex-1 border border-primary text-primary font-label-sm uppercase px-4 py-3 hover:bg-primary hover:text-on-primary transition-colors disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2";
 
-const HISTORIAL_FINANCIERO_TIPOS = ["ABONO_REGISTRADO", "ABONO_CLIENTE_REGISTRADO"] as const;
+const HISTORIAL_FINANCIERO_TIPOS = [
+  "ABONO_REGISTRADO",
+  "ABONO_CLIENTE_REGISTRADO",
+  "GASTO_ADICIONAL_REGISTRADO",
+] as const;
 
 const HISTORIAL_META: Record<(typeof HISTORIAL_FINANCIERO_TIPOS)[number], { label: string; icon: string }> = {
   ABONO_REGISTRADO: { label: "Abono a proveedor", icon: "local_shipping" },
   ABONO_CLIENTE_REGISTRADO: { label: "Abono de cliente", icon: "receipt_long" },
+  GASTO_ADICIONAL_REGISTRADO: { label: "Gasto adicional", icon: "request_quote" },
 };
 
 function fallbackObra(id: string, name: string, client: string | null, precioVenta: number | null): Obra {
@@ -61,7 +70,11 @@ export function Financiero() {
   const [historial, setHistorial] = useState<HistorialEvento[]>([]);
   const [isLoadingHistorial, setIsLoadingHistorial] = useState(true);
   const [receiptFromHistorial, setReceiptFromHistorial] = useState<{ abono: AbonoCliente; obra: Obra } | null>(null);
+  const [gastoReceiptFromHistorial, setGastoReceiptFromHistorial] = useState<GastoAdicional | null>(null);
   const [historialError, setHistorialError] = useState<string | null>(null);
+
+  const [isRegisteringGasto, setIsRegisteringGasto] = useState(false);
+  const [gastoReceipt, setGastoReceipt] = useState<GastoAdicional | null>(null);
 
   useEffect(() => {
     listProveedores({ isActive: true }).then(setProveedores).catch(() => setProveedores([]));
@@ -105,6 +118,12 @@ export function Financiero() {
     refreshHistorial();
   }
 
+  function handleGastoCreated(gasto: GastoAdicional) {
+    setIsRegisteringGasto(false);
+    setGastoReceipt(gasto);
+    refreshHistorial();
+  }
+
   const sortedDeudas = useMemo(
     () => [...deudas].sort((a, b) => (deudaSort === "desc" ? b.saldo - a.saldo : a.saldo - b.saldo)),
     [deudas, deudaSort],
@@ -121,6 +140,16 @@ export function Financiero() {
       const abono = await getAbonoCliente(evento.abonoClienteId);
       const obra = findObra(evento.obraId, evento.obraName ?? "", null, null);
       setReceiptFromHistorial({ abono, obra });
+    } catch {
+      setHistorialError("No se pudo cargar el comprobante.");
+    }
+  }
+
+  async function handleVerComprobanteGasto(evento: HistorialEvento) {
+    if (!evento.gastoAdicionalId) return;
+    setHistorialError(null);
+    try {
+      setGastoReceiptFromHistorial(await getGastoAdicional(evento.gastoAdicionalId));
     } catch {
       setHistorialError("No se pudo cargar el comprobante.");
     }
@@ -354,13 +383,22 @@ export function Financiero() {
       </section>
 
       <section className="bg-surface-container lux-card-border p-6 md:p-8">
-        <div className="flex items-center gap-3 mb-6 border-b border-outline-variant pb-4">
-          <span className="material-symbols-outlined text-primary">history</span>
-          <h3 className="text-headline-md-mobile text-on-surface uppercase">Historial financiero</h3>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6 border-b border-outline-variant pb-4 sm:justify-between">
+          <div className="flex items-center gap-3">
+            <span className="material-symbols-outlined text-primary">history</span>
+            <h3 className="text-headline-md-mobile text-on-surface uppercase">Historial financiero</h3>
+          </div>
+          <button
+            onClick={() => setIsRegisteringGasto(true)}
+            className="bg-primary hover:bg-primary-fixed transition-colors text-on-primary font-label-sm uppercase tracking-widest px-6 py-3 flex items-center justify-center gap-2 self-start"
+          >
+            <span className="material-symbols-outlined text-[18px]">request_quote</span>
+            Registrar gasto adicional
+          </button>
         </div>
         <p className="font-body-md text-on-surface-variant mb-6">
-          Registro propio de Financiero: abonos a proveedores y pagos de clientes, con fecha, hora y quien lo hizo.
-          No se mezcla con el historial general del sistema.
+          Registro propio de Financiero: abonos a proveedores, pagos de clientes y gastos adicionales, con fecha,
+          hora y quien lo hizo. No se mezcla con el historial general del sistema.
         </p>
 
         {historialError && <p className="text-error font-label-sm uppercase mb-4">{historialError}</p>}
@@ -413,6 +451,16 @@ export function Financiero() {
                       Ver comprobante
                     </button>
                   )}
+
+                  {evento.tipo === "GASTO_ADICIONAL_REGISTRADO" && evento.gastoAdicionalId && (
+                    <button
+                      onClick={() => handleVerComprobanteGasto(evento)}
+                      className="font-label-sm uppercase text-primary hover:text-primary-fixed transition-colors flex items-center gap-1 shrink-0"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">receipt_long</span>
+                      Ver comprobante
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -443,6 +491,23 @@ export function Financiero() {
           abono={receiptFromHistorial.abono}
           obra={receiptFromHistorial.obra}
           onClose={() => setReceiptFromHistorial(null)}
+        />
+      )}
+
+      {isRegisteringGasto && (
+        <GastoAdicionalModal
+          obras={obras}
+          onClose={() => setIsRegisteringGasto(false)}
+          onCreated={handleGastoCreated}
+        />
+      )}
+
+      {gastoReceipt && <ComprobanteGastoModal gasto={gastoReceipt} onClose={() => setGastoReceipt(null)} />}
+
+      {gastoReceiptFromHistorial && (
+        <ComprobanteGastoModal
+          gasto={gastoReceiptFromHistorial}
+          onClose={() => setGastoReceiptFromHistorial(null)}
         />
       )}
     </div>
