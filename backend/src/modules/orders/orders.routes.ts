@@ -6,6 +6,8 @@ import {
   directPurchaseHandler,
   getHandler,
   listHandler,
+  receiveHandler,
+  recepcionFotoHandler,
   updateHandler,
   updateStatusHandler,
 } from "./orders.controller";
@@ -23,3 +25,6 @@ ordersRouter.post("/direct", requireRole("ADMIN", "CONTABILIDAD"), directPurchas
 ordersRouter.put("/:id", requireRole("ADMIN", "CONTABILIDAD", "OBRA"), updateHandler);
 ordersRouter.patch("/:id/assign", requireRole("ADMIN", "CONTABILIDAD"), assignHandler);
 ordersRouter.patch("/:id/status", updateStatusHandler);
+// Recibir un pedido: el residente (OBRA) debe adjuntar foto; admin/contabilidad pueden hacerlo con o sin ella.
+ordersRouter.post("/:id/receive", requireRole("ADMIN", "CONTABILIDAD", "OBRA"), receiveHandler);
+ordersRouter.get("/:id/recepcion-foto", requireRole("ADMIN", "CONTABILIDAD", "OBRA"), recepcionFotoHandler);

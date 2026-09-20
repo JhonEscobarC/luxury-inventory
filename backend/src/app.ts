@@ -40,7 +40,7 @@ app.use(
     credentials: true,
   }),
 );
-app.use(express.json());
+app.use(express.json({ limit: "6mb" }));
 app.use(morgan(env.nodeEnv === "development" ? "dev" : "combined"));
 
 app.get("/api/health", (_req, res) => {

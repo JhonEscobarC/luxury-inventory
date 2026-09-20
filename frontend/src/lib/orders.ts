@@ -53,3 +53,14 @@ export async function createDirectPurchase(input: AssignOrderInput & { obraId: s
   const { data } = await api.post<{ order: Order }>("/orders/direct", input);
   return data.order;
 }
+
+export async function receiveOrder(id: string, foto?: string | null): Promise<Order> {
+  const { data } = await api.post<{ order: Order }>(`/orders/${id}/receive`, { foto: foto ?? null });
+  return data.order;
+}
+
+// La foto requiere el token de sesion, asi que se baja como blob en vez de usar un <img src>.
+export async function getRecepcionFotoUrl(id: string): Promise<string> {
+  const { data } = await api.get<Blob>(`/orders/${id}/recepcion-foto`, { responseType: "blob" });
+  return URL.createObjectURL(data);
+}

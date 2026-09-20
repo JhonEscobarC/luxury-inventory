@@ -66,6 +66,7 @@ type OrderWithRelations = Order & {
   proveedor: Proveedor | null;
   createdBy: User | null;
   assignedBy: User | null;
+  recepcion: { id: string; createdAt: Date; createdBy: { name: string } | null } | null;
 };
 
 const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
@@ -118,6 +119,9 @@ function serializeOrder(order: OrderWithRelations) {
     createdById: order.createdById,
     createdByName: order.createdBy?.name ?? null,
     assignedByName: order.assignedBy?.name ?? null,
+    hasRecepcionFoto: !!order.recepcion,
+    recepcionAt: order.recepcion?.createdAt ?? null,
+    recepcionByName: order.recepcion?.createdBy?.name ?? null,
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
     items,
@@ -131,6 +135,7 @@ const orderInclude = {
   proveedor: true,
   createdBy: true,
   assignedBy: true,
+  recepcion: { select: { id: true, createdAt: true, createdBy: { select: { name: true } } } },
 } satisfies Prisma.OrderInclude;
 
 export interface ListOrdersFilters {
@@ -420,7 +425,17 @@ export async function createDirectPurchase(input: AssignOrderInput & { obraId: s
   }
 }
 
-export async function updateOrderStatus(id: string, nextStatus: OrderStatus, userId?: string) {
+export interface RecepcionFotoInput {
+  data: Buffer;
+  mime: string;
+}
+
+export async function updateOrderStatus(
+  id: string,
+  nextStatus: OrderStatus,
+  userId?: string,
+  foto?: RecepcionFotoInput,
+) {
   const existing = await prisma.order.findUnique({ where: { id }, include: orderInclude });
   if (!existing) {
     throw new HttpError(404, "Pedido no encontrado");
@@ -434,6 +449,11 @@ export async function updateOrderStatus(id: string, nextStatus: OrderStatus, use
   if (nextStatus === OrderStatus.DESPACHADO) {
     const order = await prisma.$transaction(async (tx) => {
       await receiveItemsIntoInventory(tx, id, userId, existing.obraId, existing.items);
+      if (foto) {
+        await tx.orderRecepcion.create({
+          data: { orderId: id, foto: foto.data, mime: foto.mime, createdById: userId ?? null },
+        });
+      }
       return tx.order.update({
         where: { id },
         data: { status: nextStatus },
@@ -474,4 +494,12 @@ export async function updateOrderStatus(id: string, nextStatus: OrderStatus, use
   }
 
   return serialized;
+}
+
+export async function getRecepcionFoto(orderId: string) {
+  const recepcion = await prisma.orderRecepcion.findUnique({ where: { orderId } });
+  if (!recepcion) {
+    throw new HttpError(404, "Este pedido no tiene foto de recepcion");
+  }
+  return { data: Buffer.from(recepcion.foto), mime: recepcion.mime };
 }

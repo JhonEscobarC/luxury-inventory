@@ -78,6 +78,7 @@ model User {
   abonosClienteCreated   AbonoCliente[]   @relation("AbonoClienteCreatedBy")
   materialUsos           MaterialUso[]
   gastosAdicionalesCreated GastoAdicional[] @relation("GastoAdicionalCreatedBy")
+  recepcionesCreated     OrderRecepcion[] @relation("OrderRecepcionBy")
 
   @@map("users")
 }
@@ -346,12 +347,30 @@ model Order {
   assignedById String?
   assignedBy   User?   @relation("OrderAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
 
-  items OrderItem[]
+  items      OrderItem[]
+  recepcion  OrderRecepcion?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("orders")
+}
+
+// Foto que sube el residente como prueba de que el pedido llego. Se guarda en la base
+// de datos (el disco del servidor no es persistente) y se sirve por un endpoint aparte.
+model OrderRecepcion {
+  id        String   @id @default(uuid())
+  foto      Bytes
+  mime      String
+  createdAt DateTime @default(now())
+
+  orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  createdById String?
+  createdBy   User?   @relation("OrderRecepcionBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@map("order_recepciones")
 }
 
 model HistorialEvento {

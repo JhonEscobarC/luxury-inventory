@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { assignOrder, createDirectPurchase, createOrder, listOrders, updateOrder, updateOrderStatus } from "../lib/orders";
+import { assignOrder, createDirectPurchase, createOrder, listOrders, receiveOrder, updateOrder, updateOrderStatus } from "../lib/orders";
 import { listMyObras, listObras } from "../lib/obras";
 import { listProveedores } from "../lib/proveedores";
 import { listCategorias } from "../lib/categorias";
@@ -11,6 +11,8 @@ import type { Categoria } from "../types/categoria";
 import { OrderFormModal } from "../components/orders/OrderFormModal";
 import { AssignOrderModal } from "../components/orders/AssignOrderModal";
 import { ComprobanteModal } from "../components/orders/ComprobanteModal";
+import { ReceiveOrderModal } from "../components/orders/ReceiveOrderModal";
+import { RecepcionFotoModal } from "../components/orders/RecepcionFotoModal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { displayCurrency } from "../lib/currency";
 import { usePagination } from "../hooks/usePagination";
@@ -56,6 +58,8 @@ export function Orders() {
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [assigningOrder, setAssigningOrder] = useState<Order | null>(null);
   const [isDirectPurchase, setIsDirectPurchase] = useState(false);
+  const [receivingOrder, setReceivingOrder] = useState<Order | null>(null);
+  const [fotoOrder, setFotoOrder] = useState<Order | null>(null);
   const [cancelingOrder, setCancelingOrder] = useState<Order | null>(null);
   const [comprobanteOrder, setComprobanteOrder] = useState<Order | null>(null);
   const [transitionError, setTransitionError] = useState<string | null>(null);
@@ -109,6 +113,12 @@ export function Orders() {
     const created = await createDirectPurchase({ ...input, obraId });
     await refresh();
     setComprobanteOrder(created);
+  }
+
+  async function handleReceive(foto: string | null) {
+    if (!receivingOrder) return;
+    await receiveOrder(receivingOrder.id, foto);
+    await refresh();
   }
 
   async function handleStatusChange(order: Order, nextStatus: OrderStatus) {
@@ -304,10 +314,19 @@ export function Orders() {
                           Editar y pasar a compra
                         </button>
                       )}
-                      {canAssign && order.status === "CONFIRMADO" && (
+                      {order.status === "DESPACHADO" && order.hasRecepcionFoto && (
+                        <button
+                          onClick={() => setFotoOrder(order)}
+                          className="border border-outline-variant text-on-surface-variant font-label-sm uppercase px-4 py-2 hover:border-primary hover:text-primary transition-colors flex items-center gap-2"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">photo_camera</span>
+                          Ver foto de recepcion
+                        </button>
+                      )}
+                      {(canAssign || isObra) && order.status === "CONFIRMADO" && (
                         <button
                           disabled={isPending}
-                          onClick={() => handleStatusChange(order, "DESPACHADO")}
+                          onClick={() => setReceivingOrder(order)}
                           className="border border-primary text-primary font-label-sm uppercase px-4 py-2 hover:bg-primary hover:text-on-primary transition-colors disabled:opacity-50"
                         >
                           {isPending ? "Actualizando..." : "Marcar como recibido"}
@@ -359,6 +378,17 @@ export function Orders() {
           onSubmit={handleUpdate}
         />
       )}
+
+      {receivingOrder && (
+        <ReceiveOrderModal
+          order={receivingOrder}
+          photoRequired={isObra}
+          onClose={() => setReceivingOrder(null)}
+          onSubmit={handleReceive}
+        />
+      )}
+
+      {fotoOrder && <RecepcionFotoModal order={fotoOrder} onClose={() => setFotoOrder(null)} />}
 
       {isDirectPurchase && (
         <AssignOrderModal

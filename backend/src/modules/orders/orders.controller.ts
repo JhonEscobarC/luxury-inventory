@@ -44,6 +44,11 @@ const assignOrderSchema = z.object({
 
 const directPurchaseSchema = assignOrderSchema.extend({ obraId: z.string().uuid("Obra invalida") });
 
+// La foto llega como data URL (data:image/...;base64,...) ya comprimida por el cliente.
+const receiveSchema = z.object({ foto: z.string().optional().nullable() });
+const DATA_URL = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/;
+const MAX_FOTO_BYTES = 4 * 1024 * 1024;
+
 const statusSchema = z.object({ status: z.nativeEnum(OrderStatus) });
 
 const filtersSchema = z.object({
@@ -130,6 +135,55 @@ export async function directPurchaseHandler(req: Request, res: Response, next: N
     const input = directPurchaseSchema.parse(req.body);
     const order = await ordersService.createDirectPurchase(input, req.user!.sub);
     res.status(201).json({ order });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function receiveHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { foto } = receiveSchema.parse(req.body);
+    const isObra = req.user!.role === "OBRA";
+    const existing = await ordersService.getOrderById(req.params.id);
+    if (isObra) {
+      const allowedObraIds = await getObraIdsForCurrentUser(req);
+      if (!allowedObraIds.includes(existing.obraId)) {
+        throw new HttpError(403, "No tienes acceso a este pedido");
+      }
+    }
+
+    let fotoInput: ordersService.RecepcionFotoInput | undefined;
+    if (foto) {
+      const match = DATA_URL.exec(foto);
+      if (!match) throw new HttpError(400, "La foto debe ser una imagen JPG, PNG o WEBP");
+      const data = Buffer.from(match[2], "base64");
+      if (data.length > MAX_FOTO_BYTES) throw new HttpError(400, "La foto es demasiado pesada (maximo 4 MB)");
+      fotoInput = { data, mime: match[1] };
+    }
+    if (isObra && !fotoInput) {
+      throw new HttpError(400, "Sube una foto como prueba de que el pedido llego");
+    }
+
+    const order = await ordersService.updateOrderStatus(req.params.id, OrderStatus.DESPACHADO, req.user!.sub, fotoInput);
+    res.json({ order });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function recepcionFotoHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (req.user!.role === "OBRA") {
+      const existing = await ordersService.getOrderById(req.params.id);
+      const allowedObraIds = await getObraIdsForCurrentUser(req);
+      if (!allowedObraIds.includes(existing.obraId)) {
+        throw new HttpError(403, "No tienes acceso a este pedido");
+      }
+    }
+    const { data, mime } = await ordersService.getRecepcionFoto(req.params.id);
+    res.setHeader("Content-Type", mime);
+    res.setHeader("Cache-Control", "private, max-age=3600");
+    res.send(data);
   } catch (error) {
     next(error);
   }

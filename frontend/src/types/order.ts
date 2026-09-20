@@ -30,6 +30,9 @@ export interface Order {
   createdById: string | null;
   createdByName: string | null;
   assignedByName: string | null;
+  hasRecepcionFoto: boolean;
+  recepcionAt: string | null;
+  recepcionByName: string | null;
   createdAt: string;
   updatedAt: string;
   items: OrderItem[];
