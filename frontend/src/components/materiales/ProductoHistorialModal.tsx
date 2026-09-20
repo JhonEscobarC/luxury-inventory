@@ -63,20 +63,31 @@ export function ProductoHistorialModal({ product, onClose }: ProductoHistorialMo
                   </div>
                   <p className="font-body-md text-on-surface mt-1">{item.descripcion}</p>
                   <p className="font-label-sm text-on-surface-variant/70 uppercase mt-1">
-                    {item.cantidad !== null && (
-                      <span className={item.cantidad < 0 ? "text-error" : "text-secondary"}>
-                        {item.cantidad > 0 ? "+" : ""}
-                        {item.cantidad} {product.unit}
-                      </span>
-                    )}
                     {item.cantidadResultante !== null && (
                       <span>
-                        {item.cantidad !== null ? " · " : ""}Quedaron {item.cantidadResultante} {product.unit}
+                        Quedaron {item.cantidadResultante} {product.unit}
                       </span>
                     )}
-                    {item.userName && <span>{item.cantidad !== null || item.cantidadResultante !== null ? " · " : ""}Por {item.userName}</span>}
+                    {item.userName && (
+                      <span>
+                        {item.cantidadResultante !== null ? " · " : ""}Por {item.userName}
+                      </span>
+                    )}
                   </p>
                 </div>
+                {item.cantidad !== null && (
+                  <div
+                    className={`shrink-0 text-right font-body-md font-bold ${
+                      item.cantidad < 0 ? "text-error" : "text-secondary"
+                    }`}
+                  >
+                    {item.cantidad > 0 ? "+" : ""}
+                    {item.cantidad}
+                    <span className="block font-label-sm font-normal uppercase text-on-surface-variant">
+                      {product.unit}
+                    </span>
+                  </div>
+                )}
               </div>
             );
           })}

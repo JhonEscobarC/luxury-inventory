@@ -381,7 +381,7 @@ async function receiveItemsIntoInventory(
       await recordProductoHistorial(tx, {
         productId: newProduct.id,
         tipo: ProductoHistorialTipo.CREADO,
-        descripcion: `Producto agregado al inventario por pedido ${orderId.slice(0, 8).toUpperCase()}`,
+        descripcion: `Producto agregado al inventario por pedido ${orderId.slice(0, 8).toUpperCase()}: ${item.quantity} ${item.unit}`,
         cantidad: item.quantity,
         cantidadResultante: item.quantity,
         userId,

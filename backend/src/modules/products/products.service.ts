@@ -152,7 +152,7 @@ export async function createProduct(input: ProductInput, userId?: string) {
     await recordProductoHistorial(tx, {
       productId: created.id,
       tipo: ProductoHistorialTipo.CREADO,
-      descripcion: "Producto agregado al inventario",
+      descripcion: `Producto agregado al inventario: ${input.quantity} ${input.unit}`,
       cantidad: input.quantity,
       cantidadResultante: input.quantity,
       userId,
