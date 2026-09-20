@@ -2,13 +2,16 @@ import { type FormEvent, useState } from "react";
 import type { AssignOrderInput, FormaPago, Order } from "../../types/order";
 import type { Proveedor } from "../../types/proveedor";
 import type { Categoria } from "../../types/categoria";
+import type { Obra } from "../../types/obra";
 
 interface AssignOrderModalProps {
-  order: Order;
+  /** Sin order = compra directa: se elige la obra y se crea ya en estado Compra. */
+  order?: Order;
+  obras?: Obra[];
   proveedores: Proveedor[];
   categorias: Categoria[];
   onClose: () => void;
-  onSubmit: (input: AssignOrderInput) => Promise<void>;
+  onSubmit: (input: AssignOrderInput, obraId: string) => Promise<void>;
 }
 
 type ProveedorMode = "single" | "per-item";
@@ -42,14 +45,17 @@ function draftItemsFromOrder(order: Order): DraftItem[] {
   }));
 }
 
-export function AssignOrderModal({ order, proveedores, categorias, onClose, onSubmit }: AssignOrderModalProps) {
-  const initialItems = draftItemsFromOrder(order);
+export function AssignOrderModal({ order, obras = [], proveedores, categorias, onClose, onSubmit }: AssignOrderModalProps) {
+  const initialItems: DraftItem[] = order
+    ? draftItemsFromOrder(order)
+    : [{ key: crypto.randomUUID(), description: "", quantity: 1, unit: "", unitPrice: 0, categoriaId: "", proveedorId: "" }];
+  const [obraId, setObraId] = useState(order?.obraId ?? obras[0]?.id ?? "");
   const [mode, setMode] = useState<ProveedorMode>(
-    !order.proveedorId && initialItems.some((item) => item.proveedorId) ? "per-item" : "single",
+    order && !order.proveedorId && initialItems.some((item) => item.proveedorId) ? "per-item" : "single",
   );
-  const [proveedorId, setProveedorId] = useState(order.proveedorId ?? proveedores[0]?.id ?? "");
-  const [formaPago, setFormaPago] = useState<FormaPago>(order.formaPago ?? "CONTADO");
-  const [notes, setNotes] = useState(order.notes ?? "");
+  const [proveedorId, setProveedorId] = useState(order?.proveedorId ?? proveedores[0]?.id ?? "");
+  const [formaPago, setFormaPago] = useState<FormaPago>(order?.formaPago ?? "CONTADO");
+  const [notes, setNotes] = useState(order?.notes ?? "");
   const [items, setItems] = useState<DraftItem[]>(initialItems);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -97,6 +103,11 @@ export function AssignOrderModal({ order, proveedores, categorias, onClose, onSu
     event.preventDefault();
     setError(null);
 
+    if (!obraId) {
+      setError("Selecciona una obra.");
+      return;
+    }
+
     const validItems = items.filter((item) => item.description.trim() && item.unit.trim() && item.quantity > 0);
     if (validItems.length === 0) {
       setError("Agrega al menos un material con descripcion, unidad y cantidad validas.");
@@ -118,7 +129,8 @@ export function AssignOrderModal({ order, proveedores, categorias, onClose, onSu
 
     setIsSubmitting(true);
     try {
-      await onSubmit({
+      await onSubmit(
+        {
         proveedorId: mode === "single" ? proveedorId : null,
         notes: notes || null,
         formaPago,
@@ -130,7 +142,9 @@ export function AssignOrderModal({ order, proveedores, categorias, onClose, onSu
           categoriaId: categoriaId || null,
           proveedorId: mode === "per-item" ? itemProveedorId || null : null,
         })),
-      });
+        },
+        obraId,
+      );
       onClose();
     } catch (submitError: unknown) {
       const message =
@@ -151,7 +165,9 @@ export function AssignOrderModal({ order, proveedores, categorias, onClose, onSu
         className="relative w-full max-w-3xl bg-surface-container border border-outline-variant p-6 md:p-8 max-h-[90vh] overflow-y-auto"
       >
         <div className="flex justify-between items-center mb-8">
-          <h3 className="text-headline-md-mobile text-primary uppercase">Editar y pasar a compra</h3>
+          <h3 className="text-headline-md-mobile text-primary uppercase">
+            {order ? "Editar y pasar a compra" : "Nueva compra directa"}
+          </h3>
           <button type="button" onClick={onClose} className="text-on-surface-variant hover:text-primary">
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -160,7 +176,18 @@ export function AssignOrderModal({ order, proveedores, categorias, onClose, onSu
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
           <div>
             <label className={labelClass}>Obra</label>
-            <p className="font-body-md text-on-surface py-3">{order.obraName}</p>
+            {order ? (
+              <p className="font-body-md text-on-surface py-3">{order.obraName}</p>
+            ) : (
+              <select className={inputClass} value={obraId} onChange={(e) => setObraId(e.target.value)}>
+                {obras.length === 0 && <option value="">No hay obras activas</option>}
+                {obras.map((obra) => (
+                  <option key={obra.id} value={obra.id}>
+                    {obra.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
           <div>
             <label className={labelClass}>Notas</label>

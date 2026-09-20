@@ -42,6 +42,8 @@ const assignOrderSchema = z.object({
     .min(1, "El pedido debe tener al menos un material"),
 });
 
+const directPurchaseSchema = assignOrderSchema.extend({ obraId: z.string().uuid("Obra invalida") });
+
 const statusSchema = z.object({ status: z.nativeEnum(OrderStatus) });
 
 const filtersSchema = z.object({
@@ -118,6 +120,16 @@ export async function assignHandler(req: Request, res: Response, next: NextFunct
     const input = assignOrderSchema.parse(req.body);
     const order = await ordersService.assignOrder(req.params.id, input, req.user!.sub);
     res.json({ order });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function directPurchaseHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const input = directPurchaseSchema.parse(req.body);
+    const order = await ordersService.createDirectPurchase(input, req.user!.sub);
+    res.status(201).json({ order });
   } catch (error) {
     next(error);
   }

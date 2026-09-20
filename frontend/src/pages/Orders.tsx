@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { assignOrder, createOrder, listOrders, updateOrder, updateOrderStatus } from "../lib/orders";
+import { assignOrder, createDirectPurchase, createOrder, listOrders, updateOrder, updateOrderStatus } from "../lib/orders";
 import { listMyObras, listObras } from "../lib/obras";
 import { listProveedores } from "../lib/proveedores";
 import { listCategorias } from "../lib/categorias";
@@ -55,6 +55,7 @@ export function Orders() {
   const [isCreating, setIsCreating] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [assigningOrder, setAssigningOrder] = useState<Order | null>(null);
+  const [isDirectPurchase, setIsDirectPurchase] = useState(false);
   const [cancelingOrder, setCancelingOrder] = useState<Order | null>(null);
   const [comprobanteOrder, setComprobanteOrder] = useState<Order | null>(null);
   const [transitionError, setTransitionError] = useState<string | null>(null);
@@ -104,6 +105,12 @@ export function Orders() {
     setComprobanteOrder(updated);
   }
 
+  async function handleDirectPurchase(input: AssignOrderInput, obraId: string) {
+    const created = await createDirectPurchase({ ...input, obraId });
+    await refresh();
+    setComprobanteOrder(created);
+  }
+
   async function handleStatusChange(order: Order, nextStatus: OrderStatus) {
     setTransitionError(null);
     setPendingTransitionId(order.id);
@@ -138,6 +145,16 @@ export function Orders() {
               : "Gestiona las solicitudes entrantes: pasalas a compra con proveedor, precios y forma de pago, y marca su recepcion."}
           </p>
         </div>
+
+        {canAssign && (
+          <button
+            onClick={() => setIsDirectPurchase(true)}
+            className="bg-primary hover:bg-primary-fixed transition-colors text-on-primary font-label-sm uppercase tracking-widest px-6 py-3 flex items-center justify-center gap-2 self-start"
+          >
+            <span className="material-symbols-outlined text-[18px]">add_shopping_cart</span>
+            Nueva compra
+          </button>
+        )}
 
         {isObra && (
           <button
@@ -340,6 +357,16 @@ export function Orders() {
           categorias={categorias}
           onClose={() => setEditingOrder(null)}
           onSubmit={handleUpdate}
+        />
+      )}
+
+      {isDirectPurchase && (
+        <AssignOrderModal
+          obras={obras}
+          proveedores={proveedores}
+          categorias={categorias}
+          onClose={() => setIsDirectPurchase(false)}
+          onSubmit={handleDirectPurchase}
         />
       )}
 

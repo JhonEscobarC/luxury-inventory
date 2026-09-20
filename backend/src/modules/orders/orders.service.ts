@@ -390,6 +390,36 @@ async function receiveItemsIntoInventory(
   }
 }
 
+// Compra directa (ADMIN/CONTABILIDAD): crea el pedido y lo pasa a Compra de una vez.
+// Si la asignacion falla, se descarta el pedido recien creado para no dejar solicitudes huerfanas.
+export async function createDirectPurchase(input: AssignOrderInput & { obraId: string }, userId: string) {
+  const obra = await prisma.obra.findUnique({ where: { id: input.obraId } });
+  if (!obra) {
+    throw new HttpError(404, "Obra no encontrada");
+  }
+
+  const created = await createOrder(
+    {
+      obraId: input.obraId,
+      notes: input.notes ?? null,
+      items: input.items.map((item) => ({
+        description: item.description,
+        quantity: item.quantity,
+        unit: item.unit,
+        categoriaId: item.categoriaId ?? null,
+      })),
+    },
+    userId,
+  );
+
+  try {
+    return await assignOrder(created.id, input, userId);
+  } catch (error) {
+    await prisma.order.delete({ where: { id: created.id } });
+    throw error;
+  }
+}
+
 export async function updateOrderStatus(id: string, nextStatus: OrderStatus, userId?: string) {
   const existing = await prisma.order.findUnique({ where: { id }, include: orderInclude });
   if (!existing) {

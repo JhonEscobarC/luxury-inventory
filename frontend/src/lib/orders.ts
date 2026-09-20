@@ -48,3 +48,8 @@ export async function updateOrderStatus(id: string, status: OrderStatus): Promis
   const { data } = await api.patch<{ order: Order }>(`/orders/${id}/status`, { status });
   return data.order;
 }
+
+export async function createDirectPurchase(input: AssignOrderInput & { obraId: string }): Promise<Order> {
+  const { data } = await api.post<{ order: Order }>("/orders/direct", input);
+  return data.order;
+}

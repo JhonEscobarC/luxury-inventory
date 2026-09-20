@@ -3,6 +3,7 @@ import { requireAuth, requireRole } from "../../middleware/auth";
 import {
   assignHandler,
   createHandler,
+  directPurchaseHandler,
   getHandler,
   listHandler,
   updateHandler,
@@ -17,6 +18,8 @@ ordersRouter.get("/", listHandler);
 ordersRouter.get("/:id", getHandler);
 
 ordersRouter.post("/", requireRole("OBRA"), createHandler);
+// Compra directa: nace ya en estado Compra, sin pasar por solicitud.
+ordersRouter.post("/direct", requireRole("ADMIN", "CONTABILIDAD"), directPurchaseHandler);
 ordersRouter.put("/:id", requireRole("ADMIN", "CONTABILIDAD", "OBRA"), updateHandler);
 ordersRouter.patch("/:id/assign", requireRole("ADMIN", "CONTABILIDAD"), assignHandler);
 ordersRouter.patch("/:id/status", updateStatusHandler);
