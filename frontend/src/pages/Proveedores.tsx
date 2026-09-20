@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { createProveedor, listProveedores, setProveedorActive, updateProveedor } from "../lib/proveedores";
+import { createProveedor, listProveedores, deleteProveedor, updateProveedor } from "../lib/proveedores";
 import { getProveedoresDeudaReport } from "../lib/reports";
 import { displayCurrency } from "../lib/currency";
 import type { Proveedor, ProveedorInput } from "../types/proveedor";
@@ -25,7 +25,7 @@ export function Proveedores() {
   const [isCreating, setIsCreating] = useState(false);
   const [editingProveedor, setEditingProveedor] = useState<Proveedor | null>(null);
   const [abonosProveedor, setAbonosProveedor] = useState<Proveedor | null>(null);
-  const [deactivatingProveedor, setDeactivatingProveedor] = useState<Proveedor | null>(null);
+  const [deletingProveedor, setDeletingProveedor] = useState<Proveedor | null>(null);
 
   async function refresh() {
     setIsLoading(true);
@@ -67,20 +67,19 @@ export function Proveedores() {
     await refresh();
   }
 
-  async function handleToggleActive(proveedor: Proveedor) {
-    if (proveedor.isActive) {
-      setDeactivatingProveedor(proveedor);
-      return;
+  async function confirmDelete() {
+    if (!deletingProveedor) return;
+    const target = deletingProveedor;
+    setDeletingProveedor(null);
+    try {
+      await deleteProveedor(target.id);
+      await refresh();
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "No se pudo eliminar el proveedor.";
+      setErrorMessage(message);
     }
-    await setProveedorActive(proveedor.id, true);
-    await refresh();
-  }
-
-  async function confirmDeactivate() {
-    if (!deactivatingProveedor) return;
-    await setProveedorActive(deactivatingProveedor.id, false);
-    setDeactivatingProveedor(null);
-    await refresh();
   }
 
   const { pageItems: pageProveedores, ...pagination } = usePagination(proveedores);
@@ -133,7 +132,7 @@ export function Proveedores() {
           <div className="col-span-2">Categoria</div>
           <div className="col-span-2">Contacto</div>
           <div className="col-span-2">Saldo</div>
-          <div className="col-span-1">Estado</div>
+          <div className="col-span-1"></div>
           <div className="col-span-3 text-right">Acciones</div>
         </div>
 
@@ -159,13 +158,6 @@ export function Proveedores() {
                 <span className={saldo > 0 ? "text-error" : "text-on-surface-variant"}>{displayCurrency(saldo)}</span>
               </div>
               <div className="md:col-span-1">
-                <span
-                  className={`font-label-sm uppercase px-2 py-1 border ${
-                    proveedor.isActive ? "border-primary text-primary" : "border-error text-error"
-                  }`}
-                >
-                  {proveedor.isActive ? "Activo" : "Inactivo"}
-                </span>
               </div>
               <div className="md:col-span-3 w-full flex justify-start md:justify-end items-center gap-3">
                 <button
@@ -184,13 +176,11 @@ export function Proveedores() {
                 </button>
                 {isAdmin && (
                   <button
-                    onClick={() => handleToggleActive(proveedor)}
-                    className="text-on-surface-variant hover:text-error transition-colors"
-                    title={proveedor.isActive ? "Desactivar" : "Activar"}
+                    onClick={() => setDeletingProveedor(proveedor)}
+                    className="text-error/80 hover:text-error transition-colors"
+                    title="Eliminar"
                   >
-                    <span className="material-symbols-outlined text-[20px]">
-                      {proveedor.isActive ? "block" : "check_circle"}
-                    </span>
+                    <span className="material-symbols-outlined text-[20px]">delete_forever</span>
                   </button>
                 )}
               </div>
@@ -222,13 +212,13 @@ export function Proveedores() {
         />
       )}
 
-      {deactivatingProveedor && (
+      {deletingProveedor && (
         <ConfirmDialog
-          title="Desactivar proveedor"
-          message={`¿Seguro que deseas desactivar a "${deactivatingProveedor.name}"? No aparecera disponible para nuevos pedidos.`}
-          confirmLabel="Desactivar"
-          onConfirm={confirmDeactivate}
-          onCancel={() => setDeactivatingProveedor(null)}
+          title="Eliminar proveedor"
+          message={`¿Seguro que deseas eliminar a "${deletingProveedor.name}"? Se borran tambien sus abonos; los pedidos que lo usaban se conservan sin proveedor. No se puede deshacer.`}
+          confirmLabel="Eliminar definitivamente"
+          onConfirm={confirmDelete}
+          onCancel={() => setDeletingProveedor(null)}
         />
       )}
     </div>

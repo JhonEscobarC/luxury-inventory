@@ -2,10 +2,10 @@ import { Router } from "express";
 import { requireAuth, requireRole } from "../../middleware/auth";
 import {
   createHandler,
+  deleteHandler,
   getHandler,
   listHandler,
   listMineHandler,
-  setActiveHandler,
   setUsersHandler,
   updateHandler,
 } from "./obras.controller";
@@ -21,5 +21,5 @@ obrasRouter.get("/", requireRole("ADMIN", "CONTABILIDAD"), listHandler);
 obrasRouter.get("/:id", requireRole("ADMIN", "CONTABILIDAD"), getHandler);
 obrasRouter.post("/", requireRole("ADMIN", "CONTABILIDAD"), createHandler);
 obrasRouter.put("/:id", requireRole("ADMIN", "CONTABILIDAD"), updateHandler);
-obrasRouter.patch("/:id/active", requireRole("ADMIN"), setActiveHandler);
+obrasRouter.delete("/:id", requireRole("ADMIN"), deleteHandler);
 obrasRouter.patch("/:id/users", requireRole("ADMIN", "CONTABILIDAD"), setUsersHandler);

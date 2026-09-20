@@ -10,8 +10,6 @@ const proyectoInputSchema = z.object({
 
 const proyectoUpdateSchema = proyectoInputSchema.partial();
 
-const setActiveSchema = z.object({ isActive: z.boolean() });
-
 const listQuerySchema = z.object({
   search: z.string().trim().optional(),
   isActive: z
@@ -53,16 +51,6 @@ export async function updateHandler(req: Request, res: Response, next: NextFunct
   try {
     const input = proyectoUpdateSchema.parse(req.body);
     const proyecto = await proyectosService.updateProyecto(req.params.id, input);
-    res.json({ proyecto });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function setActiveHandler(req: Request, res: Response, next: NextFunction) {
-  try {
-    const { isActive } = setActiveSchema.parse(req.body);
-    const proyecto = await proyectosService.setProyectoActive(req.params.id, isActive);
     res.json({ proyecto });
   } catch (error) {
     next(error);

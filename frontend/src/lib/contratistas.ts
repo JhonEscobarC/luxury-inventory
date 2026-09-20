@@ -26,7 +26,6 @@ export async function updateContratista(id: string, input: Partial<ContratistaIn
   return data.contratista;
 }
 
-export async function setContratistaActive(id: string, isActive: boolean): Promise<Contratista> {
-  const { data } = await api.patch<{ contratista: Contratista }>(`/contratistas/${id}/active`, { isActive });
-  return data.contratista;
+export async function deleteContratista(id: string): Promise<void> {
+  await api.delete(`/contratistas/${id}`);
 }

@@ -8,8 +8,6 @@ const categoriaInputSchema = z.object({
 
 const categoriaUpdateSchema = categoriaInputSchema.partial();
 
-const setActiveSchema = z.object({ isActive: z.boolean() });
-
 const listQuerySchema = z.object({
   search: z.string().trim().optional(),
   isActive: z
@@ -42,16 +40,6 @@ export async function updateHandler(req: Request, res: Response, next: NextFunct
   try {
     const input = categoriaUpdateSchema.parse(req.body);
     const categoria = await categoriasService.updateCategoria(req.params.id, input);
-    res.json({ categoria });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function setActiveHandler(req: Request, res: Response, next: NextFunction) {
-  try {
-    const { isActive } = setActiveSchema.parse(req.body);
-    const categoria = await categoriasService.setCategoriaActive(req.params.id, isActive);
     res.json({ categoria });
   } catch (error) {
     next(error);

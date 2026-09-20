@@ -13,7 +13,6 @@ const obraInputSchema = z.object({
 
 const obraUpdateSchema = obraInputSchema.partial();
 
-const setActiveSchema = z.object({ isActive: z.boolean() });
 const setUsersSchema = z.object({ userIds: z.array(z.string().uuid()) });
 
 const listQuerySchema = z.object({
@@ -76,11 +75,10 @@ export async function updateHandler(req: Request, res: Response, next: NextFunct
   }
 }
 
-export async function setActiveHandler(req: Request, res: Response, next: NextFunction) {
+export async function deleteHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const { isActive } = setActiveSchema.parse(req.body);
-    const obra = await obrasService.setObraActive(req.params.id, isActive);
-    res.json({ obra });
+    await obrasService.deleteObra(req.params.id);
+    res.status(204).send();
   } catch (error) {
     next(error);
   }

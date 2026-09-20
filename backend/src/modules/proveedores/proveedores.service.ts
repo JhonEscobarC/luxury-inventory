@@ -92,11 +92,15 @@ export async function updateProveedor(id: string, input: Partial<ProveedorInput>
   return serializeProveedor(proveedor);
 }
 
-export async function setProveedorActive(id: string, isActive: boolean) {
+// Elimina el proveedor y sus abonos; los pedidos que lo usaban se conservan sin proveedor.
+export async function deleteProveedor(id: string) {
   const existing = await prisma.proveedor.findUnique({ where: { id } });
   if (!existing) {
     throw new HttpError(404, "Proveedor no encontrado");
   }
-  const proveedor = await prisma.proveedor.update({ where: { id }, data: { isActive } });
-  return serializeProveedor(proveedor);
+  await prisma.$transaction(async (tx) => {
+    await tx.abono.deleteMany({ where: { proveedorId: id } });
+    await tx.order.updateMany({ where: { proveedorId: id }, data: { proveedorId: null } });
+    await tx.proveedor.delete({ where: { id } });
+  });
 }

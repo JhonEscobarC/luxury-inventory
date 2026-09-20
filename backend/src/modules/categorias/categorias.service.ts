@@ -61,15 +61,6 @@ export async function updateCategoria(id: string, input: Partial<CategoriaInput>
   return serializeCategoria(categoria);
 }
 
-export async function setCategoriaActive(id: string, isActive: boolean) {
-  const existing = await prisma.categoria.findUnique({ where: { id } });
-  if (!existing) {
-    throw new HttpError(404, "Categoria no encontrada");
-  }
-  const categoria = await prisma.categoria.update({ where: { id }, data: { isActive } });
-  return serializeCategoria(categoria);
-}
-
 export async function deleteCategoria(id: string) {
   const existing = await prisma.categoria.findUnique({ where: { id } });
   if (!existing) {

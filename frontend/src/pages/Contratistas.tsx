@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { createContratista, listContratistas, setContratistaActive, updateContratista } from "../lib/contratistas";
+import { createContratista, listContratistas, deleteContratista, updateContratista } from "../lib/contratistas";
 import type { Contratista, ContratistaInput } from "../types/contratista";
 import { ContratistaFormModal } from "../components/contratistas/ContratistaFormModal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
@@ -19,7 +19,7 @@ export function Contratistas() {
 
   const [isCreating, setIsCreating] = useState(false);
   const [editingContratista, setEditingContratista] = useState<Contratista | null>(null);
-  const [deactivatingContratista, setDeactivatingContratista] = useState<Contratista | null>(null);
+  const [deletingContratista, setDeletingContratista] = useState<Contratista | null>(null);
 
   async function refresh() {
     setIsLoading(true);
@@ -56,20 +56,19 @@ export function Contratistas() {
     await refresh();
   }
 
-  async function handleToggleActive(contratista: Contratista) {
-    if (contratista.isActive) {
-      setDeactivatingContratista(contratista);
-      return;
+  async function confirmDelete() {
+    if (!deletingContratista) return;
+    const target = deletingContratista;
+    setDeletingContratista(null);
+    try {
+      await deleteContratista(target.id);
+      await refresh();
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "No se pudo eliminar el contratista.";
+      setErrorMessage(message);
     }
-    await setContratistaActive(contratista.id, true);
-    await refresh();
-  }
-
-  async function confirmDeactivate() {
-    if (!deactivatingContratista) return;
-    await setContratistaActive(deactivatingContratista.id, false);
-    setDeactivatingContratista(null);
-    await refresh();
   }
 
   const { pageItems: pageContratistas, ...pagination } = usePagination(contratistas);
@@ -121,7 +120,7 @@ export function Contratistas() {
           <div className="col-span-3">Nombre</div>
           <div className="col-span-2">Oficio</div>
           <div className="col-span-3">Contacto</div>
-          <div className="col-span-2">Estado</div>
+          <div className="col-span-2"></div>
           <div className="col-span-2 text-right">Acciones</div>
         </div>
 
@@ -143,13 +142,6 @@ export function Contratistas() {
                 {contratista.phone || "-"} {contratista.email && `- ${contratista.email}`}
               </div>
               <div className="md:col-span-2">
-                <span
-                  className={`font-label-sm uppercase px-2 py-1 border ${
-                    contratista.isActive ? "border-primary text-primary" : "border-error text-error"
-                  }`}
-                >
-                  {contratista.isActive ? "Activo" : "Inactivo"}
-                </span>
               </div>
               <div className="md:col-span-2 w-full flex justify-start md:justify-end items-center gap-3">
                 <button
@@ -161,13 +153,11 @@ export function Contratistas() {
                 </button>
                 {isAdmin && (
                   <button
-                    onClick={() => handleToggleActive(contratista)}
-                    className="text-on-surface-variant hover:text-error transition-colors"
-                    title={contratista.isActive ? "Desactivar" : "Activar"}
+                    onClick={() => setDeletingContratista(contratista)}
+                    className="text-error/80 hover:text-error transition-colors"
+                    title="Eliminar"
                   >
-                    <span className="material-symbols-outlined text-[20px]">
-                      {contratista.isActive ? "block" : "check_circle"}
-                    </span>
+                    <span className="material-symbols-outlined text-[20px]">delete_forever</span>
                   </button>
                 )}
               </div>
@@ -189,13 +179,13 @@ export function Contratistas() {
         />
       )}
 
-      {deactivatingContratista && (
+      {deletingContratista && (
         <ConfirmDialog
-          title="Desactivar contratista"
-          message={`¿Seguro que deseas desactivar a "${deactivatingContratista.name}"? No aparecera disponible para nuevas asignaciones.`}
-          confirmLabel="Desactivar"
-          onConfirm={confirmDeactivate}
-          onCancel={() => setDeactivatingContratista(null)}
+          title="Eliminar contratista"
+          message={`¿Seguro que deseas eliminar a "${deletingContratista.name}"? Se borran tambien sus asignaciones a obras y etapas de pago. No se puede deshacer.`}
+          confirmLabel="Eliminar definitivamente"
+          onConfirm={confirmDelete}
+          onCancel={() => setDeletingContratista(null)}
         />
       )}
     </div>

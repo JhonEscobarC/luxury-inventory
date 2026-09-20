@@ -140,13 +140,20 @@ export async function updateObra(id: string, input: Partial<ObraInput>) {
   return serializeObra(obra);
 }
 
-export async function setObraActive(id: string, isActive: boolean) {
+// Elimina la obra y todo lo que cuelga de ella (inventario, pedidos, abonos de cliente,
+// asignaciones a contratistas). El Historial conserva sus registros como texto.
+export async function deleteObra(id: string) {
   const existing = await prisma.obra.findUnique({ where: { id } });
   if (!existing) {
     throw new HttpError(404, "Obra no encontrada");
   }
-  const obra = await prisma.obra.update({ where: { id }, data: { isActive } });
-  return serializeObra(obra);
+  await prisma.$transaction(async (tx) => {
+    await tx.product.deleteMany({ where: { obraId: id } });
+    await tx.abonoCliente.deleteMany({ where: { obraId: id } });
+    await tx.contratistaAsignacion.deleteMany({ where: { obraId: id } });
+    await tx.order.deleteMany({ where: { obraId: id } });
+    await tx.obra.delete({ where: { id } });
+  });
 }
 
 export async function setObraUsers(id: string, userIds: string[]) {

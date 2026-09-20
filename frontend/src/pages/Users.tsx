@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { createUser, deleteUser, listUsers, resetUserPassword, setUserActive, updateUser } from "../lib/users";
+import { createUser, deleteUser, listUsers, resetUserPassword, updateUser } from "../lib/users";
 import type { ManagedUser, CreateUserInput, UpdateUserInput } from "../types/user";
 import { UserFormModal } from "../components/users/UserFormModal";
 import { ResetPasswordModal } from "../components/users/ResetPasswordModal";
@@ -25,7 +25,6 @@ export function Users() {
   const [isCreating, setIsCreating] = useState(false);
   const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
   const [resettingUser, setResettingUser] = useState<ManagedUser | null>(null);
-  const [deactivatingUser, setDeactivatingUser] = useState<ManagedUser | null>(null);
   const [deletingUser, setDeletingUser] = useState<ManagedUser | null>(null);
 
   async function refresh() {
@@ -58,30 +57,6 @@ export function Users() {
   async function handleResetPassword(password: string) {
     if (!resettingUser) return;
     await resetUserPassword(resettingUser.id, password);
-  }
-
-  async function handleToggleActive(user: ManagedUser) {
-    if (user.isActive) {
-      setDeactivatingUser(user);
-      return;
-    }
-    await setUserActive(user.id, true);
-    await refresh();
-  }
-
-  async function confirmDeactivate() {
-    if (!deactivatingUser) return;
-    try {
-      await setUserActive(deactivatingUser.id, false);
-      setDeactivatingUser(null);
-      await refresh();
-    } catch (error: unknown) {
-      const message =
-        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        "No se pudo desactivar el usuario.";
-      setErrorMessage(message);
-      setDeactivatingUser(null);
-    }
   }
 
   async function confirmDelete() {
@@ -127,7 +102,7 @@ export function Users() {
           <div className="col-span-4">Nombre</div>
           <div className="col-span-3">Correo</div>
           <div className="col-span-2">Rol</div>
-          <div className="col-span-1">Estado</div>
+          <div className="col-span-1"></div>
           <div className="col-span-2 text-right">Acciones</div>
         </div>
 
@@ -149,13 +124,6 @@ export function Users() {
                   {ROLE_LABEL[user.role] ?? user.role}
                 </div>
                 <div className="md:col-span-1">
-                  <span
-                    className={`font-label-sm uppercase px-2 py-1 border ${
-                      user.isActive ? "border-primary text-primary" : "border-error text-error"
-                    }`}
-                  >
-                    {user.isActive ? "Activo" : "Inactivo"}
-                  </span>
                 </div>
                 <div className="md:col-span-2 w-full flex justify-start md:justify-end items-center gap-3">
                   <button
@@ -172,21 +140,11 @@ export function Users() {
                   >
                     <span className="material-symbols-outlined text-[20px]">key</span>
                   </button>
-                  <button
-                    onClick={() => handleToggleActive(user)}
-                    disabled={isSelf && user.isActive}
-                    className="text-on-surface-variant hover:text-error transition-colors disabled:opacity-30 disabled:pointer-events-none"
-                    title={user.isActive ? "Desactivar" : "Activar"}
-                  >
-                    <span className="material-symbols-outlined text-[20px]">
-                      {user.isActive ? "block" : "check_circle"}
-                    </span>
-                  </button>
-                  {isAdmin && !user.isActive && !isSelf && (
+                  {isAdmin && !isSelf && (
                     <button
                       onClick={() => setDeletingUser(user)}
                       className="text-error/80 hover:text-error transition-colors"
-                      title="Eliminar definitivamente"
+                      title="Eliminar"
                     >
                       <span className="material-symbols-outlined text-[20px]">delete_forever</span>
                     </button>
@@ -210,16 +168,6 @@ export function Users() {
           userName={resettingUser.name}
           onClose={() => setResettingUser(null)}
           onSubmit={handleResetPassword}
-        />
-      )}
-
-      {deactivatingUser && (
-        <ConfirmDialog
-          title="Desactivar usuario"
-          message={`¿Seguro que deseas desactivar a "${deactivatingUser.name}"? No podra iniciar sesion hasta que lo reactives.`}
-          confirmLabel="Desactivar"
-          onConfirm={confirmDeactivate}
-          onCancel={() => setDeactivatingUser(null)}
         />
       )}
 

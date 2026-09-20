@@ -34,9 +34,8 @@ export async function updateObra(id: string, input: Partial<ObraInput>): Promise
   return data.obra;
 }
 
-export async function setObraActive(id: string, isActive: boolean): Promise<Obra> {
-  const { data } = await api.patch<{ obra: Obra }>(`/obras/${id}/active`, { isActive });
-  return data.obra;
+export async function deleteObra(id: string): Promise<void> {
+  await api.delete(`/obras/${id}`);
 }
 
 export async function setObraUsers(id: string, userIds: string[]): Promise<Obra> {

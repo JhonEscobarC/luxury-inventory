@@ -84,11 +84,14 @@ export async function updateContratista(id: string, input: Partial<ContratistaIn
   return serializeContratista(contratista);
 }
 
-export async function setContratistaActive(id: string, isActive: boolean) {
+// Elimina el contratista junto con sus asignaciones y etapas de pago.
+export async function deleteContratista(id: string) {
   const existing = await prisma.contratista.findUnique({ where: { id } });
   if (!existing) {
     throw new HttpError(404, "Contratista no encontrado");
   }
-  const contratista = await prisma.contratista.update({ where: { id }, data: { isActive } });
-  return serializeContratista(contratista);
+  await prisma.$transaction(async (tx) => {
+    await tx.contratistaAsignacion.deleteMany({ where: { contratistaId: id } });
+    await tx.contratista.delete({ where: { id } });
+  });
 }

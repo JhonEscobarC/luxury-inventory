@@ -16,11 +16,6 @@ export async function updateUser(id: string, input: UpdateUserInput): Promise<Ma
   return data.user;
 }
 
-export async function setUserActive(id: string, isActive: boolean): Promise<ManagedUser> {
-  const { data } = await api.patch<{ user: ManagedUser }>(`/users/${id}/active`, { isActive });
-  return data.user;
-}
-
 export async function resetUserPassword(id: string, password: string): Promise<void> {
   await api.patch(`/users/${id}/password`, { password });
 }

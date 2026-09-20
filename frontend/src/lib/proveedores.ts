@@ -26,7 +26,6 @@ export async function updateProveedor(id: string, input: Partial<ProveedorInput>
   return data.proveedor;
 }
 
-export async function setProveedorActive(id: string, isActive: boolean): Promise<Proveedor> {
-  const { data } = await api.patch<{ proveedor: Proveedor }>(`/proveedores/${id}/active`, { isActive });
-  return data.proveedor;
+export async function deleteProveedor(id: string): Promise<void> {
+  await api.delete(`/proveedores/${id}`);
 }

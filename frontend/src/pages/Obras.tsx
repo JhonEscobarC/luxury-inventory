@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { createObra, listObras, setObraActive, setObraUsers, updateObra } from "../lib/obras";
+import { createObra, listObras, deleteObra, setObraUsers, updateObra } from "../lib/obras";
 import { listUsers } from "../lib/users";
 import { listProyectos } from "../lib/proyectos";
 import type { Obra, ObraInput } from "../types/obra";
@@ -35,7 +35,7 @@ export function Obras() {
   const [editingObra, setEditingObra] = useState<Obra | null>(null);
   const [assigningObra, setAssigningObra] = useState<Obra | null>(null);
   const [contratistasObra, setContratistasObra] = useState<Obra | null>(null);
-  const [deactivatingObra, setDeactivatingObra] = useState<Obra | null>(null);
+  const [deletingObra, setDeletingObra] = useState<Obra | null>(null);
 
   async function refresh() {
     setIsLoading(true);
@@ -97,20 +97,19 @@ export function Obras() {
     await refresh();
   }
 
-  async function handleToggleActive(obra: Obra) {
-    if (obra.isActive) {
-      setDeactivatingObra(obra);
-      return;
+  async function confirmDelete() {
+    if (!deletingObra) return;
+    const target = deletingObra;
+    setDeletingObra(null);
+    try {
+      await deleteObra(target.id);
+      await refresh();
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "No se pudo eliminar la obra.";
+      setErrorMessage(message);
     }
-    await setObraActive(obra.id, true);
-    await refresh();
-  }
-
-  async function confirmDeactivate() {
-    if (!deactivatingObra) return;
-    await setObraActive(deactivatingObra.id, false);
-    setDeactivatingObra(null);
-    await refresh();
   }
 
   const tituloProyecto = isSinProyecto ? "Obras sin proyecto" : proyectoActual?.name ?? "Obras";
@@ -172,13 +171,6 @@ export function Obras() {
             >
               <div className="flex justify-between items-start mb-3">
                 <h3 className="font-body-lg font-semibold text-on-surface">{obra.name}</h3>
-                <span
-                  className={`font-label-sm uppercase px-2 py-1 border ${
-                    obra.isActive ? "border-primary text-primary" : "border-error text-error"
-                  }`}
-                >
-                  {obra.isActive ? "Activa" : "Inactiva"}
-                </span>
               </div>
               {obra.proyectoName && (
                 <p className="font-label-sm text-primary uppercase mb-1 flex items-start gap-1">
@@ -241,13 +233,11 @@ export function Obras() {
                 </div>
                 {isAdmin && (
                   <button
-                    onClick={() => handleToggleActive(obra)}
-                    className="font-label-sm uppercase text-on-surface-variant hover:text-error transition-colors flex items-center gap-1"
+                    onClick={() => setDeletingObra(obra)}
+                    className="font-label-sm uppercase text-error/80 hover:text-error transition-colors flex items-center gap-1"
                   >
-                    <span className="material-symbols-outlined text-[18px]">
-                      {obra.isActive ? "block" : "check_circle"}
-                    </span>
-                    {obra.isActive ? "Desactivar" : "Activar"}
+                    <span className="material-symbols-outlined text-[18px]">delete_forever</span>
+                    Eliminar
                   </button>
                 )}
               </div>
@@ -289,13 +279,13 @@ export function Obras() {
         <ObraContratistasModal obra={contratistasObra} onClose={() => setContratistasObra(null)} />
       )}
 
-      {deactivatingObra && (
+      {deletingObra && (
         <ConfirmDialog
-          title="Desactivar obra"
-          message={`¿Seguro que deseas desactivar "${deactivatingObra.name}"? Sus usuarios ya no podran crear pedidos para ella.`}
-          confirmLabel="Desactivar"
-          onConfirm={confirmDeactivate}
-          onCancel={() => setDeactivatingObra(null)}
+          title="Eliminar obra"
+          message={`¿Seguro que deseas eliminar "${deletingObra.name}"? Se borra tambien su inventario, pedidos, asignaciones a contratistas y abonos de cliente. Los registros de Historial se conservan. No se puede deshacer.`}
+          confirmLabel="Eliminar definitivamente"
+          onConfirm={confirmDelete}
+          onCancel={() => setDeletingObra(null)}
         />
       )}
     </div>

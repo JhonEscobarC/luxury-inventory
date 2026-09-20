@@ -16,10 +16,6 @@ const updateUserSchema = z.object({
   role: z.nativeEnum(Role).optional(),
 });
 
-const setActiveSchema = z.object({
-  isActive: z.boolean(),
-});
-
 const resetPasswordSchema = z.object({
   password: z.string().min(8, "La contrasena debe tener al menos 8 caracteres"),
 });
@@ -47,16 +43,6 @@ export async function updateHandler(req: Request, res: Response, next: NextFunct
   try {
     const input = updateUserSchema.parse(req.body);
     const user = await usersService.updateUser(req.params.id, input, req.user!.sub);
-    res.json({ user });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function setActiveHandler(req: Request, res: Response, next: NextFunction) {
-  try {
-    const { isActive } = setActiveSchema.parse(req.body);
-    const user = await usersService.setUserActive(req.params.id, isActive, req.user!.sub);
     res.json({ user });
   } catch (error) {
     next(error);

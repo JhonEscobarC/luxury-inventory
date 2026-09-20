@@ -84,15 +84,6 @@ export async function updateProyecto(id: string, input: Partial<ProyectoInput>) 
   return serializeProyecto(proyecto);
 }
 
-export async function setProyectoActive(id: string, isActive: boolean) {
-  const existing = await prisma.proyecto.findUnique({ where: { id } });
-  if (!existing) {
-    throw new HttpError(404, "Proyecto no encontrado");
-  }
-  const proyecto = await prisma.proyecto.update({ where: { id }, data: { isActive } });
-  return serializeProyecto(proyecto);
-}
-
 // Borrado literal: elimina el proyecto y todo lo que cuelga de sus obras (inventario,
 // pedidos, asignaciones a contratistas, abonos de cliente). Solo se permite sobre un
 // proyecto ya inactivo, como salvaguarda. El Historial no tiene relacion (FK) con estas
@@ -104,9 +95,6 @@ export async function deleteProyecto(id: string) {
   });
   if (!existing) {
     throw new HttpError(404, "Proyecto no encontrado");
-  }
-  if (existing.isActive) {
-    throw new HttpError(400, "Solo se pueden eliminar proyectos inactivos. Desactivalo primero.");
   }
 
   const obraIds = existing.obras.map((o) => o.id);

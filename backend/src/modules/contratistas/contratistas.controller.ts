@@ -12,8 +12,6 @@ const contratistaInputSchema = z.object({
 
 const contratistaUpdateSchema = contratistaInputSchema.partial();
 
-const setActiveSchema = z.object({ isActive: z.boolean() });
-
 const listQuerySchema = z.object({
   search: z.string().trim().optional(),
   isActive: z
@@ -61,11 +59,10 @@ export async function updateHandler(req: Request, res: Response, next: NextFunct
   }
 }
 
-export async function setActiveHandler(req: Request, res: Response, next: NextFunction) {
+export async function deleteHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const { isActive } = setActiveSchema.parse(req.body);
-    const contratista = await contratistasService.setContratistaActive(req.params.id, isActive);
-    res.json({ contratista });
+    await contratistasService.deleteContratista(req.params.id);
+    res.status(204).send();
   } catch (error) {
     next(error);
   }

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { createProyecto, deleteProyecto, listProyectos, setProyectoActive, updateProyecto } from "../lib/proyectos";
+import { createProyecto, deleteProyecto, listProyectos, updateProyecto } from "../lib/proyectos";
 import { listObras } from "../lib/obras";
 import type { Proyecto, ProyectoInput } from "../types/proyecto";
 import { ProyectoFormModal } from "../components/proyectos/ProyectoFormModal";
@@ -11,7 +11,7 @@ import { Pagination } from "../components/ui/Pagination";
 
 export function Proyectos() {
   const { user } = useAuth();
-  // Desactivar y eliminar son exclusivos de ADMIN; CONTABILIDAD solo puede crear/editar.
+  // Eliminar es exclusivo de ADMIN; CONTABILIDAD solo puede crear/editar.
   const isAdmin = user?.role === "ADMIN";
 
   const [proyectos, setProyectos] = useState<Proyecto[]>([]);
@@ -22,7 +22,6 @@ export function Proyectos() {
 
   const [isCreating, setIsCreating] = useState(false);
   const [editingProyecto, setEditingProyecto] = useState<Proyecto | null>(null);
-  const [deactivatingProyecto, setDeactivatingProyecto] = useState<Proyecto | null>(null);
   const [deletingProyecto, setDeletingProyecto] = useState<Proyecto | null>(null);
 
   async function refresh() {
@@ -62,22 +61,6 @@ export function Proyectos() {
   async function handleUpdate(input: ProyectoInput) {
     if (!editingProyecto) return;
     await updateProyecto(editingProyecto.id, input);
-    await refresh();
-  }
-
-  async function handleToggleActive(proyecto: Proyecto) {
-    if (proyecto.isActive) {
-      setDeactivatingProyecto(proyecto);
-      return;
-    }
-    await setProyectoActive(proyecto.id, true);
-    await refresh();
-  }
-
-  async function confirmDeactivate() {
-    if (!deactivatingProyecto) return;
-    await setProyectoActive(deactivatingProyecto.id, false);
-    setDeactivatingProyecto(null);
     await refresh();
   }
 
@@ -149,13 +132,6 @@ export function Proyectos() {
             >
               <div className="flex justify-between items-start mb-3">
                 <h3 className="font-body-lg font-semibold text-on-surface">{proyecto.name}</h3>
-                <span
-                  className={`font-label-sm uppercase px-2 py-1 border ${
-                    proyecto.isActive ? "border-primary text-primary" : "border-error text-error"
-                  }`}
-                >
-                  {proyecto.isActive ? "Activo" : "Inactivo"}
-                </span>
               </div>
               {proyecto.client && (
                 <p className="font-label-sm text-on-surface-variant uppercase mb-3">Cliente: {proyecto.client}</p>
@@ -193,23 +169,12 @@ export function Proyectos() {
                 </div>
                 {isAdmin && (
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                    {!proyecto.isActive && (
-                      <button
-                        onClick={() => setDeletingProyecto(proyecto)}
-                        className="font-label-sm uppercase text-error/80 hover:text-error transition-colors flex items-center gap-1"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">delete_forever</span>
-                        Eliminar
-                      </button>
-                    )}
                     <button
-                      onClick={() => handleToggleActive(proyecto)}
-                      className="font-label-sm uppercase text-on-surface-variant hover:text-error transition-colors flex items-center gap-1"
+                      onClick={() => setDeletingProyecto(proyecto)}
+                      className="font-label-sm uppercase text-error/80 hover:text-error transition-colors flex items-center gap-1"
                     >
-                      <span className="material-symbols-outlined text-[18px]">
-                        {proyecto.isActive ? "block" : "check_circle"}
-                      </span>
-                      {proyecto.isActive ? "Desactivar" : "Activar"}
+                      <span className="material-symbols-outlined text-[18px]">delete_forever</span>
+                      Eliminar
                     </button>
                   </div>
                 )}
@@ -248,16 +213,6 @@ export function Proyectos() {
           proyecto={editingProyecto}
           onClose={() => setEditingProyecto(null)}
           onSubmit={handleUpdate}
-        />
-      )}
-
-      {deactivatingProyecto && (
-        <ConfirmDialog
-          title="Desactivar proyecto"
-          message={`¿Seguro que deseas desactivar "${deactivatingProyecto.name}"?`}
-          confirmLabel="Desactivar"
-          onConfirm={confirmDeactivate}
-          onCancel={() => setDeactivatingProyecto(null)}
         />
       )}
 

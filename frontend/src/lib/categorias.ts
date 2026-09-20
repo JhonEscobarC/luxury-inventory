@@ -26,11 +26,6 @@ export async function updateCategoria(id: string, input: Partial<CategoriaInput>
   return data.categoria;
 }
 
-export async function setCategoriaActive(id: string, isActive: boolean): Promise<Categoria> {
-  const { data } = await api.patch<{ categoria: Categoria }>(`/categorias/${id}/active`, { isActive });
-  return data.categoria;
-}
-
 export async function deleteCategoria(id: string): Promise<void> {
   await api.delete(`/categorias/${id}`);
 }

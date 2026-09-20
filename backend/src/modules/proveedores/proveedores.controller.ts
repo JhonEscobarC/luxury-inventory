@@ -14,8 +14,6 @@ const proveedorInputSchema = z.object({
 
 const proveedorUpdateSchema = proveedorInputSchema.partial();
 
-const setActiveSchema = z.object({ isActive: z.boolean() });
-
 const listQuerySchema = z.object({
   search: z.string().trim().optional(),
   isActive: z
@@ -63,11 +61,10 @@ export async function updateHandler(req: Request, res: Response, next: NextFunct
   }
 }
 
-export async function setActiveHandler(req: Request, res: Response, next: NextFunction) {
+export async function deleteHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const { isActive } = setActiveSchema.parse(req.body);
-    const proveedor = await proveedoresService.setProveedorActive(req.params.id, isActive);
-    res.json({ proveedor });
+    await proveedoresService.deleteProveedor(req.params.id);
+    res.status(204).send();
   } catch (error) {
     next(error);
   }
