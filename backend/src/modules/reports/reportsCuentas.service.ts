@@ -8,7 +8,7 @@ import {
   getTablaProveedores,
 } from "./reportsTabla.service";
 
-export type CuentaCodigo = "1105" | "1110" | "1305" | "1435" | "2205" | "2335" | "5195";
+export type CuentaCodigo = "1105" | "1110" | "1305" | "1435" | "2105" | "2205" | "2335" | "5195";
 
 export interface CuentaRow {
   codigo: CuentaCodigo;
@@ -23,10 +23,12 @@ export interface CuentaRow {
 // quedan con metodoPago nulo y no entran en esta aproximacion (quedan fuera de Caja y
 // Bancos, no se pierden en ningun otro lado: siguen contando en Proveedores/Contratistas).
 async function getCajaYBancos(): Promise<{ caja: number; bancos: number }> {
-  const [abonosCliente, abonosProveedor, gastos, etapasPagadas] = await Promise.all([
+  const [abonosCliente, prestamos, abonosProveedor, gastos, prestamoPagos, etapasPagadas] = await Promise.all([
     prisma.abonoCliente.findMany({ select: { amount: true, metodoPago: true } }),
+    prisma.prestamo.findMany({ select: { amount: true, metodoPago: true } }),
     prisma.abono.findMany({ select: { amount: true, metodoPago: true } }),
     prisma.gastoAdicional.findMany({ select: { amount: true, metodoPago: true } }),
+    prisma.prestamoPago.findMany({ select: { amount: true, metodoPago: true } }),
     prisma.contratistaEtapa.findMany({
       where: { status: EtapaStatus.PAGADA },
       select: { percentage: true, metodoPago: true, asignacion: { select: { totalAmount: true } } },
@@ -44,11 +46,13 @@ async function getCajaYBancos(): Promise<{ caja: number; bancos: number }> {
       .filter((e) => predicate(e.metodoPago))
       .reduce((total, e) => total + etapaAmount(e.asignacion, e), 0);
 
-  const entradasEfectivo = sum(abonosCliente, isEfectivo);
-  const salidasEfectivo = sum(abonosProveedor, isEfectivo) + sum(gastos, isEfectivo) + sumEtapas(isEfectivo);
+  const entradasEfectivo = sum(abonosCliente, isEfectivo) + sum(prestamos, isEfectivo);
+  const salidasEfectivo =
+    sum(abonosProveedor, isEfectivo) + sum(gastos, isEfectivo) + sum(prestamoPagos, isEfectivo) + sumEtapas(isEfectivo);
 
-  const entradasBanco = sum(abonosCliente, isBanco);
-  const salidasBanco = sum(abonosProveedor, isBanco) + sum(gastos, isBanco) + sumEtapas(isBanco);
+  const entradasBanco = sum(abonosCliente, isBanco) + sum(prestamos, isBanco);
+  const salidasBanco =
+    sum(abonosProveedor, isBanco) + sum(gastos, isBanco) + sum(prestamoPagos, isBanco) + sumEtapas(isBanco);
 
   return {
     caja: entradasEfectivo - salidasEfectivo,
@@ -61,25 +65,31 @@ async function getCajaYBancos(): Promise<{ caja: number; bancos: number }> {
 // reutilizan las mismas funciones que alimentan la pestana "tabla" de Reportes (una sola
 // fuente de verdad), sumando todas sus filas sin filtro.
 export async function getCuentasReport(): Promise<CuentaRow[]> {
-  const [{ caja, bancos }, proveedores, contratistas, clientes, inventario, gastos] = await Promise.all([
+  const [{ caja, bancos }, proveedores, contratistas, clientes, inventario, gastos, prestamos] = await Promise.all([
     getCajaYBancos(),
     getTablaProveedores({}),
     getTablaContratistas({}),
     getTablaClientes({}),
     getTablaInventario({}),
     prisma.gastoAdicional.aggregate({ _sum: { amount: true } }),
+    prisma.prestamo.findMany({ include: { pagos: { select: { amount: true } } } }),
   ]);
 
   const saldoProveedores = proveedores.reduce((sum, p) => sum + p.saldoActual, 0);
   const saldoContratistas = contratistas.reduce((sum, c) => sum + c.saldoActual, 0);
   const saldoClientes = clientes.reduce((sum, c) => sum + (c.saldoActual ?? 0), 0);
   const valorInventario = inventario.reduce((sum, p) => sum + p.total, 0);
+  const saldoPrestamos = prestamos.reduce(
+    (sum, p) => sum + (Number(p.amount) - p.pagos.reduce((s, pago) => s + Number(pago.amount), 0)),
+    0,
+  );
 
   return [
     { codigo: "1105", grupo: "Disponible", nombre: "Caja", saldo: caja },
     { codigo: "1110", grupo: "Disponible", nombre: "Bancos", saldo: bancos },
     { codigo: "1305", grupo: "Deudores", nombre: "Clientes", saldo: saldoClientes },
     { codigo: "1435", grupo: "Inventarios", nombre: "Inventarios", saldo: valorInventario },
+    { codigo: "2105", grupo: "Obligaciones financieras", nombre: "Prestamos por pagar", saldo: saldoPrestamos },
     { codigo: "2205", grupo: "Proveedores", nombre: "Proveedores nacionales", saldo: saldoProveedores },
     { codigo: "2335", grupo: "Cuentas por pagar", nombre: "Contratistas", saldo: saldoContratistas },
     { codigo: "5195", grupo: "Gastos", nombre: "Gastos diversos", saldo: Number(gastos._sum.amount ?? 0) },

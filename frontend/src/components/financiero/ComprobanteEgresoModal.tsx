@@ -1,8 +1,18 @@
 import { createPortal } from "react-dom";
-import type { GastoAdicional } from "../../types/gastoAdicional";
 
-interface ComprobanteGastoModalProps {
-  gasto: GastoAdicional;
+export interface ComprobanteEgresoData {
+  numero: string;
+  fecha: string;
+  concepto: string;
+  referencia: string;
+  registradoPor: string | null;
+  metodoPago: string | null;
+  amount: number;
+  notes?: string | null;
+}
+
+interface ComprobanteEgresoModalProps {
+  comprobante: ComprobanteEgresoData;
   onClose: () => void;
 }
 
@@ -13,15 +23,8 @@ const currencyFormatter = new Intl.NumberFormat("es-CO", {
   maximumFractionDigits: 0,
 });
 
-const METODO_PAGO_LABEL: Record<string, string> = {
-  EFECTIVO: "Efectivo",
-  TRANSFERENCIA: "Transferencia",
-  TARJETA: "Tarjeta",
-};
-
-export function ComprobanteGastoModal({ gasto, onClose }: ComprobanteGastoModalProps) {
-  const numero = gasto.id.slice(0, 8).toUpperCase();
-  const fecha = new Date(gasto.createdAt);
+export function ComprobanteEgresoModal({ comprobante, onClose }: ComprobanteEgresoModalProps) {
+  const fecha = new Date(comprobante.fecha);
 
   return createPortal(
     <div className="comprobante-overlay fixed inset-0 z-[90] flex items-center justify-center p-margin-mobile">
@@ -45,18 +48,18 @@ export function ComprobanteGastoModal({ gasto, onClose }: ComprobanteGastoModalP
             border: none !important;
             box-shadow: none !important;
           }
-          #gasto-print-area {
+          #egreso-print-area {
             position: static !important;
             width: 100% !important;
             margin: 0; padding: 24px;
             background: #ffffff !important; box-shadow: none !important; border: none !important;
           }
-          #gasto-print-area * {
+          #egreso-print-area * {
             color: #1a1a1a !important;
             border-color: #999999 !important;
             background-color: transparent !important;
           }
-          #gasto-print-area .text-primary { color: #8a6d1f !important; }
+          #egreso-print-area .text-primary { color: #8a6d1f !important; }
         }
       `}</style>
 
@@ -64,13 +67,13 @@ export function ComprobanteGastoModal({ gasto, onClose }: ComprobanteGastoModalP
 
       <div className="comprobante-shell relative w-full max-w-2xl bg-surface-container border border-outline-variant max-h-[92vh] overflow-y-auto">
         <div className="flex justify-between items-center p-6 md:p-8 pb-0 print:hidden">
-          <h3 className="text-headline-md-mobile text-primary uppercase">Comprobante de gasto</h3>
+          <h3 className="text-headline-md-mobile text-primary uppercase">Comprobante de egreso</h3>
           <button type="button" onClick={onClose} className="text-on-surface-variant hover:text-primary">
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
 
-        <div id="gasto-print-area" className="p-6 md:p-8 bg-surface-container text-on-surface">
+        <div id="egreso-print-area" className="p-6 md:p-8 bg-surface-container text-on-surface">
           <div className="flex justify-between items-start border-b-2 border-primary pb-4 mb-6">
             <div className="flex items-center gap-3">
               <img src="/logo.jpg" alt="Luxury" className="h-14 w-14 object-contain shrink-0" />
@@ -80,24 +83,24 @@ export function ComprobanteGastoModal({ gasto, onClose }: ComprobanteGastoModalP
               </div>
             </div>
             <div className="text-right">
-              <p className="font-label-sm uppercase text-on-surface-variant">Comprobante de gasto</p>
-              <p className="font-body-lg font-bold text-primary">N.° {numero}</p>
+              <p className="font-label-sm uppercase text-on-surface-variant">Comprobante de egreso</p>
+              <p className="font-body-lg font-bold text-primary">N.° {comprobante.numero}</p>
               <p className="font-label-sm text-on-surface-variant">{fecha.toLocaleDateString("es-CO")}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 font-body-md">
             <div>
-              <p className="font-label-sm text-on-surface-variant uppercase">Concepto</p>
-              <p>{gasto.concepto}</p>
+              <p className="font-label-sm text-on-surface-variant uppercase">Pagamos a</p>
+              <p>{comprobante.referencia}</p>
             </div>
             <div>
-              <p className="font-label-sm text-on-surface-variant uppercase">Obra</p>
-              <p>{gasto.obraName ?? "General (sin obra)"}</p>
+              <p className="font-label-sm text-on-surface-variant uppercase">Concepto</p>
+              <p>{comprobante.concepto}</p>
             </div>
             <div>
               <p className="font-label-sm text-on-surface-variant uppercase">Registrado por</p>
-              <p>{gasto.createdByName ?? "-"}</p>
+              <p>{comprobante.registradoPor ?? "-"}</p>
             </div>
             <div>
               <p className="font-label-sm text-on-surface-variant uppercase">Fecha y hora</p>
@@ -105,19 +108,19 @@ export function ComprobanteGastoModal({ gasto, onClose }: ComprobanteGastoModalP
             </div>
             <div>
               <p className="font-label-sm text-on-surface-variant uppercase">Metodo de pago</p>
-              <p>{METODO_PAGO_LABEL[gasto.metodoPago] ?? gasto.metodoPago}</p>
+              <p>{comprobante.metodoPago ?? "-"}</p>
             </div>
           </div>
 
           <div className="border border-outline-variant p-6 mb-8 text-center">
-            <p className="font-label-sm text-on-surface-variant uppercase mb-2">Valor del gasto</p>
-            <p className="text-headline-md text-primary font-bold">{currencyFormatter.format(gasto.amount)}</p>
+            <p className="font-label-sm text-on-surface-variant uppercase mb-2">Valor pagado</p>
+            <p className="text-headline-md text-primary font-bold">{currencyFormatter.format(comprobante.amount)}</p>
           </div>
 
-          {gasto.notes && (
+          {comprobante.notes && (
             <p className="font-body-md text-on-surface-variant mb-8">
               <span className="font-label-sm uppercase">Notas: </span>
-              {gasto.notes}
+              {comprobante.notes}
             </p>
           )}
 

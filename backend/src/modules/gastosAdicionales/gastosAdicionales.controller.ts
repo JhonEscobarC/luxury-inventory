@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
-import { MetodoPago } from "@prisma/client";
+import { GastoTipo, MetodoPago } from "@prisma/client";
 import * as gastosAdicionalesService from "./gastosAdicionales.service";
 
 const gastoAdicionalInputSchema = z.object({
@@ -9,6 +9,8 @@ const gastoAdicionalInputSchema = z.object({
   metodoPago: z.nativeEnum(MetodoPago, { required_error: "Selecciona el metodo de pago" }),
   notes: z.string().trim().min(1).optional().nullable(),
   obraId: z.string().uuid().optional().nullable(),
+  tipo: z.nativeEnum(GastoTipo).optional(),
+  empleadoNombre: z.string().trim().min(1).optional().nullable(),
 });
 
 const listQuerySchema = z.object({

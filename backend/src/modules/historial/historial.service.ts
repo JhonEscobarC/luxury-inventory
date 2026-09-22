@@ -21,6 +21,8 @@ function serializeEvento(evento: HistorialEvento) {
     abonoId: evento.abonoId,
     abonoClienteId: evento.abonoClienteId,
     gastoAdicionalId: evento.gastoAdicionalId,
+    prestamoId: evento.prestamoId,
+    prestamoPagoId: evento.prestamoPagoId,
   };
 }
 
@@ -37,6 +39,8 @@ export interface RecordEventoInput {
   abonoId?: string | null;
   abonoClienteId?: string | null;
   gastoAdicionalId?: string | null;
+  prestamoId?: string | null;
+  prestamoPagoId?: string | null;
 }
 
 // No lanza si falla: registrar el historial nunca debe tumbar la operacion principal.
@@ -70,6 +74,8 @@ export async function recordEvento(input: RecordEventoInput) {
         abonoId: input.abonoId ?? null,
         abonoClienteId: input.abonoClienteId ?? null,
         gastoAdicionalId: input.gastoAdicionalId ?? null,
+        prestamoId: input.prestamoId ?? null,
+        prestamoPagoId: input.prestamoPagoId ?? null,
       },
     });
   } catch (error) {

@@ -9,7 +9,9 @@ export type HistorialTipo =
   | "ABONO_REGISTRADO"
   | "MATERIAL_USADO"
   | "ABONO_CLIENTE_REGISTRADO"
-  | "GASTO_ADICIONAL_REGISTRADO";
+  | "GASTO_ADICIONAL_REGISTRADO"
+  | "PRESTAMO_REGISTRADO"
+  | "PRESTAMO_PAGO_REGISTRADO";
 
 export interface HistorialEvento {
   id: string;
@@ -29,4 +31,6 @@ export interface HistorialEvento {
   abonoId: string | null;
   abonoClienteId: string | null;
   gastoAdicionalId: string | null;
+  prestamoId: string | null;
+  prestamoPagoId: string | null;
 }

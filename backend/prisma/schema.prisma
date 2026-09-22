@@ -40,6 +40,11 @@ enum MetodoPago {
   TARJETA
 }
 
+enum GastoTipo {
+  GENERAL
+  EMPLEADO
+}
+
 enum ProductoHistorialTipo {
   CREADO
   INGRESO
@@ -59,6 +64,8 @@ enum HistorialTipo {
   MATERIAL_USADO
   ABONO_CLIENTE_REGISTRADO
   GASTO_ADICIONAL_REGISTRADO
+  PRESTAMO_REGISTRADO
+  PRESTAMO_PAGO_REGISTRADO
 }
 
 model User {
@@ -79,6 +86,8 @@ model User {
   materialUsos           MaterialUso[]
   gastosAdicionalesCreated GastoAdicional[] @relation("GastoAdicionalCreatedBy")
   recepcionesCreated     OrderRecepcion[] @relation("OrderRecepcionBy")
+  prestamosCreated       Prestamo[]       @relation("PrestamoCreatedBy")
+  prestamoPagosCreated   PrestamoPago[]   @relation("PrestamoPagoCreatedBy")
 
   @@map("users")
 }
@@ -354,6 +363,10 @@ model GastoAdicional {
   amount     Decimal    @db.Decimal(14, 2)
   metodoPago MetodoPago
   notes      String?
+  // GENERAL = gasto varios de la empresa; EMPLEADO = pago a un empleado (empleadoNombre
+  // guarda el nombre, escrito libremente cada vez; no hay un registro de empleados).
+  tipo           GastoTipo @default(GENERAL)
+  empleadoNombre String?
   createdAt  DateTime   @default(now())
 
   obraId String?
@@ -363,6 +376,40 @@ model GastoAdicional {
   createdBy   User?   @relation("GastoAdicionalCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@map("gastos_adicionales")
+}
+
+// Dinero recibido en prestamo (ingreso). Se le puede ir abonando (PrestamoPago, un
+// egreso) hasta saldar la deuda, igual que un Proveedor con sus Abonos.
+model Prestamo {
+  id         String     @id @default(uuid())
+  amount     Decimal    @db.Decimal(14, 2)
+  lender     String
+  notes      String?
+  metodoPago MetodoPago
+  createdAt  DateTime   @default(now())
+
+  createdById String?
+  createdBy   User?   @relation("PrestamoCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  pagos PrestamoPago[]
+
+  @@map("prestamos")
+}
+
+model PrestamoPago {
+  id         String     @id @default(uuid())
+  amount     Decimal    @db.Decimal(14, 2)
+  metodoPago MetodoPago
+  notes      String?
+  createdAt  DateTime   @default(now())
+
+  prestamoId String
+  prestamo   Prestamo @relation(fields: [prestamoId], references: [id], onDelete: Cascade)
+
+  createdById String?
+  createdBy   User?   @relation("PrestamoPagoCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@map("prestamo_pagos")
 }
 
 model Order {
@@ -432,6 +479,8 @@ model HistorialEvento {
   abonoId          String?
   abonoClienteId   String?
   gastoAdicionalId String?
+  prestamoId       String?
+  prestamoPagoId   String?
 
   @@index([createdAt])
   @@index([obraId])

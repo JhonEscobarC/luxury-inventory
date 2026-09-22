@@ -1,106 +1,64 @@
-import { useEffect, useMemo, useState } from "react";
-import { listProveedores } from "../lib/proveedores";
+import { useEffect, useState } from "react";
 import { listObras } from "../lib/obras";
-import { getClientesReport, getProveedoresDeudaReport } from "../lib/reports";
 import { listHistorial } from "../lib/historial";
 import { getAbonoCliente } from "../lib/abonosCliente";
 import { getGastoAdicional } from "../lib/gastosAdicionales";
+import { listPrestamos } from "../lib/prestamos";
 import { displayCurrency } from "../lib/currency";
-import { exportClientesExcel, exportClientesPdf } from "../lib/exporters";
-import type { Proveedor } from "../types/proveedor";
 import type { Obra } from "../types/obra";
-import type { AbonoCliente } from "../types/abonoCliente";
-import type { GastoAdicional } from "../types/gastoAdicional";
 import type { HistorialEvento } from "../types/historial";
-import type { ClientesReport, ObraClientes, ProveedorDeuda } from "../types/report";
-import { ProveedorAbonosModal } from "../components/proveedores/ProveedorAbonosModal";
-import { ObraAbonosClienteModal } from "../components/obras/ObraAbonosClienteModal";
-import { ReciboCajaModal } from "../components/obras/ReciboCajaModal";
-import { GastoAdicionalModal } from "../components/financiero/GastoAdicionalModal";
-import { ComprobanteGastoModal } from "../components/financiero/ComprobanteGastoModal";
-import { MoneyStats } from "../components/ui/MoneyStats";
+import type { Prestamo } from "../types/prestamo";
+import { IngresoModal } from "../components/financiero/IngresoModal";
+import { EgresoModal } from "../components/financiero/EgresoModal";
+import { ReciboCajaModal, type ReciboCajaData } from "../components/obras/ReciboCajaModal";
+import { ComprobanteEgresoModal, type ComprobanteEgresoData } from "../components/financiero/ComprobanteEgresoModal";
 import { Pagination } from "../components/ui/Pagination";
 import { usePagination } from "../hooks/usePagination";
-
-const exportButtonClass =
-  "flex-1 border border-primary text-primary font-label-sm uppercase px-4 py-3 hover:bg-primary hover:text-on-primary transition-colors disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2";
 
 const HISTORIAL_FINANCIERO_TIPOS = [
   "ABONO_REGISTRADO",
   "ABONO_CLIENTE_REGISTRADO",
   "GASTO_ADICIONAL_REGISTRADO",
+  "ETAPA_PAGADA",
+  "PRESTAMO_REGISTRADO",
+  "PRESTAMO_PAGO_REGISTRADO",
 ] as const;
 
-const HISTORIAL_META: Record<(typeof HISTORIAL_FINANCIERO_TIPOS)[number], { label: string; icon: string }> = {
-  ABONO_REGISTRADO: { label: "Abono a proveedor", icon: "local_shipping" },
-  ABONO_CLIENTE_REGISTRADO: { label: "Abono de cliente", icon: "receipt_long" },
-  GASTO_ADICIONAL_REGISTRADO: { label: "Gasto adicional", icon: "request_quote" },
+const HISTORIAL_META: Record<(typeof HISTORIAL_FINANCIERO_TIPOS)[number], { label: string; icon: string; kind: "ingreso" | "egreso" }> = {
+  ABONO_REGISTRADO: { label: "Abono a proveedor", icon: "local_shipping", kind: "egreso" },
+  ABONO_CLIENTE_REGISTRADO: { label: "Abono de cliente", icon: "receipt_long", kind: "ingreso" },
+  GASTO_ADICIONAL_REGISTRADO: { label: "Gasto / pago", icon: "request_quote", kind: "egreso" },
+  ETAPA_PAGADA: { label: "Pago a contratista", icon: "engineering", kind: "egreso" },
+  PRESTAMO_REGISTRADO: { label: "Prestamo recibido", icon: "account_balance", kind: "ingreso" },
+  PRESTAMO_PAGO_REGISTRADO: { label: "Pago de prestamo", icon: "account_balance_wallet", kind: "egreso" },
 };
 
-function fallbackObra(id: string, name: string, client: string | null, precioVenta: number | null): Obra {
-  return {
-    id,
-    name,
-    address: null,
-    client,
-    notes: null,
-    precioVenta,
-    isActive: true,
-    createdAt: "",
-    updatedAt: "",
-    proyectoId: null,
-    proyectoName: null,
-  };
-}
+const METODO_PAGO_LABEL: Record<string, string> = {
+  EFECTIVO: "Efectivo",
+  TRANSFERENCIA: "Transferencia",
+  TARJETA: "Tarjeta",
+};
+const FORMA_PAGO_LABEL: Record<string, string> = { CONTADO: "Contado", CREDITO: "Credito" };
 
 export function Financiero() {
   const [valuesVisible, setValuesVisible] = useState(false);
-  const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
-
-  const [deudas, setDeudas] = useState<ProveedorDeuda[]>([]);
-  const [isLoadingDeudas, setIsLoadingDeudas] = useState(true);
-  const [deudaSort, setDeudaSort] = useState<"desc" | "asc">("desc");
-  const [abonosProveedor, setAbonosProveedor] = useState<Proveedor | null>(null);
-
-  const [clientes, setClientes] = useState<ClientesReport | null>(null);
-  const [isLoadingClientes, setIsLoadingClientes] = useState(true);
-  const [isExportingClientes, setIsExportingClientes] = useState<"pdf" | "excel" | null>(null);
-  const [clientesStatus, setClientesStatus] = useState<string | null>(null);
-  const [pagoObra, setPagoObra] = useState<Obra | null>(null);
+  const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
 
   const [historial, setHistorial] = useState<HistorialEvento[]>([]);
   const [isLoadingHistorial, setIsLoadingHistorial] = useState(true);
-  const [receiptFromHistorial, setReceiptFromHistorial] = useState<{ abono: AbonoCliente; obra: Obra } | null>(null);
-  const [gastoReceiptFromHistorial, setGastoReceiptFromHistorial] = useState<GastoAdicional | null>(null);
   const [historialError, setHistorialError] = useState<string | null>(null);
 
-  const [isRegisteringGasto, setIsRegisteringGasto] = useState(false);
-  const [gastoReceipt, setGastoReceipt] = useState<GastoAdicional | null>(null);
+  const [isRegisteringIngreso, setIsRegisteringIngreso] = useState(false);
+  const [isRegisteringEgreso, setIsRegisteringEgreso] = useState(false);
+  const [reciboActivo, setReciboActivo] = useState<ReciboCajaData | null>(null);
+  const [comprobanteActivo, setComprobanteActivo] = useState<ComprobanteEgresoData | null>(null);
 
   useEffect(() => {
-    listProveedores({ isActive: true }).then(setProveedores).catch(() => setProveedores([]));
     listObras({}).then(setObras).catch(() => setObras([]));
-    refreshDeudas();
-    refreshClientes();
+    listPrestamos().then(setPrestamos).catch(() => setPrestamos([]));
     refreshHistorial();
   }, []);
-
-  function refreshClientes() {
-    setIsLoadingClientes(true);
-    getClientesReport()
-      .then(setClientes)
-      .catch(() => setClientes(null))
-      .finally(() => setIsLoadingClientes(false));
-  }
-
-  function refreshDeudas() {
-    setIsLoadingDeudas(true);
-    getProveedoresDeudaReport()
-      .then(setDeudas)
-      .catch(() => setDeudas([]))
-      .finally(() => setIsLoadingDeudas(false));
-  }
 
   function refreshHistorial() {
     setIsLoadingHistorial(true);
@@ -110,84 +68,94 @@ export function Financiero() {
       .finally(() => setIsLoadingHistorial(false));
   }
 
-  function refreshAfterPago() {
-    refreshClientes();
+  function refreshAll() {
     refreshHistorial();
+    listPrestamos().then(setPrestamos).catch(() => setPrestamos([]));
   }
 
-  function refreshAfterAbono() {
-    refreshDeudas();
-    refreshHistorial();
+  function handleIngresoCreated(recibo: ReciboCajaData) {
+    setIsRegisteringIngreso(false);
+    setReciboActivo(recibo);
+    refreshAll();
   }
 
-  function handleGastoCreated(gasto: GastoAdicional) {
-    setIsRegisteringGasto(false);
-    setGastoReceipt(gasto);
-    refreshHistorial();
+  function handleEgresoCreated(comprobante: ComprobanteEgresoData) {
+    setIsRegisteringEgreso(false);
+    setComprobanteActivo(comprobante);
+    refreshAll();
   }
 
-  const sortedDeudas = useMemo(
-    () => [...deudas].sort((a, b) => (deudaSort === "desc" ? b.saldo - a.saldo : a.saldo - b.saldo)),
-    [deudas, deudaSort],
-  );
-
-  const { pageItems: pageDeudas, ...deudasPagination } = usePagination(sortedDeudas);
   const { pageItems: pageHistorial, ...historialPagination } = usePagination(historial);
 
-  function findObra(obraId: string, obraName: string, client: string | null, precioVenta: number | null): Obra {
-    return obras.find((o) => o.id === obraId) ?? fallbackObra(obraId, obraName, client, precioVenta);
-  }
-
   async function handleVerComprobante(evento: HistorialEvento) {
-    if (!evento.abonoClienteId || !evento.obraId) return;
     setHistorialError(null);
     try {
-      const abono = await getAbonoCliente(evento.abonoClienteId);
-      const obra = findObra(evento.obraId, evento.obraName ?? "", null, null);
-      setReceiptFromHistorial({ abono, obra });
-    } catch {
-      setHistorialError("No se pudo cargar el comprobante.");
-    }
-  }
-
-  async function handleVerComprobanteGasto(evento: HistorialEvento) {
-    if (!evento.gastoAdicionalId) return;
-    setHistorialError(null);
-    try {
-      setGastoReceiptFromHistorial(await getGastoAdicional(evento.gastoAdicionalId));
-    } catch {
-      setHistorialError("No se pudo cargar el comprobante.");
-    }
-  }
-
-  async function handleClientesExport(format: "pdf" | "excel") {
-    if (!clientes) return;
-    const allObras = [...clientes.proyectos.flatMap((p) => p.obras), ...clientes.obrasSinProyecto];
-    if (allObras.length === 0) {
-      setClientesStatus("No hay obras para exportar.");
-      return;
-    }
-    setIsExportingClientes(format);
-    setClientesStatus(null);
-    try {
-      if (format === "pdf") {
-        await exportClientesPdf(allObras);
-      } else {
-        await exportClientesExcel(allObras);
+      if (evento.tipo === "ABONO_CLIENTE_REGISTRADO" && evento.abonoClienteId) {
+        const abono = await getAbonoCliente(evento.abonoClienteId);
+        const obra = obras.find((o) => o.id === evento.obraId);
+        setReciboActivo({
+          numero: abono.id.slice(0, 8).toUpperCase(),
+          fecha: abono.createdAt,
+          recibimosDe: obra?.client ?? "Cliente",
+          referencia: `${evento.obraName ?? "Obra"}${obra?.proyectoName ? ` - ${obra.proyectoName}` : ""}`,
+          registradoPor: abono.createdByName,
+          formaPago: abono.formaPago ? FORMA_PAGO_LABEL[abono.formaPago] : null,
+          metodoPago: abono.metodoPago ? METODO_PAGO_LABEL[abono.metodoPago] : null,
+          amount: abono.amount,
+          notes: abono.notes,
+        });
+      } else if (evento.tipo === "GASTO_ADICIONAL_REGISTRADO" && evento.gastoAdicionalId) {
+        const gasto = await getGastoAdicional(evento.gastoAdicionalId);
+        setComprobanteActivo({
+          numero: gasto.id.slice(0, 8).toUpperCase(),
+          fecha: gasto.createdAt,
+          concepto: gasto.concepto,
+          referencia: gasto.tipo === "EMPLEADO" ? gasto.empleadoNombre ?? "Empleado" : gasto.obraName ?? "General (sin obra)",
+          registradoPor: gasto.createdByName,
+          metodoPago: METODO_PAGO_LABEL[gasto.metodoPago] ?? gasto.metodoPago,
+          amount: gasto.amount,
+          notes: gasto.notes,
+        });
+      } else if (evento.tipo === "PRESTAMO_REGISTRADO" && evento.prestamoId) {
+        const prestamo = prestamos.find((p) => p.id === evento.prestamoId);
+        if (!prestamo) return;
+        setReciboActivo({
+          numero: prestamo.id.slice(0, 8).toUpperCase(),
+          fecha: prestamo.createdAt,
+          recibimosDe: prestamo.lender,
+          referencia: "Prestamo recibido",
+          registradoPor: prestamo.createdByName,
+          metodoPago: METODO_PAGO_LABEL[prestamo.metodoPago] ?? prestamo.metodoPago,
+          amount: prestamo.amount,
+          notes: prestamo.notes,
+        });
+      } else if (evento.tipo === "PRESTAMO_PAGO_REGISTRADO" && evento.prestamoPagoId) {
+        const prestamo = prestamos.find((p) => p.pagos.some((pago) => pago.id === evento.prestamoPagoId));
+        const pago = prestamo?.pagos.find((p) => p.id === evento.prestamoPagoId);
+        if (!prestamo || !pago) return;
+        setComprobanteActivo({
+          numero: pago.id.slice(0, 8).toUpperCase(),
+          fecha: pago.createdAt,
+          concepto: "Pago de prestamo",
+          referencia: prestamo.lender,
+          registradoPor: pago.createdByName,
+          metodoPago: METODO_PAGO_LABEL[pago.metodoPago] ?? pago.metodoPago,
+          amount: pago.amount,
+          notes: pago.notes,
+        });
       }
-      setClientesStatus(`Exportadas ${allObras.length} obra(s).`);
-    } finally {
-      setIsExportingClientes(null);
+    } catch {
+      setHistorialError("No se pudo cargar el comprobante.");
     }
   }
 
   return (
     <div>
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
         <div>
           <h2 className="text-display-lg-mobile md:text-display-lg text-primary uppercase">Financiero</h2>
           <p className="font-body-md text-on-surface-variant mt-2 max-w-xl">
-            Pagos de clientes por obra, deuda pendiente con proveedores y su historial de movimientos.
+            Registra ingresos y egresos de la empresa. Para ver saldos y deudas, usa Reportes.
           </p>
         </div>
         <button
@@ -199,213 +167,36 @@ export function Financiero() {
         </button>
       </div>
 
-      <section className="bg-surface-container lux-card-border p-6 md:p-8 mb-10">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6 border-b border-outline-variant pb-4 sm:justify-between">
-          <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-primary">payments</span>
-            <h3 className="text-headline-md-mobile text-on-surface uppercase">Pagos de clientes</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-10">
+        <button
+          onClick={() => setIsRegisteringIngreso(true)}
+          className="bg-surface-container lux-card-border p-6 md:p-8 text-left hover:border-primary transition-colors flex items-center gap-4"
+        >
+          <span className="material-symbols-outlined text-primary text-[36px]">arrow_circle_down</span>
+          <div>
+            <p className="text-headline-md-mobile text-on-surface uppercase">Ingreso</p>
+            <p className="font-body-md text-on-surface-variant mt-1">Abono de cliente o prestamo recibido - genera un recibo de caja.</p>
           </div>
-        </div>
-        <p className="font-body-md text-on-surface-variant mb-6">
-          Lo que han abonado los compradores de cada obra frente a su precio de venta. Registra un pago directamente
-          desde la obra en esta tabla.
-        </p>
-
-        {isLoadingClientes && <p className="font-label-sm uppercase text-on-surface-variant mb-6">Cargando...</p>}
-
-        {!isLoadingClientes && clientes && (
-          <div className="flex flex-col gap-6">
-            {clientes.proyectos.map((proyecto) => (
-              <div key={proyecto.proyectoId} className="border border-outline-variant">
-                <div className="bg-surface px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 border-b border-outline-variant">
-                  <span className="font-body-md font-semibold text-primary uppercase">{proyecto.proyectoName}</span>
-                  <MoneyStats
-                    items={[
-                      { label: "Precio venta", value: displayCurrency(proyecto.precioVenta, valuesVisible) },
-                      { label: "Abonado", value: displayCurrency(proyecto.totalAbonado, valuesVisible) },
-                      {
-                        label: "Saldo",
-                        value: displayCurrency(proyecto.precioVenta - proyecto.totalAbonado, valuesVisible),
-                        emphasize: true,
-                      },
-                    ]}
-                  />
-                </div>
-                <div className="flex flex-col">
-                  {proyecto.obras.map((obra) => (
-                    <ObraClientesRow
-                      key={obra.obraId}
-                      obra={obra}
-                      valuesVisible={valuesVisible}
-                      onRegistrarPago={() => setPagoObra(findObra(obra.obraId, obra.obraName, obra.client, obra.precioVenta))}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-
-            {clientes.obrasSinProyecto.length > 0 && (
-              <div className="border border-outline-variant">
-                <div className="bg-surface px-4 py-3 border-b border-outline-variant">
-                  <span className="font-body-md font-semibold text-on-surface-variant uppercase">Obras sin proyecto</span>
-                </div>
-                <div className="flex flex-col">
-                  {clientes.obrasSinProyecto.map((obra) => (
-                    <ObraClientesRow
-                      key={obra.obraId}
-                      obra={obra}
-                      valuesVisible={valuesVisible}
-                      onRegistrarPago={() => setPagoObra(findObra(obra.obraId, obra.obraName, obra.client, obra.precioVenta))}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="border border-primary p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-              <span className="font-label-sm uppercase text-on-surface-variant">Total general</span>
-              <MoneyStats
-                items={[
-                  { label: "Precio venta", value: displayCurrency(clientes.totalPrecioVenta, valuesVisible) },
-                  { label: "Abonado", value: displayCurrency(clientes.totalAbonado, valuesVisible) },
-                  {
-                    label: "Saldo",
-                    value: displayCurrency(clientes.totalPrecioVenta - clientes.totalAbonado, valuesVisible),
-                    emphasize: true,
-                  },
-                ]}
-              />
-            </div>
+        </button>
+        <button
+          onClick={() => setIsRegisteringEgreso(true)}
+          className="bg-surface-container lux-card-border p-6 md:p-8 text-left hover:border-primary transition-colors flex items-center gap-4"
+        >
+          <span className="material-symbols-outlined text-primary text-[36px]">arrow_circle_up</span>
+          <div>
+            <p className="text-headline-md-mobile text-on-surface uppercase">Egreso</p>
+            <p className="font-body-md text-on-surface-variant mt-1">
+              Pago a proveedor, contratista, empleado o gasto general - genera un comprobante de egreso.
+            </p>
           </div>
-        )}
-
-        {clientesStatus && (
-          <p className="font-label-sm uppercase text-on-surface-variant mt-6">{clientesStatus}</p>
-        )}
-
-        <div className="flex flex-col sm:flex-row gap-4 mt-6">
-          <button
-            onClick={() => handleClientesExport("pdf")}
-            disabled={isExportingClientes !== null}
-            className={exportButtonClass}
-          >
-            <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
-            {isExportingClientes === "pdf" ? "Generando..." : "Exportar PDF"}
-          </button>
-          <button
-            onClick={() => handleClientesExport("excel")}
-            disabled={isExportingClientes !== null}
-            className={exportButtonClass}
-          >
-            <span className="material-symbols-outlined text-[18px]">table_chart</span>
-            {isExportingClientes === "excel" ? "Generando..." : "Exportar Excel"}
-          </button>
-        </div>
-      </section>
-
-      <section className="bg-surface-container lux-card-border p-6 md:p-8 mb-10">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6 border-b border-outline-variant pb-4 sm:justify-between">
-          <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-primary">local_shipping</span>
-            <h3 className="text-headline-md-mobile text-on-surface uppercase">Deuda a proveedores</h3>
-          </div>
-          <button
-            onClick={() => setDeudaSort((prev) => (prev === "desc" ? "asc" : "desc"))}
-            className="font-label-sm uppercase text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1 whitespace-nowrap self-start sm:self-auto"
-          >
-            <span className="material-symbols-outlined text-[18px]">
-              {deudaSort === "desc" ? "arrow_downward" : "arrow_upward"}
-            </span>
-            {deudaSort === "desc" ? "Mayor a menor" : "Menor a mayor"}
-          </button>
-        </div>
-
-        {isLoadingDeudas && <p className="font-label-sm uppercase text-on-surface-variant mb-6">Cargando...</p>}
-
-        {!isLoadingDeudas && (
-          <div className="flex flex-col gap-3">
-            <div className="hidden md:grid grid-cols-12 gap-4 pb-2 border-b border-outline-variant font-label-sm text-on-surface-variant uppercase tracking-widest px-2">
-              <div className="col-span-4">Proveedor</div>
-              <div className="col-span-2">Despachado</div>
-              <div className="col-span-2">Abonado</div>
-              <div className="col-span-2">Saldo</div>
-              <div className="col-span-2 text-right">Acciones</div>
-            </div>
-            {sortedDeudas.length === 0 && (
-              <p className="text-on-surface-variant/60 font-label-sm uppercase px-2 py-6">Sin proveedores</p>
-            )}
-            {pageDeudas.map((deuda) => (
-              <div
-                key={deuda.proveedorId}
-                className="border border-outline-variant p-3 md:px-2 md:py-3 grid grid-cols-1 md:grid-cols-12 gap-2 items-center"
-              >
-                <div className="md:col-span-4 font-body-md font-semibold text-on-surface">{deuda.proveedorName}</div>
-                <div className="md:col-span-2 font-body-md text-on-surface-variant">
-                  <span className="md:hidden font-label-sm uppercase text-on-surface-variant/70 mr-1">Despachado:</span>
-                  {displayCurrency(deuda.totalDespachado, valuesVisible)}
-                </div>
-                <div className="md:col-span-2 font-body-md text-on-surface-variant">
-                  <span className="md:hidden font-label-sm uppercase text-on-surface-variant/70 mr-1">Abonado:</span>
-                  {displayCurrency(deuda.totalAbonado, valuesVisible)}
-                </div>
-                <div className="md:col-span-2 font-body-md font-semibold">
-                  <span className="md:hidden font-label-sm uppercase text-on-surface-variant/70 mr-1 font-normal">
-                    Saldo:
-                  </span>
-                  <span className={deuda.saldo > 0 ? "text-error" : "text-on-surface-variant"}>
-                    {displayCurrency(deuda.saldo, valuesVisible)}
-                  </span>
-                </div>
-                <div className="md:col-span-2 flex justify-start md:justify-end">
-                  <button
-                    onClick={() =>
-                      setAbonosProveedor(
-                        proveedores.find((p) => p.id === deuda.proveedorId) ?? {
-                          id: deuda.proveedorId,
-                          name: deuda.proveedorName,
-                          contactName: null,
-                          phone: null,
-                          email: null,
-                          address: null,
-                          category: null,
-                          notes: null,
-                          isActive: deuda.isActive,
-                          createdAt: "",
-                          updatedAt: "",
-                        },
-                      )
-                    }
-                    className="font-label-sm uppercase text-primary hover:text-primary-fixed transition-colors flex items-center gap-1"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">payments</span>
-                    Abonar
-                  </button>
-                </div>
-              </div>
-            ))}
-            <Pagination {...deudasPagination} onPageChange={deudasPagination.setPage} />
-          </div>
-        )}
-      </section>
+        </button>
+      </div>
 
       <section className="bg-surface-container lux-card-border p-6 md:p-8">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6 border-b border-outline-variant pb-4 sm:justify-between">
-          <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-primary">history</span>
-            <h3 className="text-headline-md-mobile text-on-surface uppercase">Historial financiero</h3>
-          </div>
-          <button
-            onClick={() => setIsRegisteringGasto(true)}
-            className="bg-primary hover:bg-primary-fixed transition-colors text-on-primary font-label-sm uppercase tracking-widest px-6 py-3 flex items-center justify-center gap-2 self-start"
-          >
-            <span className="material-symbols-outlined text-[18px]">request_quote</span>
-            Registrar gasto adicional
-          </button>
+        <div className="flex items-center gap-3 mb-6 border-b border-outline-variant pb-4">
+          <span className="material-symbols-outlined text-primary">history</span>
+          <h3 className="text-headline-md-mobile text-on-surface uppercase">Historial financiero</h3>
         </div>
-        <p className="font-body-md text-on-surface-variant mb-6">
-          Registro propio de Financiero: abonos a proveedores, pagos de clientes y gastos adicionales, con fecha,
-          hora y quien lo hizo. No se mezcla con el historial general del sistema.
-        </p>
 
         {historialError && <p className="text-error font-label-sm uppercase mb-4">{historialError}</p>}
         {isLoadingHistorial && <p className="font-label-sm uppercase text-on-surface-variant mb-6">Cargando...</p>}
@@ -419,15 +210,24 @@ export function Financiero() {
             pageHistorial.map((evento) => {
               const meta = HISTORIAL_META[evento.tipo as (typeof HISTORIAL_FINANCIERO_TIPOS)[number]];
               const fecha = new Date(evento.createdAt);
+              const hasComprobante =
+                (evento.tipo === "ABONO_CLIENTE_REGISTRADO" && evento.abonoClienteId) ||
+                (evento.tipo === "GASTO_ADICIONAL_REGISTRADO" && evento.gastoAdicionalId) ||
+                (evento.tipo === "PRESTAMO_REGISTRADO" && evento.prestamoId) ||
+                (evento.tipo === "PRESTAMO_PAGO_REGISTRADO" && evento.prestamoPagoId);
               return (
                 <div
                   key={evento.id}
                   className="border border-outline-variant bg-surface p-4 flex flex-col sm:flex-row sm:items-center gap-3"
                 >
                   <div className="flex items-center gap-3 sm:w-48 shrink-0">
-                    <span className="material-symbols-outlined text-primary">{meta?.icon ?? "payments"}</span>
+                    <span className={`material-symbols-outlined ${meta?.kind === "ingreso" ? "text-primary" : "text-secondary"}`}>
+                      {meta?.icon ?? "payments"}
+                    </span>
                     <div>
-                      <p className="font-label-sm uppercase text-primary">{meta?.label ?? evento.tipo}</p>
+                      <p className={`font-label-sm uppercase ${meta?.kind === "ingreso" ? "text-primary" : "text-secondary"}`}>
+                        {meta?.label ?? evento.tipo}
+                      </p>
                       <p className="font-label-sm text-on-surface-variant/70">
                         {fecha.toLocaleDateString("es-CO")}{" "}
                         {fecha.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}
@@ -448,19 +248,9 @@ export function Financiero() {
                     </div>
                   )}
 
-                  {evento.tipo === "ABONO_CLIENTE_REGISTRADO" && evento.abonoClienteId && (
+                  {hasComprobante && (
                     <button
                       onClick={() => handleVerComprobante(evento)}
-                      className="font-label-sm uppercase text-primary hover:text-primary-fixed transition-colors flex items-center gap-1 shrink-0"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">receipt_long</span>
-                      Ver comprobante
-                    </button>
-                  )}
-
-                  {evento.tipo === "GASTO_ADICIONAL_REGISTRADO" && evento.gastoAdicionalId && (
-                    <button
-                      onClick={() => handleVerComprobanteGasto(evento)}
                       className="font-label-sm uppercase text-primary hover:text-primary-fixed transition-colors flex items-center gap-1 shrink-0"
                     >
                       <span className="material-symbols-outlined text-[18px]">receipt_long</span>
@@ -474,90 +264,19 @@ export function Financiero() {
         <Pagination {...historialPagination} onPageChange={historialPagination.setPage} />
       </section>
 
-      {abonosProveedor && (
-        <ProveedorAbonosModal
-          proveedor={abonosProveedor}
-          saldoPendiente={deudas.find((d) => d.proveedorId === abonosProveedor.id)?.saldo}
-          valuesVisible={valuesVisible}
-          onClose={() => setAbonosProveedor(null)}
-          onChanged={refreshAfterAbono}
-        />
+      {isRegisteringIngreso && (
+        <IngresoModal obras={obras} onClose={() => setIsRegisteringIngreso(false)} onCreated={handleIngresoCreated} />
       )}
 
-      {pagoObra && (
-        <ObraAbonosClienteModal
-          obra={pagoObra}
-          valuesVisible={valuesVisible}
-          onClose={() => setPagoObra(null)}
-          onChanged={refreshAfterPago}
-        />
+      {isRegisteringEgreso && (
+        <EgresoModal obras={obras} onClose={() => setIsRegisteringEgreso(false)} onCreated={handleEgresoCreated} />
       )}
 
-      {receiptFromHistorial && (
-        <ReciboCajaModal
-          abono={receiptFromHistorial.abono}
-          obra={receiptFromHistorial.obra}
-          onClose={() => setReceiptFromHistorial(null)}
-        />
+      {reciboActivo && <ReciboCajaModal recibo={reciboActivo} onClose={() => setReciboActivo(null)} />}
+
+      {comprobanteActivo && (
+        <ComprobanteEgresoModal comprobante={comprobanteActivo} onClose={() => setComprobanteActivo(null)} />
       )}
-
-      {isRegisteringGasto && (
-        <GastoAdicionalModal
-          obras={obras}
-          onClose={() => setIsRegisteringGasto(false)}
-          onCreated={handleGastoCreated}
-        />
-      )}
-
-      {gastoReceipt && <ComprobanteGastoModal gasto={gastoReceipt} onClose={() => setGastoReceipt(null)} />}
-
-      {gastoReceiptFromHistorial && (
-        <ComprobanteGastoModal
-          gasto={gastoReceiptFromHistorial}
-          onClose={() => setGastoReceiptFromHistorial(null)}
-        />
-      )}
-    </div>
-  );
-}
-
-interface ObraClientesRowProps {
-  obra: ObraClientes;
-  valuesVisible: boolean;
-  onRegistrarPago: () => void;
-}
-
-function ObraClientesRow({ obra, valuesVisible, onRegistrarPago }: ObraClientesRowProps) {
-  return (
-    <div className="px-4 py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 border-b border-outline-variant last:border-b-0">
-      <div className="font-body-md text-on-surface">
-        <span>{obra.obraName}</span>
-        {obra.client && <span className="font-label-sm text-on-surface-variant uppercase ml-2">({obra.client})</span>}
-        {!obra.isActive && <span className="font-label-sm text-error uppercase ml-2">(inactiva)</span>}
-      </div>
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-        <MoneyStats
-          items={[
-            {
-              label: "Precio venta",
-              value: obra.precioVenta !== null ? displayCurrency(obra.precioVenta, valuesVisible) : "Sin definir",
-            },
-            { label: "Abonado", value: displayCurrency(obra.totalAbonado, valuesVisible) },
-            {
-              label: "Saldo",
-              value: obra.saldo !== null ? displayCurrency(obra.saldo, valuesVisible) : "-",
-              emphasize: obra.saldo !== null && obra.saldo > 0,
-            },
-          ]}
-        />
-        <button
-          onClick={onRegistrarPago}
-          className="font-label-sm uppercase text-primary hover:text-primary-fixed transition-colors flex items-center gap-1 whitespace-nowrap"
-        >
-          <span className="material-symbols-outlined text-[18px]">add_card</span>
-          Registrar pago
-        </button>
-      </div>
     </div>
   );
 }

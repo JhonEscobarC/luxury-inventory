@@ -1,4 +1,4 @@
-import { Prisma, HistorialTipo, type GastoAdicional, type MetodoPago, type User } from "@prisma/client";
+import { Prisma, HistorialTipo, type GastoAdicional, type GastoTipo, type MetodoPago, type User } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { HttpError } from "../../middleware/errorHandler";
 import { recordEvento } from "../historial/historial.service";
@@ -17,6 +17,8 @@ function serializeGastoAdicional(
     concepto: gasto.concepto,
     amount: Number(gasto.amount),
     metodoPago: gasto.metodoPago,
+    tipo: gasto.tipo,
+    empleadoNombre: gasto.empleadoNombre,
     notes: gasto.notes,
     obraId: gasto.obraId,
     obraName: gasto.obra?.name ?? null,
@@ -59,11 +61,16 @@ export interface CreateGastoAdicionalInput {
   metodoPago: MetodoPago;
   notes?: string | null;
   obraId?: string | null;
+  tipo?: GastoTipo;
+  empleadoNombre?: string | null;
 }
 
 export async function createGastoAdicional(input: CreateGastoAdicionalInput, createdById: string) {
   if (input.amount <= 0) {
     throw new HttpError(400, "El monto debe ser mayor a cero");
+  }
+  if (input.tipo === "EMPLEADO" && !input.empleadoNombre?.trim()) {
+    throw new HttpError(400, "Indica el nombre del empleado");
   }
 
   let obraName: string | null = null;
@@ -82,17 +89,21 @@ export async function createGastoAdicional(input: CreateGastoAdicionalInput, cre
       metodoPago: input.metodoPago,
       notes: input.notes ?? null,
       obraId: input.obraId ?? null,
+      tipo: input.tipo ?? "GENERAL",
+      empleadoNombre: input.tipo === "EMPLEADO" ? input.empleadoNombre?.trim() || null : null,
       createdById,
     },
     include: { createdBy: { select: { id: true, name: true } }, obra: { select: { name: true } } },
   });
 
   const serialized = serializeGastoAdicional(gasto);
+  const descripcion =
+    input.tipo === "EMPLEADO"
+      ? `Pago a empleado "${input.empleadoNombre}": "${input.concepto}"${obraName ? ` (${obraName})` : ""} - ${METODO_PAGO_LABEL[input.metodoPago]}`
+      : `Gasto adicional registrado: "${input.concepto}"${obraName ? ` (${obraName})` : ""} - ${METODO_PAGO_LABEL[input.metodoPago]}`;
   await recordEvento({
     tipo: HistorialTipo.GASTO_ADICIONAL_REGISTRADO,
-    descripcion: `Gasto adicional registrado: "${input.concepto}"${obraName ? ` (${obraName})` : ""} - ${
-      METODO_PAGO_LABEL[input.metodoPago]
-    }`,
+    descripcion,
     monto: serialized.amount,
     userId: createdById,
     obraId: input.obraId ?? null,

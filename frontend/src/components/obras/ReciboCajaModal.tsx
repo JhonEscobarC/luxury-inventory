@@ -1,10 +1,19 @@
 import { createPortal } from "react-dom";
-import type { AbonoCliente } from "../../types/abonoCliente";
-import type { Obra } from "../../types/obra";
+
+export interface ReciboCajaData {
+  numero: string;
+  fecha: string;
+  recibimosDe: string;
+  referencia: string;
+  registradoPor: string | null;
+  formaPago?: string | null;
+  metodoPago: string | null;
+  amount: number;
+  notes?: string | null;
+}
 
 interface ReciboCajaModalProps {
-  abono: AbonoCliente;
-  obra: Obra;
+  recibo: ReciboCajaData;
   onClose: () => void;
 }
 
@@ -15,16 +24,8 @@ const currencyFormatter = new Intl.NumberFormat("es-CO", {
   maximumFractionDigits: 0,
 });
 
-const FORMA_PAGO_LABEL: Record<string, string> = { CONTADO: "Contado", CREDITO: "Credito" };
-const METODO_PAGO_LABEL: Record<string, string> = {
-  EFECTIVO: "Efectivo",
-  TRANSFERENCIA: "Transferencia",
-  TARJETA: "Tarjeta",
-};
-
-export function ReciboCajaModal({ abono, obra, onClose }: ReciboCajaModalProps) {
-  const numero = abono.id.slice(0, 8).toUpperCase();
-  const fecha = new Date(abono.createdAt);
+export function ReciboCajaModal({ recibo, onClose }: ReciboCajaModalProps) {
+  const fecha = new Date(recibo.fecha);
 
   return createPortal(
     <div className="comprobante-overlay fixed inset-0 z-[90] flex items-center justify-center p-margin-mobile">
@@ -84,7 +85,7 @@ export function ReciboCajaModal({ abono, obra, onClose }: ReciboCajaModalProps) 
             </div>
             <div className="text-right">
               <p className="font-label-sm uppercase text-on-surface-variant">Recibo de caja</p>
-              <p className="font-body-lg font-bold text-primary">N.° {numero}</p>
+              <p className="font-body-lg font-bold text-primary">N.° {recibo.numero}</p>
               <p className="font-label-sm text-on-surface-variant">{fecha.toLocaleDateString("es-CO")}</p>
             </div>
           </div>
@@ -92,42 +93,41 @@ export function ReciboCajaModal({ abono, obra, onClose }: ReciboCajaModalProps) 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 font-body-md">
             <div>
               <p className="font-label-sm text-on-surface-variant uppercase">Recibimos de</p>
-              <p>{obra.client ?? "-"}</p>
+              <p>{recibo.recibimosDe}</p>
             </div>
             <div>
-              <p className="font-label-sm text-on-surface-variant uppercase">Obra / Proyecto</p>
-              <p>
-                {obra.name}
-                {obra.proyectoName ? ` - ${obra.proyectoName}` : ""}
-              </p>
+              <p className="font-label-sm text-on-surface-variant uppercase">Concepto</p>
+              <p>{recibo.referencia}</p>
             </div>
             <div>
               <p className="font-label-sm text-on-surface-variant uppercase">Registrado por</p>
-              <p>{abono.createdByName ?? "-"}</p>
+              <p>{recibo.registradoPor ?? "-"}</p>
             </div>
             <div>
               <p className="font-label-sm text-on-surface-variant uppercase">Fecha y hora</p>
               <p>{fecha.toLocaleString("es-CO")}</p>
             </div>
-            <div>
-              <p className="font-label-sm text-on-surface-variant uppercase">Forma de pago</p>
-              <p>{abono.formaPago ? FORMA_PAGO_LABEL[abono.formaPago] : "-"}</p>
-            </div>
+            {recibo.formaPago && (
+              <div>
+                <p className="font-label-sm text-on-surface-variant uppercase">Forma de pago</p>
+                <p>{recibo.formaPago}</p>
+              </div>
+            )}
             <div>
               <p className="font-label-sm text-on-surface-variant uppercase">Metodo de pago</p>
-              <p>{abono.metodoPago ? METODO_PAGO_LABEL[abono.metodoPago] : "-"}</p>
+              <p>{recibo.metodoPago ?? "-"}</p>
             </div>
           </div>
 
           <div className="border border-outline-variant p-6 mb-8 text-center">
             <p className="font-label-sm text-on-surface-variant uppercase mb-2">Valor recibido</p>
-            <p className="text-headline-md text-primary font-bold">{currencyFormatter.format(abono.amount)}</p>
+            <p className="text-headline-md text-primary font-bold">{currencyFormatter.format(recibo.amount)}</p>
           </div>
 
-          {abono.notes && (
+          {recibo.notes && (
             <p className="font-body-md text-on-surface-variant mb-8">
-              <span className="font-label-sm uppercase">Concepto: </span>
-              {abono.notes}
+              <span className="font-label-sm uppercase">Notas: </span>
+              {recibo.notes}
             </p>
           )}
 
