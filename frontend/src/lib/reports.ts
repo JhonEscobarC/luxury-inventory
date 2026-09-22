@@ -1,5 +1,5 @@
 import { api } from "./api";
-import type { ClientesReport, GastosFilters, GastosReport, ProveedorDeuda } from "../types/report";
+import type { ClientesReport, GastosFilters, GastosReport, ProveedorDeuda, TablaFilters, TablaTab } from "../types/report";
 
 export async function getGastosReport(filters: GastosFilters = {}): Promise<GastosReport> {
   const { data } = await api.get<GastosReport>("/reports/gastos", {
@@ -25,4 +25,17 @@ export async function getProveedoresDeudaReport(): Promise<ProveedorDeuda[]> {
 export async function getClientesReport(): Promise<ClientesReport> {
   const { data } = await api.get<ClientesReport>("/reports/clientes");
   return data;
+}
+
+export async function getTablaReport<T>(tab: TablaTab, filters: TablaFilters = {}): Promise<T[]> {
+  const { data } = await api.get<{ items: T[] }>("/reports/tabla", {
+    params: {
+      tab,
+      proyectoId: filters.proyectoId || undefined,
+      obraId: filters.obraId || undefined,
+      from: filters.from || undefined,
+      to: filters.to || undefined,
+    },
+  });
+  return data.items;
 }

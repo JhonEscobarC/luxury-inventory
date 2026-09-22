@@ -1,6 +1,32 @@
 import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 import * as reportsService from "./reports.service";
+import * as tablaService from "./reportsTabla.service";
+
+const tablaFiltersSchema = z.object({
+  tab: z.enum(["inventario", "proveedores", "contratistas", "clientes"]),
+  proyectoId: z.string().optional(),
+  obraId: z.string().uuid().optional(),
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
+});
+
+export async function tablaHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { tab, ...filters } = tablaFiltersSchema.parse(req.query);
+    const items =
+      tab === "inventario"
+        ? await tablaService.getTablaInventario(filters)
+        : tab === "proveedores"
+          ? await tablaService.getTablaProveedores(filters)
+          : tab === "contratistas"
+            ? await tablaService.getTablaContratistas(filters)
+            : await tablaService.getTablaClientes(filters);
+    res.json({ items });
+  } catch (error) {
+    next(error);
+  }
+}
 
 const gastosFiltersSchema = z.object({
   proyectoIds: z.string().optional(),

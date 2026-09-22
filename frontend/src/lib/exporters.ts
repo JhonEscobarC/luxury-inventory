@@ -520,3 +520,50 @@ export async function exportClientesExcel(obras: ObraClientes[], options: Export
     `${prefix}_${Date.now()}.xlsx`,
   );
 }
+
+// Exportador generico para la tabla de Reportes (inventario/proveedores/contratistas/clientes):
+// cada pestana define sus propias columnas, esta funcion solo arma el PDF/Excel.
+export async function exportTablaPdf(
+  title: string,
+  headers: string[],
+  rows: (string | number)[][],
+  options: ExportOptions = {},
+) {
+  const doc = new jsPDF();
+  await addReportHeader(doc, options.title ?? title);
+  autoTable(doc, {
+    startY: 36,
+    head: [headers],
+    body: rows,
+    headStyles: { fillColor: GOLD, textColor: [10, 10, 10] },
+    styles: { fontSize: 8 },
+  });
+  const prefix = options.filenamePrefix ? slugify(options.filenamePrefix) : slugify(title);
+  doc.save(`${prefix}_${Date.now()}.pdf`);
+}
+
+export interface TablaColumn {
+  header: string;
+  key: string;
+  width?: number;
+}
+
+export async function exportTablaExcel(
+  title: string,
+  columns: TablaColumn[],
+  rows: Record<string, string | number>[],
+  options: ExportOptions = {},
+) {
+  const workbook = newStyledWorkbook();
+  const sheet = workbook.addWorksheet(title.slice(0, 31));
+  sheet.columns = columns.map((c) => ({ header: c.header, key: c.key, width: c.width ?? 20 }));
+  styleHeaderRow(sheet.getRow(1));
+  rows.forEach((row) => sheet.addRow(row));
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const prefix = options.filenamePrefix ? slugify(options.filenamePrefix) : slugify(title);
+  downloadBlob(
+    new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
+    `${prefix}_${Date.now()}.xlsx`,
+  );
+}

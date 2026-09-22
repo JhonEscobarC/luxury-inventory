@@ -93,3 +93,51 @@ export interface ClientesReport {
   totalPrecioVenta: number;
   totalAbonado: number;
 }
+
+export type TablaTab = "inventario" | "proveedores" | "contratistas" | "clientes";
+
+export interface TablaFilters {
+  proyectoId?: string;
+  obraId?: string;
+  from?: string;
+  to?: string;
+}
+
+export interface TablaInventarioRow {
+  id: string;
+  name: string;
+  categoriaName: string | null;
+  obraName: string;
+  proyectoName: string | null;
+  quantity: number;
+  unit: string;
+  price: number;
+  total: number;
+  createdAt: string;
+}
+
+export interface TablaProveedorRow {
+  proveedorId: string;
+  proveedorName: string;
+  totalGastado: number;
+  totalPagado: number;
+  saldoActual: number;
+}
+
+export interface TablaContratistaRow {
+  contratistaId: string;
+  contratistaName: string;
+  totalAsignado: number;
+  totalPagado: number;
+  saldoActual: number;
+}
+
+export interface TablaClienteRow {
+  obraId: string;
+  obraName: string;
+  proyectoName: string | null;
+  client: string | null;
+  precioVenta: number | null;
+  totalAbonado: number;
+  saldoActual: number | null;
+}
