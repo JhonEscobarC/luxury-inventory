@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { createAsignacion, listAsignaciones, updateAsignacion, updateEtapaStatus } from "../../lib/asignaciones";
 import { listContratistas } from "../../lib/contratistas";
+import { listObraEtapas } from "../../lib/obraEtapas";
 import type { Asignacion, AsignacionInput, EtapaStatus } from "../../types/asignacion";
 import type { Contratista } from "../../types/contratista";
 import type { Obra } from "../../types/obra";
+import type { ObraEtapa } from "../../types/obraEtapa";
 import { AsignacionFormModal } from "./AsignacionFormModal";
 import { displayCurrency } from "../../lib/currency";
 
@@ -33,6 +35,7 @@ const NEXT_ETAPA_STATUS: Record<EtapaStatus, EtapaStatus | null> = {
 export function ObraContratistasModal({ obra, onClose }: ObraContratistasModalProps) {
   const [asignaciones, setAsignaciones] = useState<Asignacion[]>([]);
   const [contratistas, setContratistas] = useState<Contratista[]>([]);
+  const [obraEtapas, setObraEtapas] = useState<ObraEtapa[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -44,12 +47,14 @@ export function ObraContratistasModal({ obra, onClose }: ObraContratistasModalPr
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const [asignacionesResult, contratistasResult] = await Promise.all([
+      const [asignacionesResult, contratistasResult, obraEtapasResult] = await Promise.all([
         listAsignaciones({ obraId: obra.id }),
         listContratistas({ isActive: true }),
+        listObraEtapas(obra.id),
       ]);
       setAsignaciones(asignacionesResult);
       setContratistas(contratistasResult);
+      setObraEtapas(obraEtapasResult);
     } catch {
       setErrorMessage("No se pudieron cargar los contratistas de esta obra.");
     } finally {
@@ -165,6 +170,11 @@ export function ObraContratistasModal({ obra, onClose }: ObraContratistasModalPr
                         <div className="flex items-center gap-3 flex-wrap">
                           <span className="font-body-md text-on-surface">{etapa.name}</span>
                           <span className="font-label-sm text-on-surface-variant">({etapa.percentage}%)</span>
+                          {etapa.obraEtapaName && (
+                            <span className="font-label-sm text-on-surface-variant/60 uppercase">
+                              {etapa.obraEtapaName}
+                            </span>
+                          )}
                           <span
                             className={`font-label-sm uppercase px-2 py-1 border ${ETAPA_STATUS_CLASS[etapa.status]}`}
                           >
@@ -210,6 +220,7 @@ export function ObraContratistasModal({ obra, onClose }: ObraContratistasModalPr
           obraName={obra.name}
           asignacion={null}
           contratistas={contratistas}
+          obraEtapas={obraEtapas}
           onClose={() => setIsCreating(false)}
           onSubmit={handleCreate}
         />
@@ -221,6 +232,7 @@ export function ObraContratistasModal({ obra, onClose }: ObraContratistasModalPr
           obraName={obra.name}
           asignacion={editingAsignacion}
           contratistas={contratistas}
+          obraEtapas={obraEtapas}
           onClose={() => setEditingAsignacion(null)}
           onSubmit={handleUpdate}
         />

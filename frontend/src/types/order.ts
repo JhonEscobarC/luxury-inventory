@@ -14,6 +14,8 @@ export interface OrderItem {
   productName: string | null;
   proveedorId: string | null;
   proveedorName: string | null;
+  obraEtapaId: string;
+  obraEtapaName: string;
 }
 
 export interface Order {
@@ -44,6 +46,7 @@ export interface OrderItemInput {
   quantity: number;
   unit: string;
   categoriaId?: string | null;
+  obraEtapaId: string;
 }
 
 export interface OrderInput {
@@ -64,5 +67,6 @@ export interface AssignOrderInput {
     unitPrice: number;
     categoriaId?: string | null;
     proveedorId?: string | null;
+    obraEtapaId: string;
   }[];
 }

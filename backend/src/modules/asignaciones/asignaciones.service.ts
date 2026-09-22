@@ -14,6 +14,7 @@ import { recordEvento } from "../historial/historial.service";
 export interface EtapaInput {
   name: string;
   percentage: number;
+  obraEtapaId?: string | null;
 }
 
 export interface CreateAsignacionInput {
@@ -37,7 +38,7 @@ const ALLOWED_ETAPA_TRANSITIONS: Record<EtapaStatus, EtapaStatus[]> = {
 type AsignacionWithRelations = ContratistaAsignacion & {
   obra: Obra;
   contratista: Contratista;
-  etapas: ContratistaEtapa[];
+  etapas: (ContratistaEtapa & { obraEtapa: { name: string } | null })[];
 };
 
 function serializeAsignacion(asignacion: AsignacionWithRelations) {
@@ -55,6 +56,8 @@ function serializeAsignacion(asignacion: AsignacionWithRelations) {
         status: etapa.status,
         completedAt: etapa.completedAt,
         paidAt: etapa.paidAt,
+        obraEtapaId: etapa.obraEtapaId,
+        obraEtapaName: etapa.obraEtapa?.name ?? null,
       };
     });
 
@@ -81,7 +84,7 @@ function serializeAsignacion(asignacion: AsignacionWithRelations) {
 const asignacionInclude = {
   obra: true,
   contratista: true,
-  etapas: true,
+  etapas: { include: { obraEtapa: { select: { name: true } } } },
 } satisfies Prisma.ContratistaAsignacionInclude;
 
 function validateEtapas(etapas: EtapaInput[]) {
@@ -96,6 +99,16 @@ function validateEtapas(etapas: EtapaInput[]) {
   const sum = etapas.reduce((total, etapa) => total + etapa.percentage, 0);
   if (Math.abs(sum - 100) > PERCENTAGE_TOLERANCE) {
     throw new HttpError(400, `Las etapas deben sumar 100% (actualmente suman ${sum.toFixed(2)}%)`);
+  }
+}
+
+// obraEtapaId es opcional, pero si se envia debe pertenecer a la obra de la asignacion.
+async function validateObraEtapas(obraId: string, etapas: EtapaInput[]) {
+  const ids = [...new Set(etapas.map((e) => e.obraEtapaId).filter((id): id is string => !!id))];
+  if (ids.length === 0) return;
+  const count = await prisma.obraEtapa.count({ where: { obraId, id: { in: ids } } });
+  if (count !== ids.length) {
+    throw new HttpError(400, "Alguna etapa de obra seleccionada no pertenece a esta obra");
   }
 }
 
@@ -130,6 +143,7 @@ export async function createAsignacion(input: CreateAsignacionInput, userId?: st
     throw new HttpError(400, "El monto total debe ser mayor a cero");
   }
   validateEtapas(input.etapas);
+  await validateObraEtapas(input.obraId, input.etapas);
 
   const asignacion = await prisma.contratistaAsignacion.create({
     data: {
@@ -138,7 +152,11 @@ export async function createAsignacion(input: CreateAsignacionInput, userId?: st
       totalAmount: input.totalAmount,
       notes: input.notes || null,
       etapas: {
-        create: input.etapas.map((etapa) => ({ name: etapa.name, percentage: etapa.percentage })),
+        create: input.etapas.map((etapa) => ({
+          name: etapa.name,
+          percentage: etapa.percentage,
+          obraEtapaId: etapa.obraEtapaId || null,
+        })),
       },
     },
     include: asignacionInclude,
@@ -174,6 +192,7 @@ export async function updateAsignacion(id: string, input: UpdateAsignacionInput)
 
   if (input.etapas) {
     validateEtapas(input.etapas);
+    await validateObraEtapas(existing.obraId, input.etapas);
   }
   if (input.totalAmount !== undefined && input.totalAmount <= 0) {
     throw new HttpError(400, "El monto total debe ser mayor a cero");
@@ -189,7 +208,13 @@ export async function updateAsignacion(id: string, input: UpdateAsignacionInput)
         ...(input.totalAmount !== undefined && { totalAmount: input.totalAmount }),
         ...(input.notes !== undefined && { notes: input.notes || null }),
         ...(input.etapas && {
-          etapas: { create: input.etapas.map((etapa) => ({ name: etapa.name, percentage: etapa.percentage })) },
+          etapas: {
+            create: input.etapas.map((etapa) => ({
+              name: etapa.name,
+              percentage: etapa.percentage,
+              obraEtapaId: etapa.obraEtapaId || null,
+            })),
+          },
         }),
       },
       include: asignacionInclude,

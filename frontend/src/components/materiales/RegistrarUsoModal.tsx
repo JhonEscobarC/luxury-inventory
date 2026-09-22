@@ -1,6 +1,8 @@
-import { type FocusEvent, type FormEvent, useState } from "react";
+import { type FocusEvent, type FormEvent, useEffect, useState } from "react";
 import type { Product } from "../../types/product";
 import type { MaterialUsoInput } from "../../types/materialUso";
+import type { ObraEtapa } from "../../types/obraEtapa";
+import { listObraEtapas } from "../../lib/obraEtapas";
 
 interface RegistrarUsoModalProps {
   product: Product;
@@ -11,8 +13,15 @@ interface RegistrarUsoModalProps {
 export function RegistrarUsoModal({ product, onClose, onSubmit }: RegistrarUsoModalProps) {
   const [quantity, setQuantity] = useState(0);
   const [reason, setReason] = useState("");
+  const [obraEtapaId, setObraEtapaId] = useState("");
+  const [etapas, setEtapas] = useState<ObraEtapa[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!product.obraId) return;
+    listObraEtapas(product.obraId).then(setEtapas).catch(() => setEtapas([]));
+  }, [product.obraId]);
 
   const inputClass =
     "w-full bg-surface border border-outline-variant focus:outline-none focus:border-primary text-on-surface font-body-md px-3 py-3 placeholder-on-surface-variant/50";
@@ -44,10 +53,14 @@ export function RegistrarUsoModal({ product, onClose, onSubmit }: RegistrarUsoMo
       setError("Indica la razon del uso.");
       return;
     }
+    if (!obraEtapaId) {
+      setError("Selecciona a que etapa de la obra va destinado este uso.");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      await onSubmit({ productId: product.id, quantity, reason: reason.trim() });
+      await onSubmit({ productId: product.id, quantity, reason: reason.trim(), obraEtapaId });
       onClose();
     } catch (submitError: unknown) {
       const message =
@@ -91,6 +104,23 @@ export function RegistrarUsoModal({ product, onClose, onSubmit }: RegistrarUsoMo
               onFocus={selectAllOnFocus}
               onChange={(event) => updateQuantity(event.target.value)}
             />
+          </div>
+
+          <div>
+            <label className={labelClass}>Etapa de la obra</label>
+            <select
+              required
+              className={inputClass}
+              value={obraEtapaId}
+              onChange={(event) => setObraEtapaId(event.target.value)}
+            >
+              <option value="">Selecciona una etapa</option>
+              {etapas.map((etapa) => (
+                <option key={etapa.id} value={etapa.id}>
+                  {etapa.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

@@ -1,8 +1,10 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import type { AssignOrderInput, FormaPago, Order } from "../../types/order";
 import type { Proveedor } from "../../types/proveedor";
 import type { Categoria } from "../../types/categoria";
 import type { Obra } from "../../types/obra";
+import type { ObraEtapa } from "../../types/obraEtapa";
+import { listObraEtapas } from "../../lib/obraEtapas";
 
 interface AssignOrderModalProps {
   /** Sin order = compra directa: se elige la obra y se crea ya en estado Compra. */
@@ -24,6 +26,7 @@ interface DraftItem {
   unitPrice: number;
   categoriaId: string;
   proveedorId: string;
+  obraEtapaId: string;
 }
 
 const currencyFormatter = new Intl.NumberFormat("es-CO", {
@@ -42,14 +45,27 @@ function draftItemsFromOrder(order: Order): DraftItem[] {
     unitPrice: item.unitPrice ?? 0,
     categoriaId: item.categoriaId ?? "",
     proveedorId: item.proveedorId ?? "",
+    obraEtapaId: item.obraEtapaId,
   }));
 }
 
 export function AssignOrderModal({ order, obras = [], proveedores, categorias, onClose, onSubmit }: AssignOrderModalProps) {
   const initialItems: DraftItem[] = order
     ? draftItemsFromOrder(order)
-    : [{ key: crypto.randomUUID(), description: "", quantity: 1, unit: "", unitPrice: 0, categoriaId: "", proveedorId: "" }];
+    : [
+        {
+          key: crypto.randomUUID(),
+          description: "",
+          quantity: 1,
+          unit: "",
+          unitPrice: 0,
+          categoriaId: "",
+          proveedorId: "",
+          obraEtapaId: "",
+        },
+      ];
   const [obraId, setObraId] = useState(order?.obraId ?? obras[0]?.id ?? "");
+  const [etapas, setEtapas] = useState<ObraEtapa[]>([]);
   const [mode, setMode] = useState<ProveedorMode>(
     order && !order.proveedorId && initialItems.some((item) => item.proveedorId) ? "per-item" : "single",
   );
@@ -65,6 +81,14 @@ export function AssignOrderModal({ order, obras = [], proveedores, categorias, o
   const labelClass = "font-label-sm text-on-surface-variant uppercase tracking-widest block mb-2";
 
   const total = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+
+  useEffect(() => {
+    if (!obraId) {
+      setEtapas([]);
+      return;
+    }
+    listObraEtapas(obraId).then(setEtapas).catch(() => setEtapas([]));
+  }, [obraId]);
 
   function switchMode(nextMode: ProveedorMode) {
     if (nextMode === mode) return;
@@ -91,6 +115,7 @@ export function AssignOrderModal({ order, obras = [], proveedores, categorias, o
         unitPrice: 0,
         categoriaId: "",
         proveedorId: mode === "per-item" ? proveedorId : "",
+        obraEtapaId: "",
       },
     ]);
   }
@@ -111,6 +136,10 @@ export function AssignOrderModal({ order, obras = [], proveedores, categorias, o
     const validItems = items.filter((item) => item.description.trim() && item.unit.trim() && item.quantity > 0);
     if (validItems.length === 0) {
       setError("Agrega al menos un material con descripcion, unidad y cantidad validas.");
+      return;
+    }
+    if (validItems.some((item) => !item.obraEtapaId)) {
+      setError("Selecciona la etapa de obra para cada material.");
       return;
     }
 
@@ -134,14 +163,17 @@ export function AssignOrderModal({ order, obras = [], proveedores, categorias, o
         proveedorId: mode === "single" ? proveedorId : null,
         notes: notes || null,
         formaPago,
-        items: validItems.map(({ description, quantity, unit, unitPrice, categoriaId, proveedorId: itemProveedorId }) => ({
-          description,
-          quantity,
-          unit,
-          unitPrice,
-          categoriaId: categoriaId || null,
-          proveedorId: mode === "per-item" ? itemProveedorId || null : null,
-        })),
+        items: validItems.map(
+          ({ description, quantity, unit, unitPrice, categoriaId, proveedorId: itemProveedorId, obraEtapaId: itemObraEtapaId }) => ({
+            description,
+            quantity,
+            unit,
+            unitPrice,
+            categoriaId: categoriaId || null,
+            proveedorId: mode === "per-item" ? itemProveedorId || null : null,
+            obraEtapaId: itemObraEtapaId,
+          }),
+        ),
         },
         obraId,
       );
@@ -179,7 +211,14 @@ export function AssignOrderModal({ order, obras = [], proveedores, categorias, o
             {order ? (
               <p className="font-body-md text-on-surface py-3">{order.obraName}</p>
             ) : (
-              <select className={inputClass} value={obraId} onChange={(e) => setObraId(e.target.value)}>
+              <select
+                className={inputClass}
+                value={obraId}
+                onChange={(e) => {
+                  setObraId(e.target.value);
+                  setItems((prev) => prev.map((item) => ({ ...item, obraEtapaId: "" })));
+                }}
+              >
                 {obras.length === 0 && <option value="">No hay obras activas</option>}
                 {obras.map((obra) => (
                   <option key={obra.id} value={obra.id}>
@@ -343,7 +382,7 @@ export function AssignOrderModal({ order, obras = [], proveedores, categorias, o
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-                <div className={mode === "per-item" ? "sm:col-span-5" : "sm:col-span-9"}>
+                <div className={mode === "per-item" ? "sm:col-span-3" : "sm:col-span-6"}>
                   <label className={labelClass}>Categoria (para almacenar en inventario al recibir)</label>
                   <select
                     className={inputClass}
@@ -359,7 +398,7 @@ export function AssignOrderModal({ order, obras = [], proveedores, categorias, o
                   </select>
                 </div>
                 {mode === "per-item" && (
-                  <div className="sm:col-span-4">
+                  <div className="sm:col-span-3">
                     <label className={labelClass}>Proveedor</label>
                     <select
                       className={inputClass}
@@ -375,6 +414,21 @@ export function AssignOrderModal({ order, obras = [], proveedores, categorias, o
                     </select>
                   </div>
                 )}
+                <div className="sm:col-span-3">
+                  <label className={labelClass}>Etapa</label>
+                  <select
+                    className={inputClass}
+                    value={item.obraEtapaId}
+                    onChange={(e) => updateItem(item.key, { obraEtapaId: e.target.value })}
+                  >
+                    <option value="">Selecciona...</option>
+                    {etapas.map((etapa) => (
+                      <option key={etapa.id} value={etapa.id}>
+                        {etapa.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div className="sm:col-span-3">
                   <label className={labelClass}>Subtotal</label>
                   <p className="font-body-md text-on-surface py-3">

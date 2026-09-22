@@ -6,6 +6,7 @@ import * as asignacionesService from "./asignaciones.service";
 const etapaSchema = z.object({
   name: z.string().trim().min(1, "El nombre de la etapa es requerido"),
   percentage: z.number().positive("El porcentaje debe ser mayor a cero").max(100),
+  obraEtapaId: z.string().uuid().optional().nullable(),
 });
 
 const createSchema = z.object({

@@ -1,7 +1,9 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import type { Order, OrderInput, OrderItemInput } from "../../types/order";
 import type { Obra } from "../../types/obra";
 import type { Categoria } from "../../types/categoria";
+import type { ObraEtapa } from "../../types/obraEtapa";
+import { listObraEtapas } from "../../lib/obraEtapas";
 
 interface OrderFormModalProps {
   order: Order | null;
@@ -17,7 +19,7 @@ interface DraftItem extends OrderItemInput {
 
 function draftItemsFromOrder(order: Order | null): DraftItem[] {
   if (!order) {
-    return [{ key: crypto.randomUUID(), description: "", quantity: 1, unit: "", categoriaId: "" }];
+    return [{ key: crypto.randomUUID(), description: "", quantity: 1, unit: "", categoriaId: "", obraEtapaId: "" }];
   }
   return order.items.map((item) => ({
     key: item.id,
@@ -25,6 +27,7 @@ function draftItemsFromOrder(order: Order | null): DraftItem[] {
     quantity: item.quantity,
     unit: item.unit,
     categoriaId: item.categoriaId ?? "",
+    obraEtapaId: item.obraEtapaId,
   }));
 }
 
@@ -32,8 +35,17 @@ export function OrderFormModal({ order, obras, categorias, onClose, onSubmit }: 
   const [obraId, setObraId] = useState(order?.obraId ?? obras[0]?.id ?? "");
   const [notes, setNotes] = useState(order?.notes ?? "");
   const [items, setItems] = useState<DraftItem[]>(draftItemsFromOrder(order));
+  const [etapas, setEtapas] = useState<ObraEtapa[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!obraId) {
+      setEtapas([]);
+      return;
+    }
+    listObraEtapas(obraId).then(setEtapas).catch(() => setEtapas([]));
+  }, [obraId]);
 
   function updateItem(key: string, patch: Partial<DraftItem>) {
     setItems((prev) => prev.map((item) => (item.key === key ? { ...item, ...patch } : item)));
@@ -42,7 +54,7 @@ export function OrderFormModal({ order, obras, categorias, onClose, onSubmit }: 
   function addItem() {
     setItems((prev) => [
       ...prev,
-      { key: crypto.randomUUID(), description: "", quantity: 1, unit: "", categoriaId: "" },
+      { key: crypto.randomUUID(), description: "", quantity: 1, unit: "", categoriaId: "", obraEtapaId: "" },
     ]);
   }
 
@@ -63,17 +75,22 @@ export function OrderFormModal({ order, obras, categorias, onClose, onSubmit }: 
       setError("Selecciona una obra.");
       return;
     }
+    if (validItems.some((item) => !item.obraEtapaId)) {
+      setError("Selecciona la etapa de obra para cada material.");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
       await onSubmit({
         obraId,
         notes: notes || null,
-        items: validItems.map(({ description, quantity, unit, categoriaId }) => ({
+        items: validItems.map(({ description, quantity, unit, categoriaId, obraEtapaId }) => ({
           description,
           quantity,
           unit,
           categoriaId: categoriaId || null,
+          obraEtapaId,
         })),
       });
       onClose();
@@ -116,7 +133,14 @@ export function OrderFormModal({ order, obras, categorias, onClose, onSubmit }: 
             ) : obras.length <= 1 ? (
               <p className="font-body-md text-on-surface py-3">{obras[0]?.name ?? "No tienes obras asignadas"}</p>
             ) : (
-              <select className={inputClass} value={obraId} onChange={(e) => setObraId(e.target.value)}>
+              <select
+                className={inputClass}
+                value={obraId}
+                onChange={(e) => {
+                  setObraId(e.target.value);
+                  setItems((prev) => prev.map((item) => ({ ...item, obraEtapaId: "" })));
+                }}
+              >
                 {obras.map((obra) => (
                   <option key={obra.id} value={obra.id}>
                     {obra.name}
@@ -146,7 +170,7 @@ export function OrderFormModal({ order, obras, categorias, onClose, onSubmit }: 
         <div className="flex flex-col gap-4 mb-6">
           {items.map((item) => (
             <div key={item.key} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-              <div className="sm:col-span-4">
+              <div className="sm:col-span-3">
                 <label className={labelClass}>Descripcion</label>
                 <input
                   className={inputClass}
@@ -180,7 +204,7 @@ export function OrderFormModal({ order, obras, categorias, onClose, onSubmit }: 
                   onChange={(e) => updateItem(item.key, { unit: e.target.value })}
                 />
               </div>
-              <div className="sm:col-span-3">
+              <div className="sm:col-span-2">
                 <label className={labelClass}>Categoria</label>
                 <select
                   className={inputClass}
@@ -191,6 +215,21 @@ export function OrderFormModal({ order, obras, categorias, onClose, onSubmit }: 
                   {categorias.map((categoria) => (
                     <option key={categoria.id} value={categoria.id}>
                       {categoria.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="sm:col-span-2">
+                <label className={labelClass}>Etapa</label>
+                <select
+                  className={inputClass}
+                  value={item.obraEtapaId}
+                  onChange={(e) => updateItem(item.key, { obraEtapaId: e.target.value })}
+                >
+                  <option value="">Selecciona...</option>
+                  {etapas.map((etapa) => (
+                    <option key={etapa.id} value={etapa.id}>
+                      {etapa.name}
                     </option>
                   ))}
                 </select>

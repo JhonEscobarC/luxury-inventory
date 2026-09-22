@@ -1,12 +1,14 @@
 import { type FormEvent, useState } from "react";
 import type { Asignacion, AsignacionInput, EtapaInput } from "../../types/asignacion";
 import type { Contratista } from "../../types/contratista";
+import type { ObraEtapa } from "../../types/obraEtapa";
 
 interface AsignacionFormModalProps {
   obraId: string;
   obraName: string;
   asignacion: Asignacion | null;
   contratistas: Contratista[];
+  obraEtapas: ObraEtapa[];
   onClose: () => void;
   onSubmit: (input: AsignacionInput) => Promise<void>;
 }
@@ -24,9 +26,14 @@ const currencyFormatter = new Intl.NumberFormat("es-CO", {
 
 function draftEtapasFrom(asignacion: Asignacion | null): DraftEtapa[] {
   if (!asignacion) {
-    return [{ key: crypto.randomUUID(), name: "", percentage: 0 }];
+    return [{ key: crypto.randomUUID(), name: "", percentage: 0, obraEtapaId: "" }];
   }
-  return asignacion.etapas.map((etapa) => ({ key: etapa.id, name: etapa.name, percentage: etapa.percentage }));
+  return asignacion.etapas.map((etapa) => ({
+    key: etapa.id,
+    name: etapa.name,
+    percentage: etapa.percentage,
+    obraEtapaId: etapa.obraEtapaId ?? "",
+  }));
 }
 
 export function AsignacionFormModal({
@@ -34,6 +41,7 @@ export function AsignacionFormModal({
   obraName,
   asignacion,
   contratistas,
+  obraEtapas,
   onClose,
   onSubmit,
 }: AsignacionFormModalProps) {
@@ -58,7 +66,7 @@ export function AsignacionFormModal({
   }
 
   function addEtapa() {
-    setEtapas((prev) => [...prev, { key: crypto.randomUUID(), name: "", percentage: 0 }]);
+    setEtapas((prev) => [...prev, { key: crypto.randomUUID(), name: "", percentage: 0, obraEtapaId: "" }]);
   }
 
   function removeEtapa(key: string) {
@@ -98,10 +106,14 @@ export function AsignacionFormModal({
         totalAmount,
         notes: notes || null,
         etapas: locked
-          ? asignacion!.etapas.map((etapa) => ({ name: etapa.name, percentage: etapa.percentage }))
+          ? asignacion!.etapas.map((etapa) => ({
+              name: etapa.name,
+              percentage: etapa.percentage,
+              obraEtapaId: etapa.obraEtapaId,
+            }))
           : etapas
               .filter((etapa) => etapa.name.trim() && etapa.percentage > 0)
-              .map(({ name, percentage }) => ({ name, percentage })),
+              .map(({ name, percentage, obraEtapaId }) => ({ name, percentage, obraEtapaId: obraEtapaId || null })),
       });
       onClose();
     } catch (submitError: unknown) {
@@ -198,6 +210,9 @@ export function AsignacionFormModal({
               <div key={etapa.id} className="flex justify-between text-body-md text-on-surface-variant">
                 <span>
                   {etapa.name} - {etapa.percentage}%
+                  {etapa.obraEtapaName && (
+                    <span className="text-on-surface-variant/60"> ({etapa.obraEtapaName})</span>
+                  )}
                 </span>
                 <span>{currencyFormatter.format(etapa.amount)}</span>
               </div>
@@ -207,7 +222,7 @@ export function AsignacionFormModal({
           <div className="flex flex-col gap-4 mb-2">
             {etapas.map((etapa) => (
               <div key={etapa.key} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-                <div className="sm:col-span-6">
+                <div className="sm:col-span-5">
                   <label className={labelClass}>Nombre de la etapa</label>
                   <input
                     className={inputClass}
@@ -216,7 +231,7 @@ export function AsignacionFormModal({
                     onChange={(e) => updateEtapa(etapa.key, { name: e.target.value })}
                   />
                 </div>
-                <div className="sm:col-span-3">
+                <div className="sm:col-span-2">
                   <label className={labelClass}>Porcentaje (%)</label>
                   <input
                     type="number"
@@ -232,6 +247,21 @@ export function AsignacionFormModal({
                       updateEtapa(etapa.key, { percentage: Number.isNaN(parsed) ? 0 : parsed });
                     }}
                   />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className={labelClass}>Etapa de obra</label>
+                  <select
+                    className={inputClass}
+                    value={etapa.obraEtapaId ?? ""}
+                    onChange={(e) => updateEtapa(etapa.key, { obraEtapaId: e.target.value })}
+                  >
+                    <option value="">Sin asignar</option>
+                    {obraEtapas.map((oe) => (
+                      <option key={oe.id} value={oe.id}>
+                        {oe.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="sm:col-span-2">
                   <label className={labelClass}>Monto</label>

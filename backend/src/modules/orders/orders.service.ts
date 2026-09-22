@@ -11,6 +11,7 @@ import {
   type Product,
   type Categoria,
   type User,
+  type ObraEtapa,
 } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { HttpError } from "../../middleware/errorHandler";
@@ -27,6 +28,7 @@ export interface OrderItemInput {
   quantity: number;
   unit: string;
   categoriaId?: string | null;
+  obraEtapaId: string;
 }
 
 export interface CreateOrderInput {
@@ -44,6 +46,7 @@ export interface AssignmentItemInput {
   unitPrice: number;
   categoriaId?: string | null;
   proveedorId?: string | null;
+  obraEtapaId: string;
 }
 
 export interface AssignOrderInput {
@@ -58,6 +61,7 @@ type OrderItemWithRelations = OrderItem & {
   product: Product | null;
   categoria: Categoria | null;
   proveedor: Proveedor | null;
+  obraEtapa: ObraEtapa;
 };
 
 type OrderWithRelations = Order & {
@@ -93,6 +97,8 @@ function serializeOrder(order: OrderWithRelations) {
       productName: item.product?.name ?? null,
       proveedorId: item.proveedorId,
       proveedorName: item.proveedor?.name ?? null,
+      obraEtapaId: item.obraEtapaId,
+      obraEtapaName: item.obraEtapa.name,
     };
   });
 
@@ -130,7 +136,7 @@ function serializeOrder(order: OrderWithRelations) {
 }
 
 const orderInclude = {
-  items: { include: { product: true, categoria: true, proveedor: true } },
+  items: { include: { product: true, categoria: true, proveedor: true, obraEtapa: true } },
   obra: true,
   proveedor: true,
   createdBy: true,
@@ -198,8 +204,19 @@ function validateItems(items: OrderItemInput[]) {
   }
 }
 
+// Las etapas son propias de cada obra (incluidas las personalizadas), asi que no basta con
+// que el id exista: debe pertenecer a la obra del pedido.
+async function validateEtapasBelongToObra(obraId: string, etapaIds: string[]) {
+  const uniqueIds = [...new Set(etapaIds)];
+  const count = await prisma.obraEtapa.count({ where: { obraId, id: { in: uniqueIds } } });
+  if (count !== uniqueIds.length) {
+    throw new HttpError(400, "Alguna etapa seleccionada no pertenece a esta obra");
+  }
+}
+
 export async function createOrder(input: CreateOrderInput, createdById: string) {
   validateItems(input.items);
+  await validateEtapasBelongToObra(input.obraId, input.items.map((item) => item.obraEtapaId));
 
   const order = await prisma.order.create({
     data: {
@@ -212,6 +229,7 @@ export async function createOrder(input: CreateOrderInput, createdById: string) 
           quantity: item.quantity,
           unit: item.unit,
           categoriaId: item.categoriaId ?? null,
+          obraEtapaId: item.obraEtapaId,
         })),
       },
     },
@@ -241,6 +259,7 @@ export async function updateOrder(id: string, input: UpdateOrderInput) {
 
   if (input.items) {
     validateItems(input.items);
+    await validateEtapasBelongToObra(existing.obraId, input.items.map((item) => item.obraEtapaId));
   }
 
   const order = await prisma.$transaction(async (tx) => {
@@ -258,6 +277,7 @@ export async function updateOrder(id: string, input: UpdateOrderInput) {
               quantity: item.quantity,
               unit: item.unit,
               categoriaId: item.categoriaId ?? null,
+              obraEtapaId: item.obraEtapaId,
             })),
           },
         }),
@@ -287,6 +307,8 @@ export async function assignOrder(id: string, input: AssignOrderInput, assignedB
     }
   }
 
+  await validateEtapasBelongToObra(existing.obraId, input.items.map((item) => item.obraEtapaId));
+
   // Dos modos, mutuamente excluyentes: un solo proveedor para todo el pedido
   // (input.proveedorId) o uno distinto por material (cada item trae el suyo).
   const usesSingleProveedor = !!input.proveedorId;
@@ -315,6 +337,7 @@ export async function assignOrder(id: string, input: AssignOrderInput, assignedB
             unitPrice: item.unitPrice,
             categoriaId: item.categoriaId ?? null,
             proveedorId: usesSingleProveedor ? null : item.proveedorId,
+            obraEtapaId: item.obraEtapaId,
           })),
         },
       },
@@ -412,6 +435,7 @@ export async function createDirectPurchase(input: AssignOrderInput & { obraId: s
         quantity: item.quantity,
         unit: item.unit,
         categoriaId: item.categoriaId ?? null,
+        obraEtapaId: item.obraEtapaId,
       })),
     },
     userId,

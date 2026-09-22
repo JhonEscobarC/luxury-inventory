@@ -10,6 +10,7 @@ import type { Proyecto } from "../types/proyecto";
 import { ObraFormModal } from "../components/obras/ObraFormModal";
 import { AssignUsersModal } from "../components/obras/AssignUsersModal";
 import { ObraContratistasModal } from "../components/contratistas/ObraContratistasModal";
+import { ObraEtapasModal } from "../components/obras/ObraEtapasModal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { displayCurrency } from "../lib/currency";
 import { usePagination } from "../hooks/usePagination";
@@ -35,6 +36,7 @@ export function Obras() {
   const [editingObra, setEditingObra] = useState<Obra | null>(null);
   const [assigningObra, setAssigningObra] = useState<Obra | null>(null);
   const [contratistasObra, setContratistasObra] = useState<Obra | null>(null);
+  const [etapasObra, setEtapasObra] = useState<Obra | null>(null);
   const [deletingObra, setDeletingObra] = useState<Obra | null>(null);
 
   async function refresh() {
@@ -223,6 +225,13 @@ export function Obras() {
                     <span className="material-symbols-outlined text-[18px]">engineering</span>
                     Contratistas
                   </button>
+                  <button
+                    onClick={() => setEtapasObra(obra)}
+                    className="font-label-sm uppercase text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">format_list_numbered</span>
+                    Etapas
+                  </button>
                   <Link
                     to={`/inventario?obraId=${obra.id}`}
                     className="font-label-sm uppercase text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1"
@@ -278,6 +287,8 @@ export function Obras() {
       {contratistasObra && (
         <ObraContratistasModal obra={contratistasObra} onClose={() => setContratistasObra(null)} />
       )}
+
+      {etapasObra && <ObraEtapasModal obra={etapasObra} onClose={() => setEtapasObra(null)} />}
 
       {deletingObra && (
         <ConfirmDialog

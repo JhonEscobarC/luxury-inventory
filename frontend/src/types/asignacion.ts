@@ -8,6 +8,8 @@ export interface Etapa {
   status: EtapaStatus;
   completedAt: string | null;
   paidAt: string | null;
+  obraEtapaId: string | null;
+  obraEtapaName: string | null;
 }
 
 export interface Asignacion {
@@ -30,6 +32,7 @@ export interface Asignacion {
 export interface EtapaInput {
   name: string;
   percentage: number;
+  obraEtapaId?: string | null;
 }
 
 export interface AsignacionInput {

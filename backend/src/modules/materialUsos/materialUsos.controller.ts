@@ -7,6 +7,7 @@ const createSchema = z.object({
   productId: z.string().uuid("Producto invalido"),
   quantity: z.number().positive("La cantidad debe ser mayor a cero"),
   reason: z.string().trim().min(1, "Indica la razon del uso"),
+  obraEtapaId: z.string().uuid("Selecciona la etapa de obra"),
 });
 
 const listQuerySchema = z.object({

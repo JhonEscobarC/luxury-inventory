@@ -13,7 +13,12 @@ import { recordProductoHistorial } from "../products/productHistorial.service";
 import { recordEvento } from "../historial/historial.service";
 
 function serializeMaterialUso(
-  uso: MaterialUso & { product: Pick<Product, "id" | "name" | "unit">; obra: Pick<Obra, "id" | "name">; user: Pick<User, "id" | "name"> | null },
+  uso: MaterialUso & {
+    product: Pick<Product, "id" | "name" | "unit">;
+    obra: Pick<Obra, "id" | "name">;
+    user: Pick<User, "id" | "name"> | null;
+    obraEtapa: { name: string };
+  },
 ) {
   return {
     id: uso.id,
@@ -27,6 +32,8 @@ function serializeMaterialUso(
     obraName: uso.obra.name,
     userId: uso.userId,
     userName: uso.user?.name ?? null,
+    obraEtapaId: uso.obraEtapaId,
+    obraEtapaName: uso.obraEtapa.name,
   };
 }
 
@@ -34,12 +41,14 @@ const materialUsoInclude = {
   product: { select: { id: true, name: true, unit: true } },
   obra: { select: { id: true, name: true } },
   user: { select: { id: true, name: true } },
+  obraEtapa: { select: { name: true } },
 } satisfies Prisma.MaterialUsoInclude;
 
 export interface CreateMaterialUsoInput {
   productId: string;
   quantity: number;
   reason: string;
+  obraEtapaId: string;
   userId: string;
 }
 
@@ -66,6 +75,11 @@ export async function createMaterialUso(input: CreateMaterialUsoInput) {
     throw new HttpError(400, "La cantidad supera el stock disponible");
   }
 
+  const etapa = await prisma.obraEtapa.findUnique({ where: { id: input.obraEtapaId } });
+  if (!etapa || etapa.obraId !== product.obraId) {
+    throw new HttpError(400, "Selecciona una etapa valida de esta obra");
+  }
+
   const uso = await prisma.$transaction(async (tx) => {
     const updatedProduct = await tx.product.update({
       where: { id: product.id },
@@ -86,6 +100,7 @@ export async function createMaterialUso(input: CreateMaterialUsoInput) {
         userId: input.userId,
         quantity: input.quantity,
         reason: input.reason,
+        obraEtapaId: input.obraEtapaId,
       },
       include: materialUsoInclude,
     });

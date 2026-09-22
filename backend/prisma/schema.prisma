@@ -180,8 +180,32 @@ model Obra {
   materialUsos            MaterialUso[]
   abonosCliente           AbonoCliente[]
   gastosAdicionales       GastoAdicional[]
+  etapas                  ObraEtapa[]
 
   @@map("obras")
+}
+
+// Etapas de construccion de una obra (Trabajos preliminares, Estructura, etc). Cada obra
+// tiene su propia copia mutable: al crear la obra se le clonan las etapas por defecto
+// (isCustom = false) y desde ahi el orden y las etapas adicionales (isCustom = true) son
+// independientes por obra.
+model ObraEtapa {
+  id        String   @id @default(uuid())
+  name      String
+  order     Int
+  isCustom  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  obraId String
+  obra   Obra   @relation(fields: [obraId], references: [id], onDelete: Cascade)
+
+  orderItems        OrderItem[]
+  contratistaEtapas ContratistaEtapa[]
+  materialUsos      MaterialUso[]
+
+  @@index([obraId])
+  @@map("obra_etapas")
 }
 
 model MaterialUso {
@@ -198,6 +222,10 @@ model MaterialUso {
 
   userId String?
   user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // A que etapa de construccion de la obra va destinado este uso de material.
+  obraEtapaId String
+  obraEtapa   ObraEtapa @relation(fields: [obraEtapaId], references: [id])
 
   @@index([obraId])
   @@index([productId])
@@ -250,6 +278,10 @@ model ContratistaEtapa {
 
   asignacionId String
   asignacion   ContratistaAsignacion @relation(fields: [asignacionId], references: [id], onDelete: Cascade)
+
+  // A que etapa de construccion de la obra corresponde esta cuota de pago (opcional).
+  obraEtapaId String?
+  obraEtapa   ObraEtapa? @relation(fields: [obraEtapaId], references: [id], onDelete: SetNull)
 
   @@map("contratista_etapas")
 }
@@ -422,6 +454,10 @@ model OrderItem {
   // pedido usa un unico proveedor, este queda null y se usa Order.proveedorId.
   proveedorId String?
   proveedor   Proveedor? @relation(fields: [proveedorId], references: [id], onDelete: SetNull)
+
+  // A que etapa de construccion de la obra va destinado este material.
+  obraEtapaId String
+  obraEtapa   ObraEtapa @relation(fields: [obraEtapaId], references: [id])
 
   @@map("order_items")
 }

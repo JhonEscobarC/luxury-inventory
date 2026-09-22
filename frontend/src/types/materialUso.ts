@@ -10,10 +10,13 @@ export interface MaterialUso {
   obraName: string;
   userId: string | null;
   userName: string | null;
+  obraEtapaId: string;
+  obraEtapaName: string;
 }
 
 export interface MaterialUsoInput {
   productId: string;
   quantity: number;
   reason: string;
+  obraEtapaId: string;
 }

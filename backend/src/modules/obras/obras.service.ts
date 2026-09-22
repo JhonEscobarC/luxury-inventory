@@ -1,6 +1,7 @@
 import { Prisma, type Obra, type User } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { HttpError } from "../../middleware/errorHandler";
+import { seedDefaultEtapas } from "../obraEtapas/obraEtapas.service";
 
 function serializeObra(
   obra: Obra & { users?: Pick<User, "id" | "name" | "email">[]; proyecto?: { id: string; name: string } | null },
@@ -93,6 +94,7 @@ export async function createObra(input: ObraInput) {
     },
     include: { proyecto: { select: { id: true, name: true } } },
   });
+  await seedDefaultEtapas(obra.id);
   return serializeObra(obra);
 }
 

@@ -10,6 +10,7 @@ const orderItemSchema = z.object({
   quantity: z.number().positive("La cantidad debe ser mayor a cero"),
   unit: z.string().trim().min(1, "La unidad es requerida"),
   categoriaId: z.string().uuid().optional().nullable(),
+  obraEtapaId: z.string().uuid("Selecciona la etapa de obra"),
 });
 
 const createOrderSchema = z.object({
@@ -37,6 +38,7 @@ const assignOrderSchema = z.object({
         unitPrice: z.number().min(0),
         categoriaId: z.string().uuid().optional().nullable(),
         proveedorId: z.string().uuid().optional().nullable(),
+        obraEtapaId: z.string().uuid("Selecciona la etapa de obra"),
       }),
     )
     .min(1, "El pedido debe tener al menos un material"),
