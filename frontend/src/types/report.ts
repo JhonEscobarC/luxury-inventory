@@ -188,3 +188,12 @@ export interface TablaClienteAbonoRow {
   createdByName: string | null;
   createdAt: string;
 }
+
+export type CuentaCodigo = "1105" | "1110" | "1305" | "1435" | "2205" | "2335" | "5195";
+
+export interface CuentaRow {
+  codigo: CuentaCodigo;
+  grupo: string;
+  nombre: string;
+  saldo: number;
+}

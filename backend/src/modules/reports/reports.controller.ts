@@ -2,6 +2,16 @@ import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 import * as reportsService from "./reports.service";
 import * as tablaService from "./reportsTabla.service";
+import { getCuentasReport } from "./reportsCuentas.service";
+
+export async function cuentasHandler(_req: Request, res: Response, next: NextFunction) {
+  try {
+    const items = await getCuentasReport();
+    res.json({ items });
+  } catch (error) {
+    next(error);
+  }
+}
 
 const tablaFiltersSchema = z.object({
   tab: z.enum(["inventario", "proveedores", "contratistas", "clientes"]),

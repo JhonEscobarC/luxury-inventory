@@ -1,5 +1,6 @@
 import { api } from "./api";
 import type { Asignacion, AsignacionInput, EtapaStatus } from "../types/asignacion";
+import type { MetodoPago } from "../types/abonoCliente";
 
 export interface ListAsignacionesFilters {
   obraId?: string;
@@ -30,10 +31,11 @@ export async function updateEtapaStatus(
   asignacionId: string,
   etapaId: string,
   status: EtapaStatus,
+  metodoPago?: MetodoPago,
 ): Promise<Asignacion> {
   const { data } = await api.patch<{ asignacion: Asignacion }>(
     `/asignaciones/${asignacionId}/etapas/${etapaId}/status`,
-    { status },
+    { status, metodoPago },
   );
   return data.asignacion;
 }

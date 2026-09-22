@@ -4,6 +4,7 @@ import {
   HistorialTipo,
   type ContratistaAsignacion,
   type ContratistaEtapa,
+  type MetodoPago,
   type Obra,
   type Contratista,
 } from "@prisma/client";
@@ -56,6 +57,7 @@ function serializeAsignacion(asignacion: AsignacionWithRelations) {
         status: etapa.status,
         completedAt: etapa.completedAt,
         paidAt: etapa.paidAt,
+        metodoPago: etapa.metodoPago,
         obraEtapaId: etapa.obraEtapaId,
         obraEtapaName: etapa.obraEtapa?.name ?? null,
       };
@@ -229,6 +231,7 @@ export async function updateEtapaStatus(
   etapaId: string,
   nextStatus: EtapaStatus,
   userId?: string,
+  metodoPago?: MetodoPago,
 ) {
   const etapa = await prisma.contratistaEtapa.findUnique({ where: { id: etapaId } });
   if (!etapa || etapa.asignacionId !== asignacionId) {
@@ -239,13 +242,16 @@ export async function updateEtapaStatus(
   if (!allowed.includes(nextStatus)) {
     throw new HttpError(400, `No se puede cambiar la etapa de "${etapa.status}" a "${nextStatus}"`);
   }
+  if (nextStatus === EtapaStatus.PAGADA && !metodoPago) {
+    throw new HttpError(400, "Selecciona el metodo de pago");
+  }
 
   await prisma.contratistaEtapa.update({
     where: { id: etapaId },
     data: {
       status: nextStatus,
       ...(nextStatus === EtapaStatus.COMPLETADA && { completedAt: new Date() }),
-      ...(nextStatus === EtapaStatus.PAGADA && { paidAt: new Date() }),
+      ...(nextStatus === EtapaStatus.PAGADA && { paidAt: new Date(), metodoPago }),
     },
   });
 

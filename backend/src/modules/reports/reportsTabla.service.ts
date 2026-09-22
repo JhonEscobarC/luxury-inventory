@@ -2,6 +2,13 @@ import { OrderStatus, FormaPago, EtapaStatus } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { endOfDay } from "../../utils/dates";
 
+// El monto de cada etapa de pago de contratista no se guarda: es un porcentaje del total
+// de la asignacion. Fuente unica de esta formula (evita que cada consumidor la repita y
+// eventualmente diverja).
+export function etapaAmount(asignacion: { totalAmount: unknown }, etapa: { percentage: unknown }): number {
+  return Math.round((Number(asignacion.totalAmount) * Number(etapa.percentage)) / 100);
+}
+
 export interface TablaFilters {
   /** "none" = obras sin proyecto. */
   proyectoId?: string;
@@ -215,10 +222,6 @@ export async function getTablaContratistas(filters: TablaFilters): Promise<Tabla
     }),
   ]);
 
-  // El monto de cada etapa no se guarda: es un porcentaje del total de la asignacion.
-  const etapaAmount = (asignacion: { totalAmount: unknown }, etapa: { percentage: unknown }) =>
-    Math.round((Number(asignacion.totalAmount) * Number(etapa.percentage)) / 100);
-
   const asignadoByContratista = new Map<string, number>();
   const pagadoByContratista = new Map<string, number>();
   for (const asignacion of asignacionesPeriodo) {
@@ -360,9 +363,6 @@ export async function getDetalleContratistas(filters: TablaFilters): Promise<{ e
     include: { etapas: true, contratista: true, obra: { include: { proyecto: true } } },
     orderBy: { createdAt: "desc" },
   });
-
-  const etapaAmount = (asignacion: { totalAmount: unknown }, etapa: { percentage: unknown }) =>
-    Math.round((Number(asignacion.totalAmount) * Number(etapa.percentage)) / 100);
 
   const etapas: TablaContratistaEtapaRow[] = [];
   for (const asignacion of asignaciones) {

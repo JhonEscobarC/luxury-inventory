@@ -1,3 +1,5 @@
+import type { MetodoPago } from "./abonoCliente";
+
 export type EtapaStatus = "PENDIENTE" | "COMPLETADA" | "PAGADA";
 
 export interface Etapa {
@@ -8,6 +10,7 @@ export interface Etapa {
   status: EtapaStatus;
   completedAt: string | null;
   paidAt: string | null;
+  metodoPago: MetodoPago | null;
   obraEtapaId: string | null;
   obraEtapaName: string | null;
 }

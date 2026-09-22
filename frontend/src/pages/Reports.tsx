@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { listProyectos } from "../lib/proyectos";
 import { listObras } from "../lib/obras";
-import { getTablaDetalle, getTablaReport } from "../lib/reports";
+import { getCuentasReport, getTablaDetalle, getTablaReport } from "../lib/reports";
 import { displayCurrency } from "../lib/currency";
 import { exportTablaExcel, exportTablaPdf } from "../lib/exporters";
 import type { TablaColumn, TablaExcelSection, TablaPdfSection } from "../lib/exporters";
 import type { Proyecto } from "../types/proyecto";
 import type { Obra } from "../types/obra";
 import type {
+  CuentaRow,
   TablaClienteAbonoRow,
   TablaClienteRow,
   TablaContratistaEtapaRow,
@@ -39,13 +40,24 @@ function fecha(value: string) {
 
 type LeftMode = "cuentas" | "proyecto" | "periodo";
 type Row = TablaInventarioRow | TablaProveedorRow | TablaContratistaRow | TablaClienteRow;
+type ReportsTab = TablaTab | "plancuentas";
 
-const TABS: { value: TablaTab; label: string; icon: string }[] = [
+const TABS: { value: ReportsTab; label: string; icon: string }[] = [
   { value: "inventario", label: "Inventario", icon: "inventory_2" },
   { value: "proveedores", label: "Proveedores", icon: "local_shipping" },
   { value: "contratistas", label: "Contratistas", icon: "engineering" },
   { value: "clientes", label: "Clientes", icon: "payments" },
+  { value: "plancuentas", label: "Plan de Cuentas", icon: "account_balance" },
 ];
+
+const CUENTA_GROUP_LABEL: Record<string, string> = {
+  Disponible: "Disponible (Caja y Bancos)",
+  Deudores: "Deudores",
+  Inventarios: "Inventarios",
+  Proveedores: "Proveedores",
+  "Cuentas por pagar": "Cuentas por pagar",
+  Gastos: "Gastos",
+};
 
 const LEFT_ITEMS: { value: LeftMode; label: string; icon: string }[] = [
   { value: "cuentas", label: "Cuentas", icon: "account_balance_wallet" },
@@ -53,11 +65,12 @@ const LEFT_ITEMS: { value: LeftMode; label: string; icon: string }[] = [
   { value: "periodo", label: "Periodo", icon: "date_range" },
 ];
 
-const TAB_DESCRIPTION: Record<TablaTab, string> = {
+const TAB_DESCRIPTION: Record<ReportsTab, string> = {
   inventario: "Todo lo que hay registrado en inventario, con su valor.",
   proveedores: "Cuanto se les ha gastado, cuanto se les ha pagado y cuanto se les debe.",
   contratistas: "Cuanto se les ha asignado, cuanto se les ha pagado y cuanto se les debe.",
   clientes: "Cuanto han abonado los compradores y el saldo pendiente de cada obra.",
+  plancuentas: "Saldo general de la empresa por cuenta: Caja, Bancos, Clientes, Inventarios, Proveedores, Contratistas y Gastos.",
 };
 
 function money(value: number | null, visible: boolean) {
@@ -133,7 +146,7 @@ const exportButtonClass =
   "border border-primary text-primary font-label-sm uppercase px-4 py-3 hover:bg-primary hover:text-on-primary transition-colors disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2";
 
 export function Reports() {
-  const [tab, setTab] = useState<TablaTab>("inventario");
+  const [tab, setTab] = useState<ReportsTab>("inventario");
   const [leftMode, setLeftMode] = useState<LeftMode>("cuentas");
   const [valuesVisible, setValuesVisible] = useState(false);
 
@@ -148,6 +161,10 @@ export function Reports() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState<"pdf" | "excel" | null>(null);
+
+  const [cuentas, setCuentas] = useState<CuentaRow[]>([]);
+  const [cuentasLoading, setCuentasLoading] = useState(true);
+  const [cuentasError, setCuentasError] = useState<string | null>(null);
 
   useEffect(() => {
     listProyectos({ isActive: true }).then(setProyectos).catch(() => setProyectos([]));
@@ -171,6 +188,7 @@ export function Reports() {
   );
 
   useEffect(() => {
+    if (tab === "plancuentas") return;
     setIsLoading(true);
     setError(null);
     getTablaReport<Row>(tab, filters)
@@ -179,7 +197,17 @@ export function Reports() {
       .finally(() => setIsLoading(false));
   }, [tab, filters]);
 
-  const columns = useMemo(() => columnsFor(tab), [tab]);
+  useEffect(() => {
+    if (tab !== "plancuentas") return;
+    setCuentasLoading(true);
+    setCuentasError(null);
+    getCuentasReport()
+      .then(setCuentas)
+      .catch(() => setCuentasError("No se pudo cargar el plan de cuentas."))
+      .finally(() => setCuentasLoading(false));
+  }, [tab]);
+
+  const columns = useMemo(() => (tab === "plancuentas" ? [] : columnsFor(tab)), [tab]);
   const { pageItems: pageRows, ...pagination } = usePagination(rows);
 
   async function buildDetailSections(): Promise<{ pdf: TablaPdfSection[]; excel: TablaExcelSection[] }> {
@@ -367,7 +395,37 @@ export function Reports() {
     return { pdf: [], excel: [] };
   }
 
+  async function handleExportCuentas(format: "pdf" | "excel") {
+    if (cuentas.length === 0) return;
+    setIsExporting(format);
+    try {
+      const title = "Reporte General de Cuentas";
+      const headers = ["Codigo", "Grupo", "Cuenta", "Saldo"];
+      if (format === "pdf") {
+        const body = cuentas.map((c) => [c.codigo, CUENTA_GROUP_LABEL[c.grupo] ?? c.grupo, c.nombre, c.saldo.toLocaleString("es-CO")]);
+        await exportTablaPdf(title, headers, body, { filenamePrefix: "plan-cuentas" });
+      } else {
+        const excelColumns: TablaColumn[] = [
+          { header: "Codigo", key: "codigo", width: 12 },
+          { header: "Grupo", key: "grupo", width: 24 },
+          { header: "Cuenta", key: "nombre", width: 24 },
+          { header: "Saldo", key: "saldo", width: 18 },
+        ];
+        const excelRows = cuentas.map((c) => ({
+          codigo: c.codigo,
+          grupo: CUENTA_GROUP_LABEL[c.grupo] ?? c.grupo,
+          nombre: c.nombre,
+          saldo: c.saldo,
+        }));
+        await exportTablaExcel(title, excelColumns, excelRows, { filenamePrefix: "plan-cuentas" });
+      }
+    } finally {
+      setIsExporting(null);
+    }
+  }
+
   async function handleExport(format: "pdf" | "excel") {
+    if (tab === "plancuentas") return handleExportCuentas(format);
     if (rows.length === 0) return;
     setIsExporting(format);
     try {
@@ -405,7 +463,7 @@ export function Reports() {
       </div>
 
       <section className="bg-surface-container lux-card-border overflow-hidden">
-        <div className="grid grid-cols-2 sm:grid-cols-4 border-b border-outline-variant">
+        <div className="grid grid-cols-2 sm:grid-cols-5 border-b border-outline-variant">
           {TABS.map((t) => (
             <button
               key={t.value}
@@ -423,6 +481,7 @@ export function Reports() {
         </div>
 
         <div className="flex flex-col md:flex-row">
+          {tab !== "plancuentas" && (
           <div className="md:w-56 shrink-0 border-b md:border-b-0 md:border-r border-outline-variant">
             {LEFT_ITEMS.map((item) => (
               <div key={item.value} className="border-b border-outline-variant last:border-b-0">
@@ -500,6 +559,7 @@ export function Reports() {
               </div>
             ))}
           </div>
+          )}
 
           <div className="flex-1 min-w-0 p-6 md:p-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -516,7 +576,7 @@ export function Reports() {
                 </button>
                 <button
                   onClick={() => handleExport("pdf")}
-                  disabled={isExporting !== null || rows.length === 0}
+                  disabled={isExporting !== null || (tab === "plancuentas" ? cuentas.length === 0 : rows.length === 0)}
                   className={exportButtonClass}
                 >
                   <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
@@ -524,7 +584,7 @@ export function Reports() {
                 </button>
                 <button
                   onClick={() => handleExport("excel")}
-                  disabled={isExporting !== null || rows.length === 0}
+                  disabled={isExporting !== null || (tab === "plancuentas" ? cuentas.length === 0 : rows.length === 0)}
                   className={exportButtonClass}
                 >
                   <span className="material-symbols-outlined text-[18px]">table_chart</span>
@@ -533,43 +593,83 @@ export function Reports() {
               </div>
             </div>
 
-            {error && <p className="text-error font-label-sm uppercase mb-4">{error}</p>}
-            {isLoading && <p className="font-label-sm uppercase text-on-surface-variant py-8">Cargando...</p>}
-
-            {!isLoading && rows.length === 0 && (
-              <p className="text-on-surface-variant/60 font-label-sm uppercase py-8">
-                Sin datos que coincidan con los filtros seleccionados.
-              </p>
-            )}
-
-            {!isLoading && rows.length > 0 && (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b border-outline-variant font-label-sm text-on-surface-variant uppercase tracking-widest">
-                      {columns.map((c) => (
-                        <th key={c.header} className={`py-2 pr-4 ${c.align === "right" ? "text-right" : "text-left"}`}>
-                          {c.header}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pageRows.map((row, i) => (
-                      <tr key={i} className="border-b border-outline-variant/50 font-body-md text-on-surface">
-                        {columns.map((c) => (
-                          <td key={c.header} className={`py-3 pr-4 ${c.align === "right" ? "text-right" : "text-left"}`}>
-                            {c.render(row, valuesVisible)}
-                          </td>
+            {tab === "plancuentas" ? (
+              <>
+                {cuentasError && <p className="text-error font-label-sm uppercase mb-4">{cuentasError}</p>}
+                {cuentasLoading && <p className="font-label-sm uppercase text-on-surface-variant py-8">Cargando...</p>}
+                {!cuentasLoading && cuentas.length > 0 && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="border-b border-outline-variant font-label-sm text-on-surface-variant uppercase tracking-widest">
+                          <th className="py-2 pr-4 text-left">Codigo</th>
+                          <th className="py-2 pr-4 text-left">Grupo</th>
+                          <th className="py-2 pr-4 text-left">Cuenta</th>
+                          <th className="py-2 pr-4 text-right">Saldo</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cuentas.map((c) => (
+                          <tr key={c.codigo} className="border-b border-outline-variant/50 font-body-md text-on-surface">
+                            <td className="py-3 pr-4 text-on-surface-variant">{c.codigo}</td>
+                            <td className="py-3 pr-4 text-on-surface-variant">{CUENTA_GROUP_LABEL[c.grupo] ?? c.grupo}</td>
+                            <td className="py-3 pr-4">{c.nombre}</td>
+                            <td className={`py-3 pr-4 text-right font-semibold ${c.saldo < 0 ? "text-error" : ""}`}>
+                              {money(c.saldo, valuesVisible)}
+                            </td>
+                          </tr>
                         ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                      </tbody>
+                    </table>
+                    <p className="font-label-sm text-on-surface-variant/60 uppercase mt-6">
+                      Caja y Bancos son un estimado a partir del metodo de pago registrado en cada movimiento; los
+                      abonos a proveedor o pagos a contratista registrados antes de este cambio no tienen metodo de
+                      pago y no quedan incluidos ahi.
+                    </p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                {error && <p className="text-error font-label-sm uppercase mb-4">{error}</p>}
+                {isLoading && <p className="font-label-sm uppercase text-on-surface-variant py-8">Cargando...</p>}
 
-            {!isLoading && rows.length > 0 && <Pagination {...pagination} onPageChange={pagination.setPage} />}
+                {!isLoading && rows.length === 0 && (
+                  <p className="text-on-surface-variant/60 font-label-sm uppercase py-8">
+                    Sin datos que coincidan con los filtros seleccionados.
+                  </p>
+                )}
+
+                {!isLoading && rows.length > 0 && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="border-b border-outline-variant font-label-sm text-on-surface-variant uppercase tracking-widest">
+                          {columns.map((c) => (
+                            <th key={c.header} className={`py-2 pr-4 ${c.align === "right" ? "text-right" : "text-left"}`}>
+                              {c.header}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pageRows.map((row, i) => (
+                          <tr key={i} className="border-b border-outline-variant/50 font-body-md text-on-surface">
+                            {columns.map((c) => (
+                              <td key={c.header} className={`py-3 pr-4 ${c.align === "right" ? "text-right" : "text-left"}`}>
+                                {c.render(row, valuesVisible)}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {!isLoading && rows.length > 0 && <Pagination {...pagination} onPageChange={pagination.setPage} />}
+              </>
+            )}
           </div>
         </div>
       </section>

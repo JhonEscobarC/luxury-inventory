@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
-import { EtapaStatus } from "@prisma/client";
+import { EtapaStatus, MetodoPago } from "@prisma/client";
 import * as asignacionesService from "./asignaciones.service";
 
 const etapaSchema = z.object({
@@ -23,7 +23,10 @@ const updateSchema = z.object({
   etapas: z.array(etapaSchema).min(1).optional(),
 });
 
-const etapaStatusSchema = z.object({ status: z.nativeEnum(EtapaStatus) });
+const etapaStatusSchema = z.object({
+  status: z.nativeEnum(EtapaStatus),
+  metodoPago: z.nativeEnum(MetodoPago).optional(),
+});
 
 const listQuerySchema = z.object({
   obraId: z.string().uuid().optional(),
@@ -71,12 +74,13 @@ export async function updateHandler(req: Request, res: Response, next: NextFunct
 
 export async function updateEtapaStatusHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const { status } = etapaStatusSchema.parse(req.body);
+    const { status, metodoPago } = etapaStatusSchema.parse(req.body);
     const asignacion = await asignacionesService.updateEtapaStatus(
       req.params.id,
       req.params.etapaId,
       status,
       req.user!.sub,
+      metodoPago,
     );
     res.json({ asignacion });
   } catch (error) {

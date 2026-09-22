@@ -273,6 +273,8 @@ model ContratistaEtapa {
   status      EtapaStatus @default(PENDIENTE)
   completedAt DateTime?
   paidAt      DateTime?
+  // Con que medio se pago esta cuota (se pide al marcarla como pagada).
+  metodoPago  MetodoPago?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
@@ -311,6 +313,8 @@ model Abono {
   id        String   @id @default(uuid())
   amount    Decimal  @db.Decimal(14, 2)
   notes     String?
+  // Nulo en abonos registrados antes de agregar este campo.
+  metodoPago MetodoPago?
   createdAt DateTime @default(now())
 
   proveedorId String

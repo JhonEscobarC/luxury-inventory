@@ -1,4 +1,4 @@
-import { Prisma, HistorialTipo, type Abono, type User } from "@prisma/client";
+import { Prisma, HistorialTipo, type Abono, type MetodoPago, type User } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { HttpError } from "../../middleware/errorHandler";
 import { recordEvento } from "../historial/historial.service";
@@ -16,6 +16,7 @@ function serializeAbono(abono: Abono & { createdBy?: Pick<User, "id" | "name"> |
     id: abono.id,
     amount: Number(abono.amount),
     notes: abono.notes,
+    metodoPago: abono.metodoPago,
     proveedorId: abono.proveedorId,
     createdById: abono.createdById,
     createdByName: abono.createdBy?.name ?? null,
@@ -43,6 +44,7 @@ export interface CreateAbonoInput {
   proveedorId: string;
   amount: number;
   notes?: string | null;
+  metodoPago: MetodoPago;
 }
 
 export async function createAbono(input: CreateAbonoInput, createdById: string) {
@@ -69,6 +71,7 @@ export async function createAbono(input: CreateAbonoInput, createdById: string) 
       proveedorId: input.proveedorId,
       amount: input.amount,
       notes: input.notes ?? null,
+      metodoPago: input.metodoPago,
       createdById,
     },
     include: { createdBy: { select: { id: true, name: true } } },

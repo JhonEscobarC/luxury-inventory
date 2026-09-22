@@ -1,11 +1,13 @@
 import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
+import { MetodoPago } from "@prisma/client";
 import * as abonosService from "./abonos.service";
 
 const abonoInputSchema = z.object({
   proveedorId: z.string().uuid(),
   amount: z.number().positive(),
   notes: z.string().trim().min(1).optional().nullable(),
+  metodoPago: z.nativeEnum(MetodoPago, { required_error: "Selecciona el metodo de pago" }),
 });
 
 const listQuerySchema = z.object({

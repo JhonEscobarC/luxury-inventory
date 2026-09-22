@@ -3,6 +3,18 @@ import { createAbono, listAbonos } from "../../lib/abonos";
 import { currencyFormatter, displayCurrency } from "../../lib/currency";
 import type { Abono } from "../../types/abono";
 import type { Proveedor } from "../../types/proveedor";
+import type { MetodoPago } from "../../types/abonoCliente";
+
+const METODO_PAGO_OPTIONS: { value: MetodoPago; label: string }[] = [
+  { value: "EFECTIVO", label: "Efectivo" },
+  { value: "TRANSFERENCIA", label: "Transferencia" },
+  { value: "TARJETA", label: "Tarjeta" },
+];
+const METODO_PAGO_LABEL: Record<MetodoPago, string> = {
+  EFECTIVO: "Efectivo",
+  TRANSFERENCIA: "Transferencia",
+  TARJETA: "Tarjeta",
+};
 
 interface ProveedorAbonosModalProps {
   proveedor: Proveedor;
@@ -23,6 +35,7 @@ export function ProveedorAbonosModal({
   const [isLoading, setIsLoading] = useState(true);
   const [amount, setAmount] = useState("");
   const [notes, setNotes] = useState("");
+  const [metodoPago, setMetodoPago] = useState<MetodoPago>("EFECTIVO");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -60,7 +73,7 @@ export function ProveedorAbonosModal({
     }
     setIsSubmitting(true);
     try {
-      await createAbono({ proveedorId: proveedor.id, amount: value, notes: notes || null });
+      await createAbono({ proveedorId: proveedor.id, amount: value, notes: notes || null, metodoPago });
       setAmount("");
       setNotes("");
       await refresh();
@@ -118,6 +131,16 @@ export function ProveedorAbonosModal({
             />
           </div>
           <div className="flex-1 w-full">
+            <label className={labelClass}>Metodo de pago</label>
+            <select className={inputClass} value={metodoPago} onChange={(e) => setMetodoPago(e.target.value as MetodoPago)}>
+              {METODO_PAGO_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex-1 w-full">
             <label className={labelClass}>Notas (opcional)</label>
             <input className={inputClass} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
@@ -134,8 +157,9 @@ export function ProveedorAbonosModal({
 
         <div className="flex flex-col gap-3">
           <div className="hidden md:grid grid-cols-12 gap-4 pb-2 border-b border-outline-variant font-label-sm text-on-surface-variant uppercase tracking-widest px-2">
-            <div className="col-span-3">Fecha</div>
-            <div className="col-span-3">Monto</div>
+            <div className="col-span-2">Fecha</div>
+            <div className="col-span-2">Monto</div>
+            <div className="col-span-2">Metodo</div>
             <div className="col-span-4">Notas</div>
             <div className="col-span-2">Registrado por</div>
           </div>
@@ -149,11 +173,14 @@ export function ProveedorAbonosModal({
                 key={abono.id}
                 className="border border-outline-variant p-3 md:px-2 md:py-3 grid grid-cols-1 md:grid-cols-12 gap-2 items-center"
               >
-                <div className="md:col-span-3 font-body-md text-on-surface-variant">
+                <div className="md:col-span-2 font-body-md text-on-surface-variant">
                   {new Date(abono.createdAt).toLocaleDateString("es-CO")}
                 </div>
-                <div className="md:col-span-3 font-body-md font-semibold text-primary">
+                <div className="md:col-span-2 font-body-md font-semibold text-primary">
                   {displayCurrency(abono.amount, valuesVisible)}
+                </div>
+                <div className="md:col-span-2 font-label-sm uppercase text-on-surface-variant">
+                  {abono.metodoPago ? METODO_PAGO_LABEL[abono.metodoPago] : "-"}
                 </div>
                 <div className="md:col-span-4 font-body-md text-on-surface-variant">{abono.notes || "-"}</div>
                 <div className="md:col-span-2 font-label-sm uppercase text-on-surface-variant">

@@ -2,12 +2,19 @@ import { useEffect, useState } from "react";
 import { createAsignacion, listAsignaciones, updateAsignacion, updateEtapaStatus } from "../../lib/asignaciones";
 import { listContratistas } from "../../lib/contratistas";
 import { listObraEtapas } from "../../lib/obraEtapas";
-import type { Asignacion, AsignacionInput, EtapaStatus } from "../../types/asignacion";
+import type { Asignacion, AsignacionInput, Etapa, EtapaStatus } from "../../types/asignacion";
 import type { Contratista } from "../../types/contratista";
 import type { Obra } from "../../types/obra";
 import type { ObraEtapa } from "../../types/obraEtapa";
+import type { MetodoPago } from "../../types/abonoCliente";
 import { AsignacionFormModal } from "./AsignacionFormModal";
 import { displayCurrency } from "../../lib/currency";
+
+const METODO_PAGO_OPTIONS: { value: MetodoPago; label: string }[] = [
+  { value: "EFECTIVO", label: "Efectivo" },
+  { value: "TRANSFERENCIA", label: "Transferencia" },
+  { value: "TARJETA", label: "Tarjeta" },
+];
 
 interface ObraContratistasModalProps {
   obra: Obra;
@@ -42,6 +49,8 @@ export function ObraContratistasModal({ obra, onClose }: ObraContratistasModalPr
   const [isCreating, setIsCreating] = useState(false);
   const [editingAsignacion, setEditingAsignacion] = useState<Asignacion | null>(null);
   const [pendingEtapaId, setPendingEtapaId] = useState<string | null>(null);
+  const [payingEtapa, setPayingEtapa] = useState<{ asignacionId: string; etapa: Etapa } | null>(null);
+  const [payMetodo, setPayMetodo] = useState<MetodoPago>("EFECTIVO");
 
   async function refresh() {
     setIsLoading(true);
@@ -82,17 +91,25 @@ export function ObraContratistasModal({ obra, onClose }: ObraContratistasModalPr
     await refresh();
   }
 
-  async function handleAdvanceEtapa(asignacionId: string, etapaId: string, nextStatus: EtapaStatus) {
+  async function handleAdvanceEtapa(asignacionId: string, etapaId: string, nextStatus: EtapaStatus, metodoPago?: MetodoPago) {
     setPendingEtapaId(etapaId);
     setErrorMessage(null);
     try {
-      await updateEtapaStatus(asignacionId, etapaId, nextStatus);
+      await updateEtapaStatus(asignacionId, etapaId, nextStatus, metodoPago);
       await refresh();
     } catch {
       setErrorMessage("No se pudo actualizar el estado de la etapa.");
     } finally {
       setPendingEtapaId(null);
     }
+  }
+
+  async function confirmPago() {
+    if (!payingEtapa) return;
+    const { asignacionId, etapa } = payingEtapa;
+    setPayingEtapa(null);
+    await handleAdvanceEtapa(asignacionId, etapa.id, "PAGADA", payMetodo);
+    setPayMetodo("EFECTIVO");
   }
 
   return (
@@ -188,7 +205,11 @@ export function ObraContratistasModal({ obra, onClose }: ObraContratistasModalPr
                           {next && (
                             <button
                               disabled={isPending}
-                              onClick={() => handleAdvanceEtapa(asignacion.id, etapa.id, next)}
+                              onClick={() =>
+                                next === "PAGADA"
+                                  ? setPayingEtapa({ asignacionId: asignacion.id, etapa })
+                                  : handleAdvanceEtapa(asignacion.id, etapa.id, next)
+                              }
                               className="font-label-sm uppercase text-primary hover:text-primary-fixed transition-colors disabled:opacity-50"
                             >
                               {isPending ? "..." : `Marcar ${ETAPA_STATUS_LABEL[next].toLowerCase()}`}
@@ -236,6 +257,48 @@ export function ObraContratistasModal({ obra, onClose }: ObraContratistasModalPr
           onClose={() => setEditingAsignacion(null)}
           onSubmit={handleUpdate}
         />
+      )}
+
+      {payingEtapa && (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center p-margin-mobile">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setPayingEtapa(null)} />
+          <div className="relative w-full max-w-md bg-surface-container border border-outline-variant p-6 md:p-8">
+            <h3 className="text-headline-md-mobile text-primary uppercase mb-2">Marcar como pagada</h3>
+            <p className="font-body-md text-on-surface-variant mb-6">
+              {payingEtapa.etapa.name} - {displayCurrency(payingEtapa.etapa.amount)}
+            </p>
+            <label className="font-label-sm text-on-surface-variant uppercase tracking-widest block mb-2">
+              Metodo de pago
+            </label>
+            <select
+              className="w-full bg-surface border border-outline-variant focus:outline-none focus:border-primary text-on-surface font-body-md px-3 py-3 mb-6"
+              value={payMetodo}
+              onChange={(e) => setPayMetodo(e.target.value as MetodoPago)}
+            >
+              {METODO_PAGO_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <div className="flex gap-4">
+              <button
+                type="button"
+                onClick={() => setPayingEtapa(null)}
+                className="flex-1 border border-outline-variant text-on-surface-variant font-label-sm uppercase py-3 hover:border-primary hover:text-primary transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmPago}
+                className="flex-1 bg-primary-container text-on-primary font-label-sm uppercase py-3 hover:bg-primary-fixed transition-colors"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
