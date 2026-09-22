@@ -109,6 +109,7 @@ export interface TablaInventarioRow {
   categoriaName: string | null;
   obraName: string;
   proyectoName: string | null;
+  proveedorName: string | null;
   quantity: number;
   unit: string;
   price: number;
@@ -140,4 +141,50 @@ export interface TablaClienteRow {
   precioVenta: number | null;
   totalAbonado: number;
   saldoActual: number | null;
+}
+
+export interface TablaProveedorCompraRow {
+  proveedorName: string;
+  obraName: string;
+  proyectoName: string | null;
+  description: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  subtotal: number;
+  formaPago: string | null;
+  createdAt: string;
+}
+
+export interface TablaProveedorPagoRow {
+  proveedorName: string;
+  amount: number;
+  notes: string | null;
+  createdByName: string | null;
+  createdAt: string;
+}
+
+export interface TablaContratistaEtapaRow {
+  contratistaName: string;
+  obraName: string;
+  proyectoName: string | null;
+  etapaName: string;
+  percentage: number;
+  monto: number;
+  status: string;
+  completedAt: string | null;
+  paidAt: string | null;
+  createdAt: string;
+}
+
+export interface TablaClienteAbonoRow {
+  obraName: string;
+  proyectoName: string | null;
+  client: string | null;
+  amount: number;
+  formaPago: string | null;
+  metodoPago: string | null;
+  notes: string | null;
+  createdByName: string | null;
+  createdAt: string;
 }

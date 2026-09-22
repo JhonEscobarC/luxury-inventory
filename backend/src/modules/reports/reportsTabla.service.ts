@@ -16,6 +16,7 @@ export interface TablaInventarioRow {
   categoriaName: string | null;
   obraName: string;
   proyectoName: string | null;
+  proveedorName: string | null;
   quantity: number;
   unit: string;
   price: number;
@@ -49,6 +50,54 @@ export interface TablaClienteRow {
   saldoActual: number | null;
 }
 
+// Filas de detalle usadas solo en la exportacion (PDF/Excel), para que ademas del
+// resumen por proveedor/contratista/cliente se vea cada transaccion individual.
+export interface TablaProveedorCompraRow {
+  proveedorName: string;
+  obraName: string;
+  proyectoName: string | null;
+  description: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  subtotal: number;
+  formaPago: string | null;
+  createdAt: Date;
+}
+
+export interface TablaProveedorPagoRow {
+  proveedorName: string;
+  amount: number;
+  notes: string | null;
+  createdByName: string | null;
+  createdAt: Date;
+}
+
+export interface TablaContratistaEtapaRow {
+  contratistaName: string;
+  obraName: string;
+  proyectoName: string | null;
+  etapaName: string;
+  percentage: number;
+  monto: number;
+  status: string;
+  completedAt: Date | null;
+  paidAt: Date | null;
+  createdAt: Date;
+}
+
+export interface TablaClienteAbonoRow {
+  obraName: string;
+  proyectoName: string | null;
+  client: string | null;
+  amount: number;
+  formaPago: string | null;
+  metodoPago: string | null;
+  notes: string | null;
+  createdByName: string | null;
+  createdAt: Date;
+}
+
 async function resolveObraIds(filters: TablaFilters): Promise<string[] | null> {
   if (filters.obraId) return [filters.obraId];
   if (filters.proyectoId) {
@@ -73,7 +122,7 @@ export async function getTablaInventario(filters: TablaFilters): Promise<TablaIn
       ...(obraIds && { obraId: { in: obraIds } }),
       ...dateRange(filters.from, filters.to),
     },
-    include: { categoria: true, obra: { include: { proyecto: true } } },
+    include: { categoria: true, obra: { include: { proyecto: true } }, proveedor: true },
     orderBy: { name: "asc" },
   });
   return products.map((p) => ({
@@ -82,6 +131,7 @@ export async function getTablaInventario(filters: TablaFilters): Promise<TablaIn
     categoriaName: p.categoria?.name ?? null,
     obraName: p.obra?.name ?? "General",
     proyectoName: p.obra?.proyecto?.name ?? null,
+    proveedorName: p.proveedor?.name ?? null,
     quantity: Number(p.quantity),
     unit: p.unit,
     price: Number(p.price),
@@ -244,4 +294,119 @@ export async function getTablaClientes(filters: TablaFilters): Promise<TablaClie
       };
     })
     .filter((r) => !filters.from && !filters.to ? true : r.totalAbonado > 0);
+}
+
+// Detalle transaccion por transaccion (compras y pagos) para la exportacion de Proveedores.
+export async function getDetalleProveedores(
+  filters: TablaFilters,
+): Promise<{ compras: TablaProveedorCompraRow[]; pagos: TablaProveedorPagoRow[] }> {
+  const obraIds = await resolveObraIds(filters);
+  const periodo = dateRange(filters.from, filters.to);
+
+  const [proveedores, orders, abonos] = await Promise.all([
+    prisma.proveedor.findMany({ select: { id: true, name: true } }),
+    prisma.order.findMany({
+      where: { status: OrderStatus.DESPACHADO, ...(obraIds && { obraId: { in: obraIds } }), ...periodo },
+      include: { items: true, obra: { include: { proyecto: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.abono.findMany({
+      where: periodo,
+      include: { createdBy: { select: { name: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+
+  const proveedorNameById = new Map(proveedores.map((p) => [p.id, p.name]));
+
+  const compras: TablaProveedorCompraRow[] = [];
+  for (const order of orders) {
+    for (const item of order.items) {
+      const effectiveProveedorId = item.proveedorId ?? order.proveedorId;
+      if (!effectiveProveedorId || item.unitPrice === null) continue;
+      compras.push({
+        proveedorName: proveedorNameById.get(effectiveProveedorId) ?? "-",
+        obraName: order.obra?.name ?? "-",
+        proyectoName: order.obra?.proyecto?.name ?? null,
+        description: item.description,
+        quantity: Number(item.quantity),
+        unit: item.unit,
+        unitPrice: Number(item.unitPrice),
+        subtotal: Number(item.quantity) * Number(item.unitPrice),
+        formaPago: order.formaPago,
+        createdAt: order.createdAt,
+      });
+    }
+  }
+
+  const pagos: TablaProveedorPagoRow[] = abonos.map((a) => ({
+    proveedorName: proveedorNameById.get(a.proveedorId) ?? "-",
+    amount: Number(a.amount),
+    notes: a.notes,
+    createdByName: a.createdBy?.name ?? null,
+    createdAt: a.createdAt,
+  }));
+
+  return { compras, pagos };
+}
+
+// Detalle etapa por etapa (asignadas y pagadas) para la exportacion de Contratistas.
+export async function getDetalleContratistas(filters: TablaFilters): Promise<{ etapas: TablaContratistaEtapaRow[] }> {
+  const obraIds = await resolveObraIds(filters);
+  const periodo = dateRange(filters.from, filters.to);
+
+  const asignaciones = await prisma.contratistaAsignacion.findMany({
+    where: { ...(obraIds && { obraId: { in: obraIds } }), ...periodo },
+    include: { etapas: true, contratista: true, obra: { include: { proyecto: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const etapaAmount = (asignacion: { totalAmount: unknown }, etapa: { percentage: unknown }) =>
+    Math.round((Number(asignacion.totalAmount) * Number(etapa.percentage)) / 100);
+
+  const etapas: TablaContratistaEtapaRow[] = [];
+  for (const asignacion of asignaciones) {
+    for (const etapa of asignacion.etapas) {
+      etapas.push({
+        contratistaName: asignacion.contratista.name,
+        obraName: asignacion.obra?.name ?? "-",
+        proyectoName: asignacion.obra?.proyecto?.name ?? null,
+        etapaName: etapa.name,
+        percentage: Number(etapa.percentage),
+        monto: etapaAmount(asignacion, etapa),
+        status: etapa.status,
+        completedAt: etapa.completedAt,
+        paidAt: etapa.paidAt,
+        createdAt: asignacion.createdAt,
+      });
+    }
+  }
+
+  return { etapas };
+}
+
+// Detalle abono por abono para la exportacion de Clientes.
+export async function getDetalleClientes(filters: TablaFilters): Promise<{ abonos: TablaClienteAbonoRow[] }> {
+  const obraIds = await resolveObraIds(filters);
+  const periodo = dateRange(filters.from, filters.to);
+
+  const abonos = await prisma.abonoCliente.findMany({
+    where: { ...(obraIds && { obraId: { in: obraIds } }), ...periodo },
+    include: { obra: { include: { proyecto: true } }, createdBy: { select: { name: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return {
+    abonos: abonos.map((a) => ({
+      obraName: a.obra?.name ?? "-",
+      proyectoName: a.obra?.proyecto?.name ?? null,
+      client: a.obra?.client ?? null,
+      amount: Number(a.amount),
+      formaPago: a.formaPago,
+      metodoPago: a.metodoPago,
+      notes: a.notes,
+      createdByName: a.createdBy?.name ?? null,
+      createdAt: a.createdAt,
+    })),
+  };
 }

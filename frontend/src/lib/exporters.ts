@@ -521,13 +521,26 @@ export async function exportClientesExcel(obras: ObraClientes[], options: Export
   );
 }
 
+export interface TablaColumn {
+  header: string;
+  key: string;
+  width?: number;
+}
+
+export interface TablaPdfSection {
+  title: string;
+  headers: string[];
+  rows: (string | number)[][];
+}
+
 // Exportador generico para la tabla de Reportes (inventario/proveedores/contratistas/clientes):
-// cada pestana define sus propias columnas, esta funcion solo arma el PDF/Excel.
+// cada pestana define sus propias columnas para el resumen, y opcionalmente secciones de
+// detalle (compras, pagos, etapas, abonos) que se agregan debajo en el mismo PDF.
 export async function exportTablaPdf(
   title: string,
   headers: string[],
   rows: (string | number)[][],
-  options: ExportOptions = {},
+  options: ExportOptions & { sections?: TablaPdfSection[] } = {},
 ) {
   const doc = new jsPDF();
   await addReportHeader(doc, options.title ?? title);
@@ -538,27 +551,50 @@ export async function exportTablaPdf(
     headStyles: { fillColor: GOLD, textColor: [10, 10, 10] },
     styles: { fontSize: 8 },
   });
+
+  let cursorY = lastAutoTableY(doc) + 12;
+  for (const section of options.sections ?? []) {
+    if (section.rows.length === 0) continue;
+    cursorY = addSectionTitle(doc, section.title, cursorY);
+    autoTable(doc, {
+      startY: cursorY,
+      head: [section.headers],
+      body: section.rows,
+      headStyles: { fillColor: GOLD, textColor: [10, 10, 10] },
+      styles: { fontSize: 7 },
+    });
+    cursorY = lastAutoTableY(doc) + 12;
+  }
+
   const prefix = options.filenamePrefix ? slugify(options.filenamePrefix) : slugify(title);
   doc.save(`${prefix}_${Date.now()}.pdf`);
 }
 
-export interface TablaColumn {
-  header: string;
-  key: string;
-  width?: number;
+export interface TablaExcelSection {
+  title: string;
+  columns: TablaColumn[];
+  rows: Record<string, string | number>[];
 }
 
 export async function exportTablaExcel(
   title: string,
   columns: TablaColumn[],
   rows: Record<string, string | number>[],
-  options: ExportOptions = {},
+  options: ExportOptions & { sections?: TablaExcelSection[] } = {},
 ) {
   const workbook = newStyledWorkbook();
   const sheet = workbook.addWorksheet(title.slice(0, 31));
   sheet.columns = columns.map((c) => ({ header: c.header, key: c.key, width: c.width ?? 20 }));
   styleHeaderRow(sheet.getRow(1));
   rows.forEach((row) => sheet.addRow(row));
+
+  for (const section of options.sections ?? []) {
+    if (section.rows.length === 0) continue;
+    const sectionSheet = workbook.addWorksheet(section.title.slice(0, 31));
+    sectionSheet.columns = section.columns.map((c) => ({ header: c.header, key: c.key, width: c.width ?? 20 }));
+    styleHeaderRow(sectionSheet.getRow(1));
+    section.rows.forEach((row) => sectionSheet.addRow(row));
+  }
 
   const buffer = await workbook.xlsx.writeBuffer();
   const prefix = options.filenamePrefix ? slugify(options.filenamePrefix) : slugify(title);

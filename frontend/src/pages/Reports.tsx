@@ -1,21 +1,41 @@
 import { useEffect, useMemo, useState } from "react";
 import { listProyectos } from "../lib/proyectos";
 import { listObras } from "../lib/obras";
-import { getTablaReport } from "../lib/reports";
+import { getTablaDetalle, getTablaReport } from "../lib/reports";
 import { displayCurrency } from "../lib/currency";
 import { exportTablaExcel, exportTablaPdf } from "../lib/exporters";
-import type { TablaColumn } from "../lib/exporters";
+import type { TablaColumn, TablaExcelSection, TablaPdfSection } from "../lib/exporters";
 import type { Proyecto } from "../types/proyecto";
 import type { Obra } from "../types/obra";
 import type {
+  TablaClienteAbonoRow,
   TablaClienteRow,
+  TablaContratistaEtapaRow,
   TablaContratistaRow,
   TablaInventarioRow,
+  TablaProveedorCompraRow,
+  TablaProveedorPagoRow,
   TablaProveedorRow,
   TablaTab,
 } from "../types/report";
 import { usePagination } from "../hooks/usePagination";
 import { Pagination } from "../components/ui/Pagination";
+
+const FORMA_PAGO_LABEL: Record<string, string> = { CONTADO: "Contado", CREDITO: "Credito" };
+const METODO_PAGO_LABEL: Record<string, string> = {
+  EFECTIVO: "Efectivo",
+  TRANSFERENCIA: "Transferencia",
+  TARJETA: "Tarjeta",
+};
+const ETAPA_STATUS_LABEL: Record<string, string> = {
+  PENDIENTE: "Pendiente",
+  COMPLETADA: "Completada",
+  PAGADA: "Pagada",
+};
+
+function fecha(value: string) {
+  return new Date(value).toLocaleDateString("es-CO");
+}
 
 type LeftMode = "cuentas" | "proyecto" | "periodo";
 type Row = TablaInventarioRow | TablaProveedorRow | TablaContratistaRow | TablaClienteRow;
@@ -60,7 +80,7 @@ function columnsFor(tab: TablaTab): ColumnDef[] {
         { header: "Categoria", render: (r) => (r as TablaInventarioRow).categoriaName ?? "-", exportKey: "categoriaName", exportValue: (r) => (r as TablaInventarioRow).categoriaName ?? "-" },
         { header: "Obra", render: (r) => (r as TablaInventarioRow).obraName, exportKey: "obraName", exportValue: (r) => (r as TablaInventarioRow).obraName },
         { header: "Proyecto", render: (r) => (r as TablaInventarioRow).proyectoName ?? "-", exportKey: "proyectoName", exportValue: (r) => (r as TablaInventarioRow).proyectoName ?? "-" },
-        { header: "Cantidad", align: "right", render: (r) => `${(r as TablaInventarioRow).quantity} ${(r as TablaInventarioRow).unit}`, exportKey: "quantity", exportValue: (r) => (r as TablaInventarioRow).quantity },
+        { header: "Cantidad", align: "right", render: (r) => `${(r as TablaInventarioRow).quantity} ${(r as TablaInventarioRow).unit}`, exportKey: "quantity", exportValue: (r) => `${(r as TablaInventarioRow).quantity} ${(r as TablaInventarioRow).unit}` },
         { header: "Precio", align: "right", render: (r, v) => money((r as TablaInventarioRow).price, v), exportKey: "price", exportValue: (r) => (r as TablaInventarioRow).price },
         { header: "Total", align: "right", render: (r, v) => money((r as TablaInventarioRow).total, v), exportKey: "total", exportValue: (r) => (r as TablaInventarioRow).total },
       ];
@@ -83,12 +103,29 @@ function columnsFor(tab: TablaTab): ColumnDef[] {
         { header: "Obra", render: (r) => (r as TablaClienteRow).obraName, exportKey: "obraName", exportValue: (r) => (r as TablaClienteRow).obraName },
         { header: "Proyecto", render: (r) => (r as TablaClienteRow).proyectoName ?? "-", exportKey: "proyectoName", exportValue: (r) => (r as TablaClienteRow).proyectoName ?? "-" },
         { header: "Comprador", render: (r) => (r as TablaClienteRow).client ?? "-", exportKey: "client", exportValue: (r) => (r as TablaClienteRow).client ?? "-" },
-        { header: "Precio venta", align: "right", render: (r, v) => money((r as TablaClienteRow).precioVenta, v), exportKey: "precioVenta", exportValue: (r) => (r as TablaClienteRow).precioVenta ?? "" },
+        { header: "Precio venta", align: "right", render: (r, v) => money((r as TablaClienteRow).precioVenta, v), exportKey: "precioVenta", exportValue: (r) => (r as TablaClienteRow).precioVenta ?? "-" },
         { header: "Abonado", align: "right", render: (r, v) => money((r as TablaClienteRow).totalAbonado, v), exportKey: "totalAbonado", exportValue: (r) => (r as TablaClienteRow).totalAbonado },
-        { header: "Saldo", align: "right", render: (r, v) => money((r as TablaClienteRow).saldoActual, v), exportKey: "saldoActual", exportValue: (r) => (r as TablaClienteRow).saldoActual ?? "" },
+        { header: "Saldo", align: "right", render: (r, v) => money((r as TablaClienteRow).saldoActual, v), exportKey: "saldoActual", exportValue: (r) => (r as TablaClienteRow).saldoActual ?? "-" },
       ];
   }
 }
+
+// Columnas que solo se agregan al exportar Inventario (no ocupan espacio en la tabla en
+// pantalla, que se mantiene como resumen), para que el archivo exportado quede mas completo.
+const INVENTARIO_EXPORT_EXTRA: ColumnDef[] = [
+  {
+    header: "Proveedor",
+    render: (r) => (r as TablaInventarioRow).proveedorName ?? "-",
+    exportKey: "proveedorName",
+    exportValue: (r) => (r as TablaInventarioRow).proveedorName ?? "-",
+  },
+  {
+    header: "Fecha de registro",
+    render: (r) => fecha((r as TablaInventarioRow).createdAt),
+    exportKey: "createdAt",
+    exportValue: (r) => fecha((r as TablaInventarioRow).createdAt),
+  },
+];
 
 const selectClass =
   "w-full bg-surface border border-outline-variant focus:outline-none focus:border-primary text-on-surface font-body-md px-3 py-3";
@@ -123,43 +160,235 @@ export function Reports() {
     return obras.filter((o) => o.proyectoId === proyectoId);
   }, [obras, proyectoId]);
 
-  useEffect(() => {
-    setIsLoading(true);
-    setError(null);
-    const filters =
+  const filters = useMemo(
+    () =>
       leftMode === "proyecto"
         ? { proyectoId: proyectoId || undefined, obraId: obraId || undefined }
         : leftMode === "periodo"
           ? { from: from || undefined, to: to || undefined }
-          : {};
+          : {},
+    [leftMode, proyectoId, obraId, from, to],
+  );
+
+  useEffect(() => {
+    setIsLoading(true);
+    setError(null);
     getTablaReport<Row>(tab, filters)
       .then(setRows)
       .catch(() => setError("No se pudo cargar el reporte."))
       .finally(() => setIsLoading(false));
-  }, [tab, leftMode, proyectoId, obraId, from, to]);
+  }, [tab, filters]);
 
   const columns = useMemo(() => columnsFor(tab), [tab]);
   const { pageItems: pageRows, ...pagination } = usePagination(rows);
+
+  async function buildDetailSections(): Promise<{ pdf: TablaPdfSection[]; excel: TablaExcelSection[] }> {
+    if (tab === "proveedores") {
+      const { compras, pagos } = await getTablaDetalle<{
+        compras: TablaProveedorCompraRow[];
+        pagos: TablaProveedorPagoRow[];
+      }>("proveedores", filters);
+      return {
+        pdf: [
+          {
+            title: "Detalle de compras",
+            headers: ["Proveedor", "Obra", "Proyecto", "Material", "Cant.", "Unidad", "Precio", "Subtotal", "Forma de pago", "Fecha"],
+            rows: compras.map((c) => [
+              c.proveedorName,
+              c.obraName,
+              c.proyectoName ?? "-",
+              c.description,
+              c.quantity,
+              c.unit,
+              c.unitPrice.toLocaleString("es-CO"),
+              c.subtotal.toLocaleString("es-CO"),
+              c.formaPago ? (FORMA_PAGO_LABEL[c.formaPago] ?? c.formaPago) : "-",
+              fecha(c.createdAt),
+            ]),
+          },
+          {
+            title: "Detalle de pagos",
+            headers: ["Proveedor", "Monto", "Notas", "Registrado por", "Fecha"],
+            rows: pagos.map((p) => [p.proveedorName, p.amount.toLocaleString("es-CO"), p.notes ?? "-", p.createdByName ?? "-", fecha(p.createdAt)]),
+          },
+        ],
+        excel: [
+          {
+            title: "Detalle de compras",
+            columns: [
+              { header: "Proveedor", key: "proveedorName", width: 22 },
+              { header: "Obra", key: "obraName", width: 22 },
+              { header: "Proyecto", key: "proyectoName", width: 22 },
+              { header: "Material", key: "description", width: 28 },
+              { header: "Cantidad", key: "quantity", width: 12 },
+              { header: "Unidad", key: "unit", width: 12 },
+              { header: "Precio unitario", key: "unitPrice", width: 16 },
+              { header: "Subtotal", key: "subtotal", width: 16 },
+              { header: "Forma de pago", key: "formaPago", width: 16 },
+              { header: "Fecha", key: "createdAt", width: 14 },
+            ],
+            rows: compras.map((c) => ({
+              proveedorName: c.proveedorName,
+              obraName: c.obraName,
+              proyectoName: c.proyectoName ?? "-",
+              description: c.description,
+              quantity: c.quantity,
+              unit: c.unit,
+              unitPrice: c.unitPrice,
+              subtotal: c.subtotal,
+              formaPago: c.formaPago ? (FORMA_PAGO_LABEL[c.formaPago] ?? c.formaPago) : "-",
+              createdAt: fecha(c.createdAt),
+            })),
+          },
+          {
+            title: "Detalle de pagos",
+            columns: [
+              { header: "Proveedor", key: "proveedorName", width: 22 },
+              { header: "Monto", key: "amount", width: 16 },
+              { header: "Notas", key: "notes", width: 28 },
+              { header: "Registrado por", key: "createdByName", width: 20 },
+              { header: "Fecha", key: "createdAt", width: 14 },
+            ],
+            rows: pagos.map((p) => ({
+              proveedorName: p.proveedorName,
+              amount: p.amount,
+              notes: p.notes ?? "-",
+              createdByName: p.createdByName ?? "-",
+              createdAt: fecha(p.createdAt),
+            })),
+          },
+        ],
+      };
+    }
+
+    if (tab === "contratistas") {
+      const { etapas } = await getTablaDetalle<{ etapas: TablaContratistaEtapaRow[] }>("contratistas", filters);
+      return {
+        pdf: [
+          {
+            title: "Detalle de etapas",
+            headers: ["Contratista", "Obra", "Proyecto", "Etapa", "%", "Monto", "Estado", "Completada", "Pagada", "Asignacion"],
+            rows: etapas.map((e) => [
+              e.contratistaName,
+              e.obraName,
+              e.proyectoName ?? "-",
+              e.etapaName,
+              `${e.percentage}%`,
+              e.monto.toLocaleString("es-CO"),
+              ETAPA_STATUS_LABEL[e.status] ?? e.status,
+              e.completedAt ? fecha(e.completedAt) : "-",
+              e.paidAt ? fecha(e.paidAt) : "-",
+              fecha(e.createdAt),
+            ]),
+          },
+        ],
+        excel: [
+          {
+            title: "Detalle de etapas",
+            columns: [
+              { header: "Contratista", key: "contratistaName", width: 22 },
+              { header: "Obra", key: "obraName", width: 22 },
+              { header: "Proyecto", key: "proyectoName", width: 22 },
+              { header: "Etapa", key: "etapaName", width: 18 },
+              { header: "Porcentaje", key: "percentage", width: 12 },
+              { header: "Monto", key: "monto", width: 16 },
+              { header: "Estado", key: "status", width: 14 },
+              { header: "Completada", key: "completedAt", width: 14 },
+              { header: "Pagada", key: "paidAt", width: 14 },
+              { header: "Asignacion", key: "createdAt", width: 14 },
+            ],
+            rows: etapas.map((e) => ({
+              contratistaName: e.contratistaName,
+              obraName: e.obraName,
+              proyectoName: e.proyectoName ?? "-",
+              etapaName: e.etapaName,
+              percentage: e.percentage,
+              monto: e.monto,
+              status: ETAPA_STATUS_LABEL[e.status] ?? e.status,
+              completedAt: e.completedAt ? fecha(e.completedAt) : "-",
+              paidAt: e.paidAt ? fecha(e.paidAt) : "-",
+              createdAt: fecha(e.createdAt),
+            })),
+          },
+        ],
+      };
+    }
+
+    if (tab === "clientes") {
+      const { abonos } = await getTablaDetalle<{ abonos: TablaClienteAbonoRow[] }>("clientes", filters);
+      return {
+        pdf: [
+          {
+            title: "Detalle de abonos",
+            headers: ["Obra", "Proyecto", "Comprador", "Monto", "Forma de pago", "Metodo", "Notas", "Registrado por", "Fecha"],
+            rows: abonos.map((a) => [
+              a.obraName,
+              a.proyectoName ?? "-",
+              a.client ?? "-",
+              a.amount.toLocaleString("es-CO"),
+              a.formaPago ? (FORMA_PAGO_LABEL[a.formaPago] ?? a.formaPago) : "-",
+              a.metodoPago ? (METODO_PAGO_LABEL[a.metodoPago] ?? a.metodoPago) : "-",
+              a.notes ?? "-",
+              a.createdByName ?? "-",
+              fecha(a.createdAt),
+            ]),
+          },
+        ],
+        excel: [
+          {
+            title: "Detalle de abonos",
+            columns: [
+              { header: "Obra", key: "obraName", width: 22 },
+              { header: "Proyecto", key: "proyectoName", width: 22 },
+              { header: "Comprador", key: "client", width: 22 },
+              { header: "Monto", key: "amount", width: 16 },
+              { header: "Forma de pago", key: "formaPago", width: 16 },
+              { header: "Metodo", key: "metodoPago", width: 16 },
+              { header: "Notas", key: "notes", width: 26 },
+              { header: "Registrado por", key: "createdByName", width: 20 },
+              { header: "Fecha", key: "createdAt", width: 14 },
+            ],
+            rows: abonos.map((a) => ({
+              obraName: a.obraName,
+              proyectoName: a.proyectoName ?? "-",
+              client: a.client ?? "-",
+              amount: a.amount,
+              formaPago: a.formaPago ? (FORMA_PAGO_LABEL[a.formaPago] ?? a.formaPago) : "-",
+              metodoPago: a.metodoPago ? (METODO_PAGO_LABEL[a.metodoPago] ?? a.metodoPago) : "-",
+              notes: a.notes ?? "-",
+              createdByName: a.createdByName ?? "-",
+              createdAt: fecha(a.createdAt),
+            })),
+          },
+        ],
+      };
+    }
+
+    return { pdf: [], excel: [] };
+  }
 
   async function handleExport(format: "pdf" | "excel") {
     if (rows.length === 0) return;
     setIsExporting(format);
     try {
       const title = `Reporte de ${TABS.find((t) => t.value === tab)!.label}`;
+      const exportColumns = tab === "inventario" ? [...columns, ...INVENTARIO_EXPORT_EXTRA] : columns;
+      const { pdf: pdfSections, excel: excelSections } = await buildDetailSections();
+
       if (format === "pdf") {
-        const headers = columns.map((c) => c.header);
-        const body = rows.map((row) => columns.map((c) => c.exportValue(row)));
-        await exportTablaPdf(title, headers, body, { filenamePrefix: tab });
+        const headers = exportColumns.map((c) => c.header);
+        const body = rows.map((row) => exportColumns.map((c) => c.exportValue(row)));
+        await exportTablaPdf(title, headers, body, { filenamePrefix: tab, sections: pdfSections });
       } else {
-        const excelColumns: TablaColumn[] = columns.map((c) => ({
+        const excelColumns: TablaColumn[] = exportColumns.map((c) => ({
           header: c.header,
           key: c.exportKey,
           width: c.exportKey.length > 12 ? 22 : 16,
         }));
         const excelRows = rows.map((row) =>
-          Object.fromEntries(columns.map((c) => [c.exportKey, c.exportValue(row)])),
+          Object.fromEntries(exportColumns.map((c) => [c.exportKey, c.exportValue(row)])),
         );
-        await exportTablaExcel(title, excelColumns, excelRows, { filenamePrefix: tab });
+        await exportTablaExcel(title, excelColumns, excelRows, { filenamePrefix: tab, sections: excelSections });
       }
     } finally {
       setIsExporting(null);

@@ -28,6 +28,29 @@ export async function tablaHandler(req: Request, res: Response, next: NextFuncti
   }
 }
 
+const tablaDetalleFiltersSchema = z.object({
+  tab: z.enum(["proveedores", "contratistas", "clientes"]),
+  proyectoId: z.string().optional(),
+  obraId: z.string().uuid().optional(),
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
+});
+
+export async function tablaDetalleHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { tab, ...filters } = tablaDetalleFiltersSchema.parse(req.query);
+    const detalle =
+      tab === "proveedores"
+        ? await tablaService.getDetalleProveedores(filters)
+        : tab === "contratistas"
+          ? await tablaService.getDetalleContratistas(filters)
+          : await tablaService.getDetalleClientes(filters);
+    res.json(detalle);
+  } catch (error) {
+    next(error);
+  }
+}
+
 const gastosFiltersSchema = z.object({
   proyectoIds: z.string().optional(),
   obraIds: z.string().optional(),

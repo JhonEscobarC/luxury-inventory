@@ -39,3 +39,19 @@ export async function getTablaReport<T>(tab: TablaTab, filters: TablaFilters = {
   });
   return data.items;
 }
+
+export async function getTablaDetalle<T extends Record<string, unknown>>(
+  tab: Exclude<TablaTab, "inventario">,
+  filters: TablaFilters = {},
+): Promise<T> {
+  const { data } = await api.get<T>("/reports/tabla-detalle", {
+    params: {
+      tab,
+      proyectoId: filters.proyectoId || undefined,
+      obraId: filters.obraId || undefined,
+      from: filters.from || undefined,
+      to: filters.to || undefined,
+    },
+  });
+  return data;
+}
